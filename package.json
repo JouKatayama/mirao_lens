@@ -1,0 +1,39 @@
+{
+  "name": "miraio-lens",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22.13.0",
+    "pnpm": ">=11.19.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:mobile": "pnpm --filter @miraio/mobile dev",
+    "dev:api": "pnpm --filter @miraio/api dev",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop --no-backup",
+    "db:reset": "supabase db reset --local",
+    "db:test": "supabase test db",
+    "db:lint": "supabase db lint --local --level error",
+    "db:types": "supabase gen types typescript --local --schema public > packages/db/src/database.types.ts",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.0",
+    "supabase": "2.114.0",
+    "turbo": "^2.6.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.48.0",
+    "vitest": "^4.0.0"
+  }
+}

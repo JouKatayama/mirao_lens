@@ -1,0 +1,58 @@
+project_id = "miraio-lens"
+
+[api]
+enabled = true
+port = 56321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 56322
+shadow_port = 56320
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 56323
+api_url = "http://127.0.0.1"
+
+[local_smtp]
+enabled = true
+port = 56324
+smtp_port = 56325
+pop3_port = 56326
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+site_url = "miraio-lens://auth/callback"
+additional_redirect_urls = [
+  "exp://127.0.0.1:8081/--/auth/callback",
+  "http://localhost:8081",
+]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+otp_length = 6
+otp_expiry = 3600
+
+[auth.email.template.magic_link]
+subject = "Miraio Lens login code"
+content_path = "./supabase/templates/magic_link.html"
+
+[analytics]
+enabled = false
