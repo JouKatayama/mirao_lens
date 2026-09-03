@@ -72,6 +72,7 @@ describe("flashBriefStructuredOutputSchema", () => {
 
   it("rejects missing identity_status", () => {
     const { identity_status: _omit, ...withoutStatus } = validStructuredOutput;
+    void _omit;
     expect(
       flashBriefStructuredOutputSchema.safeParse(withoutStatus).success,
     ).toBe(false);
@@ -92,6 +93,7 @@ describe("flashBriefSchema", () => {
 
   it("defaults identity_status to unresolved when absent", () => {
     const { identity_status: _omit, ...withoutStatus } = validFlashBrief;
+    void _omit;
     const parsed = flashBriefSchema.parse(withoutStatus);
     expect(parsed.identity_status).toBe("unresolved");
   });

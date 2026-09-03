@@ -17,10 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import {
-  createAnalyticsClient,
-  type AnalyticsClient,
-} from "../lib/analytics";
+import { createAnalyticsClient, type AnalyticsClient } from "../lib/analytics";
 import {
   ContextApiError,
   createPersonalContextApiClient,
@@ -35,8 +32,6 @@ import {
   CardIntelligenceScreen,
   EvidenceScreen,
   FlashBriefScreen,
-  HistoryScreen,
-  HomeScanScreen,
   InteractionScreen,
   MutualValueScreen,
 } from "./card-scan-screens";
@@ -46,10 +41,16 @@ import {
   OnboardingScreen,
   ReviewScreen,
 } from "./personal-context-screens";
+import { isScanPending, scanNavigationTarget } from "../lib/scan-navigation";
 import { LoadingScreen, PrimaryButton } from "./ui";
+import { HomeScreen } from "./home-screen";
+import { WelcomeScreen } from "./welcome-screen";
+import { AnalysisPreparationScreen } from "./analysis-preparation-screen";
 
 type ViewName =
+  | "preparation"
   | "auth"
+  | "card-details"
   | "camera"
   | "context"
   | "evidence"
@@ -90,6 +91,10 @@ export function PersonalContextApp() {
       };
     }
   }, []);
+  const [welcome, setWelcome] = useState(true);
+  const [contextReturn, setContextReturn] = useState<"home" | "preparation">(
+    "home",
+  );
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [view, setView] = useState<ViewName>("loading");
   const [context, setContext] = useState<PersonalContextResponse | null>(null);
@@ -97,8 +102,7 @@ export function PersonalContextApp() {
   const [meetingGoal, setMeetingGoal] = useState<MeetingGoal>("networking");
   const [scanId, setScanId] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<ScanCreateResponse | null>(null);
-  const [scanStatus, setScanStatus] =
-    useState<ScanStatusResponse | null>(null);
+  const [scanStatus, setScanStatus] = useState<ScanStatusResponse | null>(null);
   const [scanStatusError, setScanStatusError] = useState<string | null>(null);
   const [retryCapture, setRetryCapture] = useState<CapturedCardImage | null>(
     null,
@@ -108,7 +112,9 @@ export function PersonalContextApp() {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<EvidenceItem[] | null>(null);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
-  const [historyItems, setHistoryItems] = useState<ScanHistoryItem[] | null>(null);
+  const [historyItems, setHistoryItems] = useState<ScanHistoryItem[] | null>(
+    null,
+  );
   const [historyError, setHistoryError] = useState<string | null>(null);
   const scanStatusValue = scanStatus?.status;
 
@@ -157,6 +163,7 @@ export function PersonalContextApp() {
     void services.supabase.auth.getSession().then(({ data }) => {
       if (mounted) {
         setSession(data.session);
+        if (data.session) setWelcome(false);
       }
     });
     const {
@@ -187,6 +194,9 @@ export function PersonalContextApp() {
       setRetryCapture(null);
       setEvidence(null);
       setEvidenceError(null);
+      setHistoryItems(null);
+      setHistoryError(null);
+      setWelcome(true);
       setView("auth");
       return;
     }
@@ -203,19 +213,40 @@ export function PersonalContextApp() {
     }
   }, [session, services]);
 
-  const pollingStatuses = new Set<ScanStatusResponse["status"]>([
-    "extracting",
-    "generating_brief",
-    "deep_enrichment",
-  ]);
+  useEffect(() => {
+    if (!services.ok || !session || view !== "home") return;
+    let active = true;
+    setHistoryItems(null);
+    setHistoryError(null);
+    void services.scanApi
+      .listScans(session.access_token)
+      .then((response) => {
+        if (active) setHistoryItems(response.items);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        if (error instanceof ScanApiError && error.status === 401) {
+          void services.supabase.auth.signOut();
+          return;
+        }
+        setHistoryItems([]);
+        setHistoryError("履歴を読み込めませんでした。再試行してください。");
+      });
+    return () => {
+      active = false;
+    };
+  }, [services, session, view]);
 
   useEffect(() => {
     if (
       !services.ok ||
       !session ||
-      (view !== "scan-accepted" && view !== "flash-brief" && view !== "mutual-value") ||
+      (view !== "scan-accepted" &&
+        view !== "flash-brief" &&
+        view !== "mutual-value" &&
+        view !== "preparation") ||
       !scanResult ||
-      (scanStatusValue !== undefined && !pollingStatuses.has(scanStatusValue as ScanStatusResponse["status"]))
+      (scanStatusValue !== undefined && !isScanPending(scanStatusValue))
     ) {
       return;
     }
@@ -241,14 +272,13 @@ export function PersonalContextApp() {
         setScanStatus(nextStatus);
         setScanStatusError(null);
 
-        if (nextStatus.status === "brief_ready" || nextStatus.status === "deep_enrichment") {
-          if (view !== "flash-brief") {
+        const destination = scanNavigationTarget(view, nextStatus.status);
+        if (destination) {
+          if (destination === "flash-brief")
             services.analytics.track({ name: "brief_viewed" });
-          }
-          setView("flash-brief");
-        } else if (nextStatus.status === "deep_ready") {
-          setView("mutual-value");
-        } else if (pollingStatuses.has(nextStatus.status)) {
+          setView(destination);
+        }
+        if (isScanPending(nextStatus.status)) {
           timeout = setTimeout(() => void poll(), 1500);
         }
       } catch (error) {
@@ -277,6 +307,15 @@ export function PersonalContextApp() {
       }
     };
   }, [scanResult, scanStatusValue, services, session, view]);
+
+  if (welcome) {
+    return (
+      <WelcomeScreen
+        onStart={() => setWelcome(false)}
+        onLogin={() => setWelcome(false)}
+      />
+    );
+  }
 
   if (!services.ok) {
     return (
@@ -469,6 +508,26 @@ export function PersonalContextApp() {
     }
   }
 
+  async function refreshScanStatus(): Promise<void> {
+    if (!services.ok || !session || !scanResult) return;
+    try {
+      const nextStatus = await services.scanApi.getStatus(
+        session.access_token,
+        scanResult.scan_id,
+      );
+      setScanStatus(nextStatus);
+      setScanStatusError(null);
+      const destination = scanNavigationTarget(view, nextStatus.status);
+      if (destination) setView(destination);
+    } catch (error) {
+      if (error instanceof ScanApiError && error.status === 401) {
+        await services.supabase.auth.signOut();
+        return;
+      }
+      setScanStatusError("状態を確認できませんでした。再試行してください。");
+    }
+  }
+
   async function correctCard(correction: CardCorrection): Promise<void> {
     if (!session || !services.ok || !scanResult) {
       throw new Error("An authenticated scan is required.");
@@ -581,7 +640,9 @@ export function PersonalContextApp() {
         return;
       }
 
-      setEvidenceError("根拠を読み込めませんでした。通信状態を確認してください。");
+      setEvidenceError(
+        "根拠を読み込めませんでした。通信状態を確認してください。",
+      );
       setEvidence([]);
     }
   }
@@ -631,37 +692,69 @@ export function PersonalContextApp() {
         return;
       }
 
-      setHistoryError("履歴を読み込めませんでした。通信状態を確認してください。");
+      setHistoryError(
+        "履歴を読み込めませんでした。通信状態を確認してください。",
+      );
       setHistoryItems([]);
     }
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        view === "camera" && { backgroundColor: "#000000" },
+      ]}
+    >
       <StatusBar style={view === "camera" ? "light" : "dark"} />
-      {view === "home" && context ? (
-        <HomeScanScreen
-          contextItemCount={context.items.length}
-          meetingGoal={meetingGoal}
-          onMeetingGoalChange={setMeetingGoal}
-          onOpenContext={() => setView("context")}
-          onSignOut={async () => {
-            await services.supabase.auth.signOut();
+      {(view === "home" || view === "history") && context ? (
+        <HomeScreen
+          items={historyItems}
+          error={historyError}
+          onRefresh={() => void loadHistory()}
+          onProfile={() => {
+            setContextReturn("home");
+            setView("context");
           }}
-          onStartCapture={() => {
-            services.analytics.track({ name: "scan_capture" });
-            setScanId(createScanId());
+          onCapture={() => {
             setScanResult(null);
             setScanStatus(null);
+            setView("preparation");
+          }}
+          onDeleteScan={deleteScan}
+          onOpenScan={(id) => {
+            const item = historyItems?.find((entry) => entry.scan_id === id);
+            if (item) setMeetingGoal(item.meeting_goal);
+            setScanResult({ scan_id: id, status: "extracting" });
+            setScanStatus(null);
             setScanStatusError(null);
-            setRetryCapture(null);
-            setView("camera");
+            setView("scan-accepted");
           }}
-          onViewHistory={() => {
-            setView("history");
-            void loadHistory();
+        />
+      ) : null}
+      {view === "preparation" && context ? (
+        <AnalysisPreparationScreen
+          context={context}
+          meetingGoal={meetingGoal}
+          onMeetingGoalChange={setMeetingGoal}
+          captured={Boolean(scanResult)}
+          onEdit={() => {
+            setContextReturn("preparation");
+            setView("context");
           }}
-          profile={context.profile}
+          onBack={() => setView(scanResult ? "flash-brief" : "home")}
+          onContinue={() => {
+            if (scanResult) {
+              services.analytics.track({ name: "mutual_value_viewed" });
+              setView("mutual-value");
+            } else {
+              services.analytics.track({ name: "scan_capture" });
+              setScanId(createScanId());
+              setScanStatusError(null);
+              setRetryCapture(null);
+              setView("camera");
+            }
+          }}
         />
       ) : null}
       {view === "camera" && scanId ? (
@@ -687,11 +780,15 @@ export function PersonalContextApp() {
           scanId={scanId}
         />
       ) : null}
-      {view === "scan-accepted" && scanResult ? (
+      {(view === "scan-accepted" || view === "card-details") && scanResult ? (
         <CardIntelligenceScreen
           error={scanStatusError}
           onCorrect={correctCard}
           onDone={() => {
+            if (view === "card-details" && scanStatus?.flash_brief) {
+              setView("flash-brief");
+              return;
+            }
             setScanId(null);
             setScanResult(null);
             setScanStatus(null);
@@ -707,17 +804,16 @@ export function PersonalContextApp() {
             setRetryCapture(null);
             setView("camera");
           }}
-          onRefresh={async () => {
-            setScanStatus(null);
-            setScanStatusError(null);
-          }}
+          onRefresh={refreshScanStatus}
           onRetry={retryCardExtraction}
           result={scanResult}
           status={scanStatus}
         />
       ) : null}
       {view === "flash-brief" &&
-      (scanStatus?.status === "brief_ready" || scanStatus?.status === "deep_enrichment" || scanStatus?.status === "deep_ready") &&
+      (scanStatus?.status === "brief_ready" ||
+        scanStatus?.status === "deep_enrichment" ||
+        scanStatus?.status === "deep_ready") &&
       scanStatus.flash_brief ? (
         <FlashBriefScreen
           brief={scanStatus.flash_brief}
@@ -738,33 +834,42 @@ export function PersonalContextApp() {
             setEvidenceError(null);
             setView("home");
           }}
-          onRefresh={async () => {
-            setScanStatus(null);
-            setScanStatusError(null);
-            setView("scan-accepted");
-          }}
-          onViewCard={() => setView("scan-accepted")}
+          onRefresh={refreshScanStatus}
+          onViewCard={() => setView("card-details")}
+          onViewInteraction={
+            scanStatus.status === "deep_ready"
+              ? () => setView("interaction")
+              : undefined
+          }
           onViewEvidence={() => {
             setView("evidence");
             void loadEvidence();
           }}
-          onViewMutualValue={() => {
-            services.analytics.track({ name: "mutual_value_viewed" });
-            setView("mutual-value");
-          }}
+          onViewMutualValue={() => setView("preparation")}
         />
       ) : null}
-      {view === "mutual-value" && scanStatus &&
-      (scanStatus.status === "deep_enrichment" || scanStatus.status === "deep_ready" || scanStatus.status === "brief_ready") &&
+      {view === "mutual-value" &&
+      scanStatus &&
+      (scanStatus.status === "deep_enrichment" ||
+        scanStatus.status === "deep_ready" ||
+        scanStatus.status === "brief_ready") &&
       scanStatus.card ? (
         <MutualValueScreen
+          themes={context?.items
+            .filter(
+              (item) => item.user_approved && item.type === "current_theme",
+            )
+            .map((item) => item.text)}
+          potential={scanStatus.flash_brief?.potential}
           card={{
             company: scanStatus.card.company,
             name: scanStatus.card.name,
             title: scanStatus.card.title,
           }}
           error={scanStatusError}
-          mutualValue={scanStatus.status === "deep_ready" ? scanStatus.mutual_value : null}
+          mutualValue={
+            scanStatus.status === "deep_ready" ? scanStatus.mutual_value : null
+          }
           onDone={() => {
             setScanId(null);
             setScanResult(null);
@@ -773,10 +878,7 @@ export function PersonalContextApp() {
             setRetryCapture(null);
             setView("home");
           }}
-          onRefresh={async () => {
-            setScanStatus(null);
-            setScanStatusError(null);
-          }}
+          onRefresh={refreshScanStatus}
           onViewBrief={() => setView("flash-brief")}
           onViewInteraction={() => setView("interaction")}
         />
@@ -808,10 +910,7 @@ export function PersonalContextApp() {
             setView("home");
           }}
           onSaveNote={saveNote}
-          onViewMutualValue={() => {
-            services.analytics.track({ name: "mutual_value_viewed" });
-            setView("mutual-value");
-          }}
+          onViewMutualValue={() => setView("mutual-value")}
         />
       ) : null}
       {view === "evidence" && scanStatus?.card ? (
@@ -847,7 +946,7 @@ export function PersonalContextApp() {
         <MyContextScreen
           items={context.items}
           loading={busy}
-          onBack={() => setView("home")}
+          onBack={() => setView(contextReturn)}
           onDelete={deleteApprovedItem}
           onDeleteAccount={deleteAccount}
           onEditProfile={() => setView("onboarding")}
@@ -856,20 +955,6 @@ export function PersonalContextApp() {
             await services.supabase.auth.signOut();
           }}
           profile={context.profile}
-        />
-      ) : null}
-      {view === "history" ? (
-        <HistoryScreen
-          error={historyError}
-          items={historyItems}
-          onBack={() => setView("home")}
-          onDeleteScan={deleteScan}
-          onOpenScan={(scanId) => {
-            setScanResult({ scan_id: scanId } as ScanCreateResponse);
-            setScanStatus(null);
-            setScanStatusError(null);
-            setView("scan-accepted");
-          }}
         />
       ) : null}
       {view === "review" && drafts.length === 0 ? (
