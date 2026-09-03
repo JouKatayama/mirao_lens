@@ -47,7 +47,11 @@ export function NavBar({
           </Pressable>
         ) : null}
       </View>
-      <Text accessibilityRole="header" numberOfLines={1} style={styles.navTitle}>
+      <Text
+        accessibilityRole="header"
+        numberOfLines={1}
+        style={styles.navTitle}
+      >
         {title}
       </Text>
       <View style={[styles.navSide, styles.navSideEnd]}>
@@ -427,7 +431,12 @@ const styles = StyleSheet.create({
   },
   navSide: { minWidth: 56 },
   navSideEnd: { alignItems: "flex-end" },
-  navTitle: { ...typography.heading, color: colors.text, flex: 1, textAlign: "center" },
+  navTitle: {
+    ...typography.heading,
+    color: colors.text,
+    flex: 1,
+    textAlign: "center",
+  },
   noteArea: {
     ...typography.body,
     backgroundColor: colors.surfaceSunken,

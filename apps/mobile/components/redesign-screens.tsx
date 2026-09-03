@@ -4,10 +4,23 @@
 // interaction through callbacks, so they can be rendered from the gallery with
 // mock data before the API supplies the real thing.
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { colors, elevation, radius, spacing, typography } from "@miraio/ui-tokens";
+import {
+  colors,
+  elevation,
+  radius,
+  spacing,
+  typography,
+} from "@miraio/ui-tokens";
 import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 import {
@@ -73,7 +86,9 @@ export function ScoreDonut({
           </Svg>
         </View>
         <View style={styles.donutCentre}>
-          <Text style={[styles.donutValue, { fontSize: Math.round(size * 0.24) }]}>
+          <Text
+            style={[styles.donutValue, { fontSize: Math.round(size * 0.24) }]}
+          >
             {value}%
           </Text>
         </View>
@@ -167,7 +182,9 @@ export function CaptureChromeScreen({
         </Pressable>
         <View>
           <Text style={styles.captureTitle}>名刺を撮影</Text>
-          <Text style={styles.captureSubtitle}>名刺を枠内に合わせてください</Text>
+          <Text style={styles.captureSubtitle}>
+            名刺を枠内に合わせてください
+          </Text>
         </View>
       </View>
 
@@ -246,7 +263,12 @@ export function PersonSummaryScreen({
 }) {
   return (
     <Screen>
-      <NavBar action="編集" onAction={onEdit} onBack={onBack} title="人物サマリー" />
+      <NavBar
+        action="編集"
+        onAction={onEdit}
+        onBack={onBack}
+        title="人物サマリー"
+      />
       <Body>
         <View style={styles.personHeader}>
           <Avatar size={72} uri={person.avatarUri} />
@@ -315,7 +337,11 @@ function Avatar({ size, uri }: { size: number; uri: string | null }) {
 
   return (
     <View style={[styles.avatar, styles.avatarEmpty, style]}>
-      <Feather color={colors.muted} name="user" size={Math.round(size * 0.45)} />
+      <Feather
+        color={colors.muted}
+        name="user"
+        size={Math.round(size * 0.45)}
+      />
     </View>
   );
 }
@@ -384,7 +410,11 @@ export function AnalysisPrepScreen({
             onPress={onEditSituation}
           />
           <View style={styles.divider} />
-          <DisclosureRow caption={purpose} label="目的" onPress={onEditPurpose} />
+          <DisclosureRow
+            caption={purpose}
+            label="目的"
+            onPress={onEditPurpose}
+          />
         </Card>
 
         <PrimaryButton label="分析する" onPress={onRun} />
@@ -467,7 +497,11 @@ export function AnalysisResultScreen({
   return (
     <Screen>
       <NavBar onBack={onBack} title="分析結果" />
-      <SegmentedTabs onChange={onTabChange} options={analysisTabs} value={tab} />
+      <SegmentedTabs
+        onChange={onTabChange}
+        options={analysisTabs}
+        value={tab}
+      />
       <Body>
         {tab === "GIVE / GET" ? (
           <>
@@ -505,7 +539,9 @@ export function AnalysisResultScreen({
                   <Text style={styles.scoreVerdict}>
                     {result.compatibilityVerdict}
                   </Text>
-                  <Text style={styles.scoreNote}>{result.compatibilityNote}</Text>
+                  <Text style={styles.scoreNote}>
+                    {result.compatibilityNote}
+                  </Text>
                 </View>
               </View>
             </Card>
@@ -632,7 +668,12 @@ export function ConversationLogScreen({
 }) {
   return (
     <Screen>
-      <NavBar action="保存" onAction={onSave} onBack={onBack} title="会話を記録" />
+      <NavBar
+        action="保存"
+        onAction={onSave}
+        onBack={onBack}
+        title="会話を記録"
+      />
       <Body>
         <View style={styles.stack}>
           <SectionTitle>会話メモ</SectionTitle>
@@ -674,7 +715,12 @@ export function ConversationLogScreen({
 
 // ─── 7. Home ─────────────────────────────────────────────────────────────────
 
-export const homeFilters = ["すべて", "要フォロー", "商談中", "協業候補"] as const;
+export const homeFilters = [
+  "すべて",
+  "要フォロー",
+  "商談中",
+  "協業候補",
+] as const;
 export type HomeFilter = (typeof homeFilters)[number];
 
 export type PersonListItem = Readonly<{
@@ -916,7 +962,11 @@ const styles = StyleSheet.create({
   },
   donutRotate: { transform: [{ rotate: "-90deg" }] },
   donutValue: { color: colors.accent, fontWeight: "800" },
-  exchangeHead: { alignItems: "flex-start", flexDirection: "row", gap: spacing.sm },
+  exchangeHead: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
   exchangeHeadText: { flex: 1, gap: 2 },
   exchangeIcon: {
     alignItems: "center",
@@ -980,7 +1030,11 @@ const styles = StyleSheet.create({
   personRowName: { ...typography.bodyStrong, color: colors.text },
   personRowScore: { alignItems: "center", gap: 2 },
   personRowText: { flex: 1, gap: 1 },
-  personRowTime: { ...typography.micro, color: colors.muted, fontWeight: "400" },
+  personRowTime: {
+    ...typography.micro,
+    color: colors.muted,
+    fontWeight: "400",
+  },
   questionIndex: {
     alignItems: "center",
     backgroundColor: colors.accent,
@@ -989,7 +1043,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 22,
   },
-  questionIndexText: { color: colors.onAccent, fontSize: 12, fontWeight: "700" },
+  questionIndexText: {
+    color: colors.onAccent,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   questionRow: {
     alignItems: "flex-start",
     backgroundColor: colors.surfaceSunken,
@@ -1070,7 +1128,12 @@ const styles = StyleSheet.create({
   value: { ...typography.body, color: colors.text },
   welcome: { flex: 1, justifyContent: "space-between", padding: spacing.lg },
   welcomeActions: { gap: spacing.md, paddingBottom: spacing.xl },
-  welcomeCentre: { alignItems: "center", flex: 1, gap: spacing.md, justifyContent: "center" },
+  welcomeCentre: {
+    alignItems: "center",
+    flex: 1,
+    gap: spacing.md,
+    justifyContent: "center",
+  },
   welcomeLink: {
     ...typography.body,
     color: colors.textOnDarkMuted,

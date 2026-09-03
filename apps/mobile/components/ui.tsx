@@ -1,4 +1,15 @@
-import { colors, spacing } from "@miraio/ui-tokens";
+// Shared primitives for the app screens.
+//
+// The component API predates the 2026-09 redesign and is unchanged; only the
+// styling moved, so every screen composed from these picks up the new look
+// without being touched. Colours and metrics come from @miraio/ui-tokens.
+import {
+  colors,
+  elevation,
+  radius,
+  spacing,
+  typography,
+} from "@miraio/ui-tokens";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -24,6 +35,7 @@ export function ScreenFrame({
     <ScrollView
       contentContainerStyle={styles.screen}
       keyboardShouldPersistTaps="handled"
+      style={styles.screenBackground}
     >
       <Text style={styles.brand}>MIRAIO LENS</Text>
       <Text accessibilityRole="header" style={styles.title}>
@@ -67,12 +79,12 @@ export function PrimaryButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.primaryButton,
-        pressed ? styles.pressed : null,
+        pressed ? styles.primaryButtonPressed : null,
         disabled || loading ? styles.disabled : null,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color={colors.onAccent} />
       ) : (
         <Text style={styles.primaryButtonText}>{label}</Text>
       )}
@@ -134,37 +146,37 @@ export function LoadingScreen() {
 
 const styles = StyleSheet.create({
   brand: {
+    ...typography.micro,
     color: colors.accent,
-    fontSize: 12,
-    fontWeight: "800",
     letterSpacing: 2,
     marginBottom: spacing.sm,
   },
+  // Cards now read as raised surfaces rather than outlined boxes.
   card: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#D7E0DB",
-    borderRadius: 16,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     gap: spacing.md,
     padding: spacing.md,
+    ...elevation.card,
   },
   dangerButtonText: {
-    color: "#B42318",
+    color: colors.danger,
     fontSize: 15,
     fontWeight: "700",
   },
-  disabled: { opacity: 0.5 },
+  disabled: { opacity: 0.45 },
   errorBox: {
-    backgroundColor: "#FEE4E2",
-    borderRadius: 12,
+    backgroundColor: colors.dangerSoft,
+    borderRadius: radius.md,
     padding: spacing.md,
   },
-  errorText: { color: "#912018", fontSize: 14, lineHeight: 20 },
+  errorText: { ...typography.body, color: colors.danger },
   fieldGroup: { gap: spacing.sm },
   input: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#B8C7BF",
-    borderRadius: 12,
+    ...typography.body,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
     borderWidth: 1,
     color: colors.text,
     fontSize: 16,
@@ -172,38 +184,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  label: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  label: { ...typography.captionStrong, color: colors.text },
   loadingScreen: {
     alignItems: "center",
+    backgroundColor: colors.background,
     flex: 1,
     gap: spacing.md,
     justifyContent: "center",
   },
-  loadingText: { color: colors.muted, fontSize: 15 },
+  loadingText: { ...typography.body, color: colors.muted },
   multiline: { minHeight: 88, textAlignVertical: "top" },
   pressed: { opacity: 0.75 },
   primaryButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
-    borderRadius: 12,
+    borderRadius: radius.md,
     justifyContent: "center",
-    minHeight: 50,
+    minHeight: 52,
     paddingHorizontal: spacing.md,
   },
-  primaryButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+  primaryButtonPressed: { backgroundColor: colors.accentPressed },
+  primaryButtonText: {
+    color: colors.onAccent,
+    fontSize: 16,
+    fontWeight: "700",
+  },
   screen: {
     gap: spacing.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
     paddingBottom: 48,
+    paddingTop: spacing.lg,
   },
+  screenBackground: { backgroundColor: colors.background },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderColor: "#B8C7BF",
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: spacing.md,
   },
   secondaryButtonText: {
@@ -211,11 +231,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
-  subtitle: { color: colors.muted, fontSize: 15, lineHeight: 22 },
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: "800",
-    lineHeight: 38,
-  },
+  subtitle: { ...typography.body, color: colors.muted },
+  title: { ...typography.display, color: colors.text },
 });

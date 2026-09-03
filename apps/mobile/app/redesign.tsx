@@ -55,7 +55,11 @@ const analysis: AnalysisResult = {
     "将来的にプロダクト開発や検証で協力できる可能性がある",
     "あなたの技術力が、相手の事業成長に貢献できる可能性がある",
   ],
-  bridgeThemes: ["AI × 営業の未来", "SaaSのユーザー還元", "学生エンジニアのキャリア"],
+  bridgeThemes: [
+    "AI × 営業の未来",
+    "SaaSのユーザー還元",
+    "学生エンジニアのキャリア",
+  ],
   compatibility: 82,
   compatibilityNote: "お互いに価値を提供し合える可能性が高い相手です。",
   compatibilityVerdict: "高い相性です！",
@@ -161,7 +165,10 @@ export default function RedesignGallery() {
               style={[styles.tab, active === name && styles.tabActive]}
             >
               <Text
-                style={[styles.tabText, active === name && styles.tabTextActive]}
+                style={[
+                  styles.tabText,
+                  active === name && styles.tabTextActive,
+                ]}
               >
                 {name}
               </Text>

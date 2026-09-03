@@ -333,17 +333,31 @@ export function CardCaptureScreen({
         style={StyleSheet.absoluteFill}
       />
       <View pointerEvents="none" style={styles.cameraShade} />
-      <View pointerEvents="none" style={styles.cardFrame}>
-        <Text style={styles.frameLabel}>名刺の表面を枠に合わせる</Text>
+      <View pointerEvents="none" style={styles.cameraGuide}>
+        <View style={styles.cameraGuideFrame}>
+          <View style={[styles.cameraCorner, styles.cameraCornerTopLeft]} />
+          <View style={[styles.cameraCorner, styles.cameraCornerTopRight]} />
+          <View style={[styles.cameraCorner, styles.cameraCornerBottomLeft]} />
+          <View style={[styles.cameraCorner, styles.cameraCornerBottomRight]} />
+        </View>
       </View>
-      <Pressable
-        accessibilityLabel="撮影をやめて戻る"
-        accessibilityRole="button"
-        onPress={onBack}
-        style={styles.cameraBack}
-      >
-        <Text style={styles.cameraBackText}>戻る</Text>
-      </Pressable>
+      <View style={styles.cameraHeader}>
+        <Pressable
+          accessibilityLabel="撮影をやめて戻る"
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={onBack}
+          style={styles.cameraClose}
+        >
+          <Text style={styles.cameraCloseGlyph}>✕</Text>
+        </Pressable>
+        <View>
+          <Text style={styles.cameraTitle}>名刺を撮影</Text>
+          <Text style={styles.cameraSubtitle}>
+            名刺を枠内に合わせてください
+          </Text>
+        </View>
+      </View>
       <View style={styles.captureControls}>
         <ErrorNotice message={error} />
         <Pressable
@@ -357,7 +371,7 @@ export function CardCaptureScreen({
           ]}
         >
           {capturing ? (
-            <ActivityIndicator color="#111111" />
+            <ActivityIndicator color={colors.cameraChrome} />
           ) : (
             <View style={styles.shutterInner} />
           )}
@@ -659,9 +673,7 @@ export function FlashBriefScreen({
     >
       <Card>
         <Text style={styles.eyebrow}>FLASH BRIEF</Text>
-        <Text style={styles.cardTitle}>
-          {card.name ?? "（名前なし）"}
-        </Text>
+        <Text style={styles.cardTitle}>{card.name ?? "（名前なし）"}</Text>
         <Text style={styles.bodyText}>
           {[card.company, card.title].filter(Boolean).join(" / ")}
         </Text>
@@ -715,10 +727,7 @@ export function FlashBriefScreen({
       />
       <SecondaryButton label="根拠・ソースを確認" onPress={onViewEvidence} />
       <SecondaryButton label="名刺の詳細を確認" onPress={onViewCard} />
-      <SecondaryButton
-        label="状態を再確認"
-        onPress={() => void onRefresh()}
-      />
+      <SecondaryButton label="状態を再確認" onPress={() => void onRefresh()} />
       <SecondaryButton label="Homeへ戻る" onPress={onDone} />
     </ScreenFrame>
   );
@@ -774,9 +783,7 @@ export function MutualValueScreen({
     >
       <Card>
         <Text style={styles.eyebrow}>MUTUAL VALUE</Text>
-        <Text style={styles.cardTitle}>
-          {card.name ?? "（名前なし）"}
-        </Text>
+        <Text style={styles.cardTitle}>{card.name ?? "（名前なし）"}</Text>
         <Text style={styles.bodyText}>
           {[card.company, card.title].filter(Boolean).join(" / ")}
         </Text>
@@ -848,22 +855,26 @@ export function MutualValueScreen({
 
       <Card>
         <Text style={styles.briefSectionLabel}>NEXT</Text>
-        <Text style={styles.briefSectionText}>{mutualValue.next_action.action}</Text>
+        <Text style={styles.briefSectionText}>
+          {mutualValue.next_action.action}
+        </Text>
         {mutualValue.next_action.timing ? (
           <Text style={styles.mutualValueMeta}>
             ⏱ {mutualValue.next_action.timing}
           </Text>
         ) : null}
-        <Text style={styles.mutualValueReason}>{mutualValue.next_action.reason}</Text>
+        <Text style={styles.mutualValueReason}>
+          {mutualValue.next_action.reason}
+        </Text>
       </Card>
 
       <ErrorNotice message={error} />
-      <PrimaryButton label="メモ & ネクストアクションを記録" onPress={onViewInteraction} />
-      <SecondaryButton label="Flash Briefに戻る" onPress={onViewBrief} />
-      <SecondaryButton
-        label="状態を再確認"
-        onPress={() => void onRefresh()}
+      <PrimaryButton
+        label="メモ & ネクストアクションを記録"
+        onPress={onViewInteraction}
       />
+      <SecondaryButton label="Flash Briefに戻る" onPress={onViewBrief} />
+      <SecondaryButton label="状態を再確認" onPress={() => void onRefresh()} />
       <SecondaryButton label="Homeへ戻る" onPress={onDone} />
     </ScreenFrame>
   );
@@ -1168,11 +1179,11 @@ const historyStatusLabels: Record<ScanHistoryStatus, string> = {
 };
 
 const historyStatusBg: Record<ScanHistoryStatus, string> = {
-  brief_ready: "#D1FAE5",
-  deep_enrichment: "#DBEAFE",
-  deep_ready: "#D1FAE5",
-  failed: "#FEE2E2",
-  processing: "#FEF3C7",
+  brief_ready: colors.successSoft,
+  deep_enrichment: colors.getSoft,
+  deep_ready: colors.successSoft,
+  failed: colors.dangerSoft,
+  processing: colors.warningSoft,
 };
 
 export function HistoryScreen({
@@ -1204,7 +1215,10 @@ export function HistoryScreen({
         </Card>
       ) : (
         items.map((item) => (
-          <Pressable key={item.scan_id} onPress={() => onOpenScan(item.scan_id)}>
+          <Pressable
+            key={item.scan_id}
+            onPress={() => onOpenScan(item.scan_id)}
+          >
             <Card>
               <View style={styles.historyRow}>
                 <View style={styles.historyMain}>
@@ -1266,18 +1280,72 @@ export function HistoryScreen({
 
 const styles = StyleSheet.create({
   bodyText: { color: colors.muted, fontSize: 15, lineHeight: 22 },
-  cameraBack: {
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
-    borderRadius: 999,
-    left: spacing.lg,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    position: "absolute",
-    top: spacing.lg,
-    justifyContent: "center",
+  cameraClose: { left: 0, position: "absolute" },
+  cameraCloseGlyph: {
+    color: colors.textOnDark,
+    fontSize: 26,
+    fontWeight: "300",
   },
-  cameraBackText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
-  cameraContainer: { backgroundColor: "#000000", flex: 1 },
+  cameraCorner: {
+    borderColor: colors.textOnDark,
+    height: 26,
+    position: "absolute",
+    width: 26,
+  },
+  cameraCornerBottomLeft: {
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    bottom: 0,
+    left: 0,
+  },
+  cameraCornerBottomRight: {
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    bottom: 0,
+    right: 0,
+  },
+  cameraCornerTopLeft: {
+    borderLeftWidth: 3,
+    borderTopWidth: 3,
+    left: 0,
+    top: 0,
+  },
+  cameraCornerTopRight: {
+    borderRightWidth: 3,
+    borderTopWidth: 3,
+    right: 0,
+    top: 0,
+  },
+  cameraGuide: {
+    alignItems: "center",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  cameraGuideFrame: { aspectRatio: 1.6, width: "82%" },
+  cameraHeader: {
+    alignItems: "center",
+    justifyContent: "center",
+    left: spacing.md,
+    position: "absolute",
+    right: spacing.md,
+    top: spacing.xl,
+  },
+  cameraSubtitle: {
+    color: colors.textOnDarkMuted,
+    fontSize: 13,
+    textAlign: "center",
+  },
+  cameraTitle: {
+    color: colors.textOnDark,
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  cameraContainer: { backgroundColor: colors.cameraChrome, flex: 1 },
   cameraLoading: {
     alignItems: "center",
     flex: 1,
@@ -1301,18 +1369,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: spacing.lg,
   },
-  cardFrame: {
-    alignItems: "center",
-    aspectRatio: 1.67,
-    borderColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 3,
-    justifyContent: "flex-start",
-    left: "6%",
-    position: "absolute",
-    top: "25%",
-    width: "88%",
-  },
   cardTitle: { color: colors.text, fontSize: 20, fontWeight: "800" },
   contextSummary: { color: colors.text, fontSize: 16, fontWeight: "700" },
   confidenceText: { color: colors.muted, fontSize: 12 },
@@ -1322,19 +1378,9 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1.5,
   },
-  frameLabel: {
-    backgroundColor: "rgba(0, 0, 0, 0.58)",
-    borderRadius: 999,
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
-    marginTop: -34,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
   factBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#E1F4EA",
+    backgroundColor: colors.accentSoft,
     borderRadius: 999,
     color: colors.accent,
     fontSize: 12,
@@ -1344,15 +1390,15 @@ const styles = StyleSheet.create({
   },
   factLabel: { color: colors.muted, fontSize: 12, fontWeight: "700" },
   factRow: {
-    borderBottomColor: "#E7ECE9",
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     gap: 4,
     paddingBottom: spacing.sm,
   },
   factValue: { color: colors.text, fontSize: 16, fontWeight: "700" },
   goalOption: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#B8C7BF",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     minHeight: 44,
@@ -1365,14 +1411,14 @@ const styles = StyleSheet.create({
   },
   goalOptionText: { color: colors.text, fontSize: 13, fontWeight: "700" },
   goalOptionTextSelected: {
-    color: "#FFFFFF",
+    color: colors.surface,
     fontSize: 13,
     fontWeight: "800",
   },
   goalOptions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   previewCard: {
     aspectRatio: 1.67,
-    backgroundColor: "#111111",
+    backgroundColor: colors.cameraChrome,
     borderRadius: 16,
     overflow: "hidden",
     width: "100%",
@@ -1381,15 +1427,16 @@ const styles = StyleSheet.create({
   sectionLabel: { color: colors.text, fontSize: 14, fontWeight: "800" },
   shutterDisabled: { opacity: 0.5 },
   shutterInner: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderRadius: 999,
     height: 58,
     width: 58,
   },
   shutterOuter: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.45)",
+    borderColor: "rgba(255, 255, 255, 0.55)",
     borderRadius: 999,
+    borderWidth: 3,
     height: 74,
     justifyContent: "center",
     width: 74,
@@ -1404,7 +1451,12 @@ const styles = StyleSheet.create({
   },
   briefSectionText: { color: colors.text, fontSize: 15, lineHeight: 22 },
   starterRow: { flexDirection: "row", gap: spacing.sm, paddingVertical: 4 },
-  starterBullet: { color: colors.accent, fontSize: 13, fontWeight: "900", marginTop: 2 },
+  starterBullet: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 2,
+  },
   starterText: { color: colors.text, flex: 1, fontSize: 15, lineHeight: 22 },
   claimTypeBadge: {
     alignSelf: "flex-start",
@@ -1415,12 +1467,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   claimTypeBadgeFact: {
-    backgroundColor: "#D1FAE5",
-    color: "#065F46",
+    backgroundColor: colors.successSoft,
+    color: colors.success,
   },
   claimTypeBadgeHypothesis: {
-    backgroundColor: "#FEF3C7",
-    color: "#92400E",
+    backgroundColor: colors.warningSoft,
+    color: colors.warning,
   },
   mutualValueRow: { gap: 6, paddingVertical: spacing.sm },
   mutualValueRowHeader: { flexDirection: "row" },
@@ -1450,9 +1502,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   mutualValueMeta: { color: colors.muted, fontSize: 13, marginTop: spacing.sm },
-  mutualValueReason: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: spacing.sm },
+  mutualValueReason: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: spacing.sm,
+  },
   noteInput: {
-    borderColor: "#B8C7BF",
+    borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
     color: colors.text,
@@ -1476,10 +1533,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },
-  identityBadgeVerified: { backgroundColor: "#DBEAFE" },
-  identityBadgeHigh: { backgroundColor: "#D1FAE5" },
-  identityBadgeMedium: { backgroundColor: "#FEF3C7" },
-  identityBadgeUnresolved: { backgroundColor: "#F3F4F6" },
+  identityBadgeVerified: { backgroundColor: colors.getSoft },
+  identityBadgeHigh: { backgroundColor: colors.successSoft },
+  identityBadgeMedium: { backgroundColor: colors.warningSoft },
+  identityBadgeUnresolved: { backgroundColor: colors.track },
   identityBadgeText: { fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
   evidenceConfidence: {
     color: colors.muted,
@@ -1525,7 +1582,7 @@ const styles = StyleSheet.create({
     minHeight: 32,
     minWidth: 32,
     borderRadius: 999,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.dangerSoft,
   },
-  historyDeleteIcon: { color: "#DC2626", fontSize: 13, fontWeight: "800" },
+  historyDeleteIcon: { color: colors.danger, fontSize: 13, fontWeight: "800" },
 });
