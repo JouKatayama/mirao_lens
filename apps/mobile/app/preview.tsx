@@ -18,6 +18,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
+  CardCaptureScreen,
   CardIntelligenceScreen,
   EvidenceScreen,
   FlashBriefScreen,
@@ -213,8 +214,16 @@ const history: ScanHistoryItem[] = [
 const noop = () => {};
 const asyncNoop = async () => {};
 
+// Stands in for the real upload. Resolves after a beat so the screen's
+// uploading state is visible, then reports the mock scan as accepted.
+const fakeUpload = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 900));
+  return scanResult;
+};
+
 const screens = [
   "ホーム",
+  "撮影",
   "名刺の読み取り結果",
   "Flash Brief",
   "Mutual Value",
@@ -261,6 +270,15 @@ export default function PreviewScreen() {
             onStartCapture={noop}
             onViewHistory={() => setActive("履歴")}
             profile={profile}
+          />
+        ) : null}
+
+        {active === "撮影" ? (
+          <CardCaptureScreen
+            onAccepted={() => setActive("名刺の読み取り結果")}
+            onBack={() => setActive("ホーム")}
+            onUpload={fakeUpload}
+            scanId={SCAN_ID}
           />
         ) : null}
 
