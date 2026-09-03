@@ -15,7 +15,7 @@ import type {
 } from "@miraio/domain";
 import { colors, spacing } from "@miraio/ui-tokens";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   CardIntelligenceScreen,
@@ -233,7 +233,7 @@ export default function PreviewScreen() {
     <View style={styles.root}>
       <View style={styles.bar}>
         <Text style={styles.barLabel}>PREVIEW（モックデータ・開発用）</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.tabs}>
           {screens.map((name) => (
             <Pressable
               key={name}
@@ -247,7 +247,7 @@ export default function PreviewScreen() {
               </Text>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       </View>
 
       <View style={styles.body}>
@@ -358,10 +358,19 @@ const styles = StyleSheet.create({
   root: { backgroundColor: colors.background, flex: 1 },
   tab: {
     borderRadius: 999,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.sm,
+    // 44pt minimum touch target (Apple HIG / Material) so the tabs stay
+    // tappable on a phone rather than only with a mouse.
+    minHeight: 44,
+    justifyContent: "center",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  tabs: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   tabActive: { backgroundColor: colors.accent },
   tabText: { color: colors.muted, fontSize: 13, fontWeight: "600" },
