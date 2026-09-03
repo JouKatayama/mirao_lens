@@ -20,7 +20,7 @@ values
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4010-8000-000000000001', true);
 
-insert into public.profiles (user_id, current_role, current_company)
+insert into public.profiles (user_id, "current_role", current_company)
 values ('00000000-0000-4010-8000-000000000001', 'デザイナー', 'TestCo');
 
 insert into public.scans (id, user_id, status, meeting_goal)
@@ -58,7 +58,7 @@ values
   );
 
 -- Bob's scan and evidence.
-insert into public.profiles (user_id, current_role, current_company)
+insert into public.profiles (user_id, "current_role", current_company)
 values ('00000000-0000-4010-8000-000000000002', 'Engineer', 'OtherCo');
 
 insert into public.scans (id, user_id, status, meeting_goal)
