@@ -18,7 +18,7 @@ export function WelcomeScreen({
       colors={["#10101E", "#151324", "#312143"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={styles.fill}
+      style={[styles.fill, styles.background]}
     >
       <StatusBar style="light" />
       <SafeAreaView style={styles.fill}>
@@ -54,7 +54,8 @@ export function WelcomeScreen({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.dark },
+  fill: { flex: 1 },
+  background: { backgroundColor: colors.dark },
   content: {
     flex: 1,
     width: "100%",
