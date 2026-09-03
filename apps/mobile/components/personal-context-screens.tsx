@@ -8,6 +8,7 @@ import {
 } from "@miraio/domain";
 import { colors, radius, spacing, typography } from "@miraio/ui-tokens";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -17,6 +18,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   createOnboardingInput,
@@ -96,62 +98,65 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
       colors={[colors.splashTop, colors.splashBottom]}
       style={styles.authScreen}
     >
-      <ScrollView
-        contentContainerStyle={styles.authBody}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.authBrand}>
-          <View style={styles.authLogo}>
-            <Text style={styles.authLogoGlyph}>a</Text>
+      <StatusBar style="light" />
+      <SafeAreaView style={styles.authScreen}>
+        <ScrollView
+          contentContainerStyle={styles.authBody}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.authBrand}>
+            <View style={styles.authLogo}>
+              <Text style={styles.authLogoGlyph}>a</Text>
+            </View>
+            <Text style={styles.authTitle}>Miraio Lens</Text>
+            <Text style={styles.authTagline}>
+              人との出会いを、未来の価値に変える。
+            </Text>
           </View>
-          <Text style={styles.authTitle}>Miraio Lens</Text>
-          <Text style={styles.authTagline}>
-            人との出会いを、未来の価値に変える。
-          </Text>
-        </View>
 
-        <Card>
-          <Field
-            autoCapitalize="none"
-            autoComplete="email"
-            editable={!codeSent}
-            keyboardType="email-address"
-            label="メールアドレス"
-            onChangeText={setEmail}
-            value={email}
-          />
-          {codeSent ? (
+          <Card>
             <Field
-              keyboardType="number-pad"
-              label="メールに届いた6桁コード"
-              maxLength={6}
-              onChangeText={(value) => setCode(value.replace(/\D/g, ""))}
-              value={code}
+              autoCapitalize="none"
+              autoComplete="email"
+              editable={!codeSent}
+              keyboardType="email-address"
+              label="メールアドレス"
+              onChangeText={setEmail}
+              value={email}
             />
-          ) : null}
-          <ErrorNotice message={error} />
-          <PrimaryButton
-            label={codeSent ? "コードを確認" : "ログインコードを送る"}
-            loading={loading}
-            onPress={codeSent ? verifyCode : sendCode}
-          />
-          {codeSent ? (
-            <SecondaryButton
-              disabled={loading}
-              label="メールアドレスを変更"
-              onPress={() => {
-                setCode("");
-                setCodeSent(false);
-                setError(null);
-              }}
+            {codeSent ? (
+              <Field
+                keyboardType="number-pad"
+                label="メールに届いた6桁コード"
+                maxLength={6}
+                onChangeText={(value) => setCode(value.replace(/\D/g, ""))}
+                value={code}
+              />
+            ) : null}
+            <ErrorNotice message={error} />
+            <PrimaryButton
+              label={codeSent ? "コードを確認" : "ログインコードを送る"}
+              loading={loading}
+              onPress={codeSent ? verifyCode : sendCode}
             />
-          ) : null}
-        </Card>
+            {codeSent ? (
+              <SecondaryButton
+                disabled={loading}
+                label="メールアドレスを変更"
+                onPress={() => {
+                  setCode("");
+                  setCodeSent(false);
+                  setError(null);
+                }}
+              />
+            ) : null}
+          </Card>
 
-        <Text style={styles.authNote}>
-          あなたのコンテキストは非公開です。ログインして安全に管理します。
-        </Text>
-      </ScrollView>
+          <Text style={styles.authNote}>
+            あなたのコンテキストは非公開です。ログインして安全に管理します。
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -496,6 +501,9 @@ export function MyContextScreen({
 
 const styles = StyleSheet.create({
   authBody: {
+    alignSelf: "center",
+    maxWidth: 640,
+    width: "100%",
     flexGrow: 1,
     gap: spacing.lg,
     justifyContent: "center",

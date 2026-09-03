@@ -299,12 +299,7 @@ export function PersonalContextApp() {
   }
 
   if (view === "auth" || !session) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="dark" />
-        <AuthScreen client={services.supabase} />
-      </SafeAreaView>
-    );
+    return <AuthScreen client={services.supabase} />;
   }
 
   if (view === "unavailable") {

@@ -131,22 +131,24 @@ export function WelcomeScreen({
       colors={[colors.splashTop, colors.splashBottom]}
       style={styles.welcome}
     >
-      <View style={styles.welcomeCentre}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoGlyph}>a</Text>
+      <ScrollView contentContainerStyle={styles.welcomeContent}>
+        <View style={styles.welcomeCentre}>
+          <View style={styles.logoMark}>
+            <Text style={styles.logoGlyph}>a</Text>
+          </View>
+          <Text style={styles.welcomeTitle}>Miraio Lens</Text>
+          <Text style={styles.welcomeTagline}>
+            人との出会いを、未来の価値に変える。
+          </Text>
         </View>
-        <Text style={styles.welcomeTitle}>Miraio Lens</Text>
-        <Text style={styles.welcomeTagline}>
-          人との出会いを、未来の価値に変える。
-        </Text>
-      </View>
 
-      <View style={styles.welcomeActions}>
-        <PrimaryButton label="はじめる" onPress={onStart} />
-        <Pressable accessibilityRole="button" hitSlop={8} onPress={onLogin}>
-          <Text style={styles.welcomeLink}>ログインする</Text>
-        </Pressable>
-      </View>
+        <View style={styles.welcomeActions}>
+          <PrimaryButton label="はじめる" onPress={onStart} />
+          <Pressable accessibilityRole="button" hitSlop={8} onPress={onLogin}>
+            <Text style={styles.welcomeLink}>ログインする</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </LinearGradient>
   );
 }
@@ -502,7 +504,7 @@ export function AnalysisResultScreen({
         options={analysisTabs}
         value={tab}
       />
-      <Body>
+      <Body key={tab}>
         {tab === "GIVE / GET" ? (
           <>
             <Card>
@@ -677,7 +679,11 @@ export function ConversationLogScreen({
       <Body>
         <View style={styles.stack}>
           <SectionTitle>会話メモ</SectionTitle>
-          <NoteArea onChangeText={onChangeNote} value={note} />
+          <NoteArea
+            accessibilityLabel="会話メモ"
+            onChangeText={onChangeNote}
+            value={note}
+          />
         </View>
 
         <View style={styles.stack}>
@@ -688,7 +694,9 @@ export function ConversationLogScreen({
                 checked={action.done}
                 key={action.label}
                 label={action.label}
-                onToggle={() => onToggleAction?.(index)}
+                onToggle={
+                  onToggleAction ? () => onToggleAction(index) : undefined
+                }
                 tone="box"
               />
             ))}
@@ -760,11 +768,22 @@ export function HomeScreen({
   onSelectTab?: (label: string) => void;
   search: string;
 }) {
+  const query = search.trim().normalize("NFKC").toLocaleLowerCase();
+  const visibleItems = items.filter((item) => {
+    const matchesFilter = filter === "すべて" || item.badge === filter;
+    const text = [item.name, item.company, item.department]
+      .join(" ")
+      .normalize("NFKC")
+      .toLocaleLowerCase();
+    return matchesFilter && text.includes(query);
+  });
+
   return (
     <Screen>
       <NavBar title="ホーム" />
       <View style={styles.homeControls}>
         <SearchField
+          accessibilityLabel="人物を検索"
           onChangeText={onChangeSearch}
           placeholder="人物を検索"
           value={search}
@@ -776,8 +795,19 @@ export function HomeScreen({
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.homeList}>
-        {items.map((item) => (
+      <ScrollView
+        contentContainerStyle={styles.homeList}
+        keyboardShouldPersistTaps="handled"
+      >
+        {visibleItems.length === 0 ? (
+          <Card>
+            <SectionTitle>該当する人物がいません</SectionTitle>
+            <Text style={styles.paragraph}>
+              検索語や絞り込みを変更してください。
+            </Text>
+          </Card>
+        ) : null}
+        {visibleItems.map((item) => (
           <Pressable
             accessibilityRole="button"
             key={item.id}
@@ -799,7 +829,7 @@ export function HomeScreen({
         ))}
       </ScrollView>
 
-      <View style={styles.tabBar}>
+      <View accessibilityRole="tablist" style={styles.tabBar}>
         {homeTabs.map((item) => {
           const active = item.label === activeTab;
 
@@ -807,6 +837,7 @@ export function HomeScreen({
             <Pressable
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
+              aria-selected={active}
               key={item.label}
               onPress={() => onSelectTab?.(item.label)}
               style={styles.tabItem}
@@ -854,7 +885,14 @@ const styles = StyleSheet.create({
   aiTagText: { ...typography.micro, color: colors.accentSoftText },
   avatar: { backgroundColor: colors.track },
   avatarEmpty: { alignItems: "center", justifyContent: "center" },
-  body: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
+  body: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 640,
+    gap: spacing.md,
+    padding: spacing.md,
+    paddingBottom: spacing.xl,
+  },
   bridgeGlyph: {
     alignItems: "center",
     backgroundColor: colors.giveSoft,
@@ -892,7 +930,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     paddingTop: spacing.lg,
   },
-  captureClose: { left: 0, position: "absolute" },
+  captureClose: { left: spacing.md, position: "absolute" },
   captureHeader: {
     alignItems: "center",
     justifyContent: "center",
@@ -996,12 +1034,21 @@ const styles = StyleSheet.create({
   headlineRow: { flexDirection: "row", gap: spacing.xs },
   headlineText: { ...typography.caption, color: colors.text, flex: 1 },
   homeControls: {
+    alignSelf: "center",
+    maxWidth: 640,
+    width: "100%",
     backgroundColor: colors.surface,
     gap: spacing.sm,
     paddingBottom: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  homeList: { gap: spacing.sm, padding: spacing.md },
+  homeList: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 640,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
   logoGlyph: { color: colors.onAccent, fontSize: 44, fontWeight: "700" },
   logoMark: {
     alignItems: "center",
@@ -1111,9 +1158,15 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     ...elevation.bar,
   },
-  tabItem: { alignItems: "center", flex: 1, gap: 3 },
+  tabItem: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    flex: 1,
+    gap: 3,
+  },
   tabItemText: { ...typography.micro, color: colors.muted, fontWeight: "500" },
-  tabItemTextActive: { color: colors.accent, fontWeight: "700" },
+  tabItemTextActive: { color: colors.accentText, fontWeight: "700" },
   tickRow: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   tickText: { ...typography.body, color: colors.text, flex: 1 },
   tightCard: { gap: 0 },
@@ -1126,11 +1179,21 @@ const styles = StyleSheet.create({
   tipText: { ...typography.caption, color: colors.text },
   tipTitle: { ...typography.captionStrong, color: colors.accentSoftText },
   value: { ...typography.body, color: colors.text },
-  welcome: { flex: 1, justifyContent: "space-between", padding: spacing.lg },
+  welcome: { flex: 1 },
+  welcomeContent: {
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 640,
+    flexGrow: 1,
+    justifyContent: "space-between",
+    padding: spacing.lg,
+    gap: spacing.xl,
+  },
   welcomeActions: { gap: spacing.md, paddingBottom: spacing.xl },
   welcomeCentre: {
     alignItems: "center",
-    flex: 1,
+    flexGrow: 1,
+    paddingVertical: spacing.lg,
     gap: spacing.md,
     justifyContent: "center",
   },

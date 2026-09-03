@@ -56,7 +56,13 @@ export function NavBar({
       </Text>
       <View style={[styles.navSide, styles.navSideEnd]}>
         {action ? (
-          <Pressable accessibilityRole="button" hitSlop={12} onPress={onAction}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={!onAction}
+            hitSlop={12}
+            onPress={onAction}
+            style={!onAction && styles.disabled}
+          >
             <Text style={styles.navAction}>{action}</Text>
           </Pressable>
         ) : null}
@@ -139,7 +145,7 @@ export function Badge({
 // ─── Buttons ─────────────────────────────────────────────────────────────────
 
 export function PrimaryButton({
-  disabled = false,
+  disabled: requestedDisabled = false,
   label,
   onPress,
 }: {
@@ -147,6 +153,7 @@ export function PrimaryButton({
   label: string;
   onPress?: () => void;
 }) {
+  const disabled = requestedDisabled || !onPress;
   return (
     <Pressable
       accessibilityRole="button"
@@ -172,7 +179,13 @@ export function TextButton({
   onPress?: () => void;
 }) {
   return (
-    <Pressable accessibilityRole="button" hitSlop={8} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      disabled={!onPress}
+      hitSlop={8}
+      onPress={onPress}
+      style={!onPress && styles.disabled}
+    >
       <Text style={styles.textButton}>{label}</Text>
     </Pressable>
   );
@@ -190,7 +203,7 @@ export function SegmentedTabs<T extends string>({
   value: T;
 }) {
   return (
-    <View style={styles.tabs}>
+    <View accessibilityRole="tablist" style={styles.tabs}>
       {options.map((option) => {
         const active = option === value;
 
@@ -198,6 +211,7 @@ export function SegmentedTabs<T extends string>({
           <Pressable
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
+            aria-selected={active}
             key={option}
             onPress={() => onChange(option)}
             style={[styles.tab, active && styles.tabActive]}
@@ -222,7 +236,7 @@ export function FilterTabs<T extends string>({
   value: T;
 }) {
   return (
-    <View style={styles.filterRow}>
+    <View accessibilityRole="tablist" style={styles.filterRow}>
       {options.map((option) => {
         const active = option === value;
 
@@ -230,6 +244,7 @@ export function FilterTabs<T extends string>({
           <Pressable
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
+            aria-selected={active}
             key={option}
             onPress={() => onChange(option)}
             style={[styles.filter, active && styles.filterActive]}
@@ -288,8 +303,11 @@ export function CheckRow({
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
+      aria-checked={checked}
+      accessibilityLabel={label}
+      disabled={!onToggle}
       onPress={onToggle}
-      style={styles.checkRow}
+      style={[styles.checkRow, !onToggle && styles.disabled]}
     >
       <View
         style={[
@@ -406,16 +424,23 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.45 },
   fieldLabel: { ...typography.caption, color: colors.muted },
   filter: {
+    alignItems: "center",
     borderRadius: radius.pill,
-    minHeight: 34,
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
     justifyContent: "center",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 2,
   },
   filterActive: { backgroundColor: colors.accentSoft },
   filterRow: { flexDirection: "row", gap: spacing.xs },
-  filterText: { ...typography.captionStrong, color: colors.muted },
+  filterText: {
+    ...typography.captionStrong,
+    color: colors.muted,
+    textAlign: "center",
+  },
   filterTextActive: { color: colors.accentSoftText },
-  navAction: { ...typography.captionStrong, color: colors.accent },
+  navAction: { ...typography.captionStrong, color: colors.accentText },
   navBar: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -514,7 +539,7 @@ const styles = StyleSheet.create({
   },
   tabActive: { borderBottomColor: colors.accent },
   tabText: { ...typography.captionStrong, color: colors.muted },
-  tabTextActive: { color: colors.accent },
+  tabTextActive: { color: colors.accentText },
   tabs: {
     backgroundColor: colors.surface,
     borderBottomColor: colors.border,
