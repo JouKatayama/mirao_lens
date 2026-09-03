@@ -28,6 +28,7 @@ const validBriefInput: FlashBriefInput = {
 };
 
 const validBrief: FlashBrief = {
+  identity_status: "unresolved",
   potential: "あなたのデザイン力が彼のプロダクトチームに貢献できます。",
   say_this: ["最近のプロダクト開発でどんな課題がありますか？"],
   who: "山田太郎さんはXYZ株式会社のプロダクトマネージャーです。",

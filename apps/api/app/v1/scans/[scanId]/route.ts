@@ -2,7 +2,7 @@ import {
   createDeleteScanHandler,
   OPTIONS,
   productionDeleteScanHandlerDependencies,
-} from "../../../../../lib/scan-handlers";
+} from "../../../../lib/scan-handlers";
 
 export const runtime = "nodejs";
 
