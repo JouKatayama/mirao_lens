@@ -8,11 +8,13 @@ export const colors = {
   // ─── Legacy names, new values ──────────────────────────────────────────────
   accent: "#8B5CF6",
   background: "#F5F5F8",
-  muted: "#8A8A96",
+  muted: "#6B6B78",
   text: "#1A1A22",
 
   // ─── Brand ─────────────────────────────────────────────────────────────────
   accentPressed: "#7C4DEF",
+  // Small purple text needs more contrast than the decorative brand accent.
+  accentText: "#7544DB",
   // Chip fills, selected rows, and the tint behind hint cards.
   accentSoft: "#EFEAFE",
   accentSoftText: "#6D46D6",

@@ -4,7 +4,7 @@
 // judged on a device while the screens are still being built.
 import { colors, radius, spacing, typography } from "@miraio/ui-tokens";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   AnalysisPrepScreen,
@@ -157,9 +157,12 @@ export default function RedesignGallery() {
     <View style={styles.root}>
       <View style={styles.bar}>
         <Text style={styles.barLabel}>REDESIGN（モックデータ・開発用）</Text>
-        <View style={styles.tabs}>
+        <ScrollView horizontal contentContainerStyle={styles.tabs}>
           {screens.map((name) => (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: active === name }}
+              aria-pressed={active === name}
               key={name}
               onPress={() => setActive(name)}
               style={[styles.tab, active === name && styles.tabActive]}
@@ -174,7 +177,7 @@ export default function RedesignGallery() {
               </Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       <View style={styles.body}>
@@ -261,7 +264,7 @@ const styles = StyleSheet.create({
   tab: {
     borderRadius: radius.pill,
     justifyContent: "center",
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -270,7 +273,6 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.onAccent },
   tabs: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: spacing.sm,
     paddingBottom: spacing.md,
     paddingHorizontal: spacing.md,
