@@ -73,7 +73,10 @@ export class InteractionRepository {
       p_scan_id: scanId,
       p_source: source,
       p_status: status,
-      p_timing_text: timingText ?? null,
+      // Generated RPC arguments are always non-null, but create_next_action
+      // declares p_timing_text as plain nullable text and writes it straight
+      // into next_actions.timing_text, so null is a value the function expects.
+      p_timing_text: timingText as string,
     });
 
     if (error) {

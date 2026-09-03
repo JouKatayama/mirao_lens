@@ -125,11 +125,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "business_cards_scan_id_user_id_fkey"
-            columns: ["scan_id", "user_id"]
+            foreignKeyName: "business_cards_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "scans"
-            referencedColumns: ["id", "user_id"]
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "business_cards_person_id_fkey"
@@ -139,11 +139,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "business_cards_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "business_cards_scan_id_user_id_fkey"
+            columns: ["scan_id", "user_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
+            referencedRelation: "scans"
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
@@ -500,6 +500,24 @@ export type Database = {
           run_id: string
         }[]
       }
+      claim_company_context: {
+        Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
+        Returns: {
+          run_id: string
+        }[]
+      }
+      claim_flash_brief: {
+        Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
+        Returns: {
+          run_id: string
+        }[]
+      }
+      claim_mutual_value: {
+        Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
+        Returns: {
+          run_id: string
+        }[]
+      }
       correct_business_card: {
         Args: { p_corrections: Json; p_scan_id: string }
         Returns: {
@@ -513,6 +531,8 @@ export type Database = {
           id: string
           language: string
           name: string | null
+          organization_id: string | null
+          person_id: string | null
           phone: string | null
           scan_id: string
           title: string | null
@@ -528,6 +548,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      create_next_action: {
+        Args: {
+          p_action_text: string
+          p_scan_id: string
+          p_source: string
+          p_status: string
+          p_timing_text: string
+        }
+        Returns: {
+          action_id: string
+        }[]
+      }
+      delete_own_account: { Args: never; Returns: undefined }
       fail_card_extraction: {
         Args: {
           p_error_code: string
@@ -535,6 +568,18 @@ export type Database = {
           p_scan_id: string
           p_terminal: boolean
         }
+        Returns: boolean
+      }
+      fail_company_context: {
+        Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
+        Returns: boolean
+      }
+      fail_flash_brief: {
+        Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
+        Returns: boolean
+      }
+      fail_mutual_value: {
+        Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
         Returns: boolean
       }
       persist_card_extraction: {
@@ -555,6 +600,8 @@ export type Database = {
           id: string
           language: string
           name: string | null
+          organization_id: string | null
+          person_id: string | null
           phone: string | null
           scan_id: string
           title: string | null
@@ -570,14 +617,13 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      claim_flash_brief: {
-        Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
-        Returns: {
-          run_id: string
-        }[]
-      }
-      fail_flash_brief: {
-        Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
+      persist_company_context: {
+        Args: {
+          p_context_json: Json
+          p_latency_ms: number
+          p_run_id: string
+          p_scan_id: string
+        }
         Returns: boolean
       }
       persist_flash_brief: {
@@ -591,16 +637,6 @@ export type Database = {
           analysis_id: string
         }[]
       }
-      claim_mutual_value: {
-        Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
-        Returns: {
-          run_id: string
-        }[]
-      }
-      fail_mutual_value: {
-        Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
-        Returns: boolean
-      }
       persist_mutual_value: {
         Args: {
           p_latency_ms: number
@@ -611,20 +647,6 @@ export type Database = {
         Returns: {
           analysis_id: string
         }[]
-      }
-      upsert_interaction_note: {
-        Args: { p_note_text: string; p_scan_id: string }
-        Returns: { note_id: string }[]
-      }
-      create_next_action: {
-        Args: {
-          p_action_text: string
-          p_scan_id: string
-          p_source: string
-          p_status: string
-          p_timing_text: string | null
-        }
-        Returns: { action_id: string }[]
       }
       persist_personal_context_onboarding: {
         Args: {
@@ -654,26 +676,11 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      claim_company_context: {
-        Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
-        Returns: { run_id: string }[]
-      }
-      persist_company_context: {
-        Args: {
-          p_context_json: Json
-          p_latency_ms: number
-          p_run_id: string
-          p_scan_id: string
-        }
-        Returns: boolean
-      }
-      fail_company_context: {
-        Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
-        Returns: boolean
-      }
-      delete_own_account: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      upsert_interaction_note: {
+        Args: { p_note_text: string; p_scan_id: string }
+        Returns: {
+          note_id: string
+        }[]
       }
     }
     Enums: {

@@ -30,7 +30,7 @@ insert into public.scans (id, user_id, status, meeting_goal)
 values (
   '00000000-0000-4006-8000-000000000601',
   '00000000-0000-4006-8000-000000000001',
-  'card_ready',
+  'generating_brief',
   'networking'
 );
 
@@ -56,7 +56,7 @@ insert into public.scans (id, user_id, status, meeting_goal)
 values (
   '00000000-0000-4006-8000-000000000602',
   '00000000-0000-4006-8000-000000000002',
-  'card_ready',
+  'generating_brief',
   'sales'
 );
 
@@ -67,7 +67,7 @@ insert into public.scans (id, user_id, status, meeting_goal)
 values (
   '00000000-0000-4006-8000-000000000603',
   '00000000-0000-4006-8000-000000000001',
-  'card_ready',
+  'generating_brief',
   'recruiting'
 );
 
@@ -87,11 +87,12 @@ select is(
   'T01: claim_flash_brief returns one run_id'
 );
 
--- T02: Scan advances to fast_context.
+-- T02: Claim leaves the scan at generating_brief (ML-008 removed the
+-- advance to fast_context; persist_flash_brief moves it to brief_ready).
 select is(
   (select status from public.scans where id = '00000000-0000-4006-8000-000000000601'),
-  'fast_context',
-  'T02: scan advances to fast_context after claim'
+  'generating_brief',
+  'T02: scan stays at generating_brief after claim'
 );
 
 -- T03: ai_run created with stage=flash_brief and status=running.
@@ -149,7 +150,7 @@ select is(
   'T06: Bob cannot claim Alice scan'
 );
 
--- T07: Bob can claim his own card_ready scan.
+-- T07: Bob can claim his own generating_brief scan.
 select is(
   (
     select count(*)
@@ -160,7 +161,7 @@ select is(
     )
   ),
   1::bigint,
-  'T07: Bob can claim his own card_ready scan'
+  'T07: Bob can claim his own generating_brief scan'
 );
 
 -- Switch back to Alice for the remaining tests.
@@ -394,11 +395,13 @@ select throws_ok(
   'T23: anon cannot call fail_flash_brief'
 );
 
--- T24: anon cannot read relationship_analyses.
-select is(
-  (select count(*) from public.relationship_analyses),
-  0::bigint,
-  'T24: anon cannot read any relationship_analyses (RLS)'
+-- T24: anon cannot read relationship_analyses. anon holds no table privilege
+-- at all, so the read is refused outright and never reaches RLS.
+select throws_ok(
+  $$ select count(*) from public.relationship_analyses $$,
+  '42501',
+  null,
+  'T24: anon cannot read relationship_analyses'
 );
 
 select * from finish();

@@ -290,12 +290,12 @@ select throws_ok(
   'T15: anon cannot call create_next_action'
 );
 
--- T16: anon cannot read interaction_notes.
-select is(
-  (
-    select count(*) from public.interaction_notes
-  ),
-  0::bigint,
+-- T16: anon cannot read interaction_notes. anon holds no table privilege at
+-- all, so the read is refused outright and never reaches RLS.
+select throws_ok(
+  $$ select count(*) from public.interaction_notes $$,
+  '42501',
+  null,
   'T16: anon cannot read interaction_notes'
 );
 
