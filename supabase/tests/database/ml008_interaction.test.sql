@@ -21,7 +21,10 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4008-8000-000000000001', true);
 
 insert into public.profiles (user_id, "current_role", current_company)
-values ('00000000-0000-4008-8000-000000000001', 'デザイナー', 'TestCo');
+values ('00000000-0000-4008-8000-000000000001', 'デザイナー', 'TestCo')
+on conflict (user_id) do update
+  set "current_role" = excluded."current_role",
+      current_company = excluded.current_company;
 
 -- Alice's deep_ready scan (prerequisite for interaction).
 insert into public.scans (id, user_id, status, meeting_goal)
@@ -35,7 +38,10 @@ values (
 select set_config('request.jwt.claim.sub', '00000000-0000-4008-8000-000000000002', true);
 
 insert into public.profiles (user_id, "current_role", current_company)
-values ('00000000-0000-4008-8000-000000000002', 'Engineer', 'OtherCo');
+values ('00000000-0000-4008-8000-000000000002', 'Engineer', 'OtherCo')
+on conflict (user_id) do update
+  set "current_role" = excluded."current_role",
+      current_company = excluded.current_company;
 
 insert into public.scans (id, user_id, status, meeting_goal)
 values (
