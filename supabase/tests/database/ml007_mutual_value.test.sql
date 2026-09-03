@@ -20,8 +20,11 @@ values
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4007-8000-000000000001', true);
 
-insert into public.profiles (user_id, current_role, current_company)
-values ('00000000-0000-4007-8000-000000000001', 'UIデザイナー', 'ABC Inc.');
+insert into public.profiles (user_id, "current_role", current_company)
+values ('00000000-0000-4007-8000-000000000001', 'UIデザイナー', 'ABC Inc.')
+on conflict (user_id) do update
+  set "current_role" = excluded."current_role",
+      current_company = excluded.current_company;
 
 -- Alice has a brief_ready scan (pre-condition for Mutual Value).
 insert into public.scans (id, user_id, status, meeting_goal)
@@ -43,8 +46,11 @@ insert into public.relationship_analyses (
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4007-8000-000000000002', true);
 
-insert into public.profiles (user_id, current_role, current_company)
-values ('00000000-0000-4007-8000-000000000002', 'Engineer', 'DEF Corp.');
+insert into public.profiles (user_id, "current_role", current_company)
+values ('00000000-0000-4007-8000-000000000002', 'Engineer', 'DEF Corp.')
+on conflict (user_id) do update
+  set "current_role" = excluded."current_role",
+      current_company = excluded.current_company;
 
 insert into public.scans (id, user_id, status, meeting_goal)
 values (
