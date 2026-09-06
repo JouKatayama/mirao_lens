@@ -19,12 +19,19 @@ export const roleLevelSchema = z.enum([
 
 export type RoleLevel = z.infer<typeof roleLevelSchema>;
 
+// Every nullable string carries an explicit `.max()`. Beyond bounding stored
+// values, the modifier is load-bearing for the wire contract: without it the
+// Zod-to-JSON-Schema conversion used by AI adapters emits the OpenAPI 3.0 form
+// `{"type":"string","nullable":true}`, which OpenAI strict structured output
+// rejects. With it, the conversion emits the JSON Schema union form
+// `{"anyOf":[{"type":"string","maxLength":N},{"type":"null"}]}`.
+// See packages/ai/src/structured-output-schema.test.ts.
 export const companyContextSchema = z
   .object({
-    company_description: z.string().nullable(),
-    industry: z.string().nullable(),
+    company_description: z.string().max(1000).nullable(),
+    industry: z.string().max(200).nullable(),
     company_scale: companyScaleSchema,
-    role_scope: z.string().nullable(),
+    role_scope: z.string().max(1000).nullable(),
     role_level: roleLevelSchema,
   })
   .strict();

@@ -8,6 +8,8 @@ import {
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { classifyProviderFailure } from "./provider-error";
+
 export type MutualValueGeneratorErrorCode =
   | "configuration"
   | "invalid_output"
@@ -131,17 +133,7 @@ function toProviderError(error: unknown): MutualValueGeneratorError {
     return error;
   }
 
-  const candidate = error as { name?: unknown; status?: unknown };
-
-  if (candidate.status === 429) {
-    return new MutualValueGeneratorError("rate_limited");
-  }
-
-  if (candidate.name === "AbortError" || candidate.status === 408) {
-    return new MutualValueGeneratorError("timeout");
-  }
-
-  return new MutualValueGeneratorError("provider_unavailable");
+  return new MutualValueGeneratorError(classifyProviderFailure(error));
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {

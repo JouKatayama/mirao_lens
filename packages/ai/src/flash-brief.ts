@@ -8,6 +8,8 @@ import {
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { classifyProviderFailure } from "./provider-error";
+
 export type FlashBriefGeneratorErrorCode =
   | "configuration"
   | "invalid_output"
@@ -142,17 +144,7 @@ function toProviderError(error: unknown): FlashBriefGeneratorError {
     return error;
   }
 
-  const candidate = error as { name?: unknown; status?: unknown };
-
-  if (candidate.status === 429) {
-    return new FlashBriefGeneratorError("rate_limited");
-  }
-
-  if (candidate.name === "AbortError" || candidate.status === 408) {
-    return new FlashBriefGeneratorError("timeout");
-  }
-
-  return new FlashBriefGeneratorError("provider_unavailable");
+  return new FlashBriefGeneratorError(classifyProviderFailure(error));
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
