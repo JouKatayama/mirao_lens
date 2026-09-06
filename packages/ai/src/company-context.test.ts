@@ -155,6 +155,20 @@ describe("OpenAI Company Context generator", () => {
     expect(timedOut).toMatchObject({ code: "timeout" });
   });
 
+  it("reports a rejected request as a configuration defect", async () => {
+    // A schema the provider refuses is permanent. Reporting it as an outage
+    // makes the card-intelligence stage retry a request that can never succeed.
+    const error = await generatorFor(async () => {
+      throw { status: 400, message: "Invalid schema for response_format" };
+    })
+      .generate(input)
+      .catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(CompanyContextGeneratorError);
+    expect(error).toMatchObject({ code: "configuration" });
+    expect((error as Error).message).not.toContain("Invalid schema");
+  });
+
   it("maps an unrecognized provider failure without leaking its text", async () => {
     const error = await generatorFor(async () => {
       throw new Error("provider details");
