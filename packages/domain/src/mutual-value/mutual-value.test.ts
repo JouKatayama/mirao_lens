@@ -52,13 +52,19 @@ describe("mutualValueStructuredOutputSchema", () => {
 
   it("rejects empty give array", () => {
     expect(() =>
-      mutualValueStructuredOutputSchema.parse({ ...validStructuredOutput, give: [] }),
+      mutualValueStructuredOutputSchema.parse({
+        ...validStructuredOutput,
+        give: [],
+      }),
     ).toThrow();
   });
 
   it("rejects empty get array", () => {
     expect(() =>
-      mutualValueStructuredOutputSchema.parse({ ...validStructuredOutput, get: [] }),
+      mutualValueStructuredOutputSchema.parse({
+        ...validStructuredOutput,
+        get: [],
+      }),
     ).toThrow();
   });
 
@@ -90,9 +96,7 @@ describe("mutualValueStructuredOutputSchema", () => {
         },
       ],
     };
-    expect(() =>
-      mutualValueStructuredOutputSchema.parse(output),
-    ).not.toThrow();
+    expect(() => mutualValueStructuredOutputSchema.parse(output)).not.toThrow();
   });
 
   it("accepts null validates_hypothesis in ask", () => {
@@ -100,9 +104,7 @@ describe("mutualValueStructuredOutputSchema", () => {
       ...validStructuredOutput,
       ask: [{ question: "質問", validates_hypothesis: null }],
     };
-    expect(() =>
-      mutualValueStructuredOutputSchema.parse(output),
-    ).not.toThrow();
+    expect(() => mutualValueStructuredOutputSchema.parse(output)).not.toThrow();
   });
 
   it("accepts null timing in next_action", () => {
@@ -110,9 +112,7 @@ describe("mutualValueStructuredOutputSchema", () => {
       ...validStructuredOutput,
       next_action: { ...validStructuredOutput.next_action, timing: null },
     };
-    expect(() =>
-      mutualValueStructuredOutputSchema.parse(output),
-    ).not.toThrow();
+    expect(() => mutualValueStructuredOutputSchema.parse(output)).not.toThrow();
   });
 
   it("rejects extra fields (strict)", () => {
@@ -194,7 +194,13 @@ describe("mutualValueInputSchema", () => {
 
   it("defaults locale to ja", () => {
     const input = mutualValueInputSchema.parse({
-      card: { name: null, company: null, department: null, title: null, language: "ja" },
+      card: {
+        name: null,
+        company: null,
+        department: null,
+        title: null,
+        language: "ja",
+      },
       flash_brief: {
         who: "test",
         why_you: "test",
@@ -202,7 +208,11 @@ describe("mutualValueInputSchema", () => {
         potential: "test",
       },
       meeting_goal: "networking",
-      personal_context: { current_company: null, current_role: null, items: [] },
+      personal_context: {
+        current_company: null,
+        current_role: null,
+        items: [],
+      },
     });
     expect(input.locale).toBe("ja");
   });
@@ -226,7 +236,10 @@ describe("normalizeMutualValue", () => {
     const result = normalizeMutualValue({
       ...validStructuredOutput,
       bridge: "  trimmed  ",
-      next_action: { ...validStructuredOutput.next_action, action: "  action  " },
+      next_action: {
+        ...validStructuredOutput.next_action,
+        action: "  action  ",
+      },
     });
     expect(result.bridge).toBe("trimmed");
     expect(result.next_action.action).toBe("action");

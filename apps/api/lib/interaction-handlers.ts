@@ -28,10 +28,7 @@ type InteractionRepositoryPort = Readonly<{
     source: "ai" | "user",
     status: "accepted" | "dismissed",
   ): Promise<{ id: string } | null>;
-  upsertNote(
-    scanId: string,
-    noteText: string,
-  ): Promise<{ id: string } | null>;
+  upsertNote(scanId: string, noteText: string): Promise<{ id: string } | null>;
 }>;
 
 type InteractionSession = Readonly<{
@@ -163,23 +160,22 @@ export function createPostNoteHandler(
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, "invalid_json", "A valid JSON body is required.");
+      return errorResponse(
+        400,
+        "invalid_json",
+        "A valid JSON body is required.",
+      );
     }
 
     const noteRequest = noteRequestSchema.safeParse(body);
 
     if (!noteRequest.success) {
-      return errorResponse(
-        400,
-        "invalid_note",
-        "Check the note_text field.",
-        {
-          details: noteRequest.error.issues.map((issue) => ({
-            message: issue.message,
-            path: issue.path.join("."),
-          })),
-        },
-      );
+      return errorResponse(400, "invalid_note", "Check the note_text field.", {
+        details: noteRequest.error.issues.map((issue) => ({
+          message: issue.message,
+          path: issue.path.join("."),
+        })),
+      });
     }
 
     try {
@@ -224,7 +220,11 @@ export function createPostNextActionHandler(
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, "invalid_json", "A valid JSON body is required.");
+      return errorResponse(
+        400,
+        "invalid_json",
+        "A valid JSON body is required.",
+      );
     }
 
     const actionRequest = nextActionRequestSchema.safeParse(body);

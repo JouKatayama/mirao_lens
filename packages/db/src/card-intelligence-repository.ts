@@ -321,10 +321,7 @@ export class CardIntelligenceRepository {
     ]);
 
     // Generating states: card is visible but brief is not ready yet.
-    if (
-      scan.status === "fast_context" ||
-      scan.status === "generating_brief"
-    ) {
+    if (scan.status === "fast_context" || scan.status === "generating_brief") {
       return scanStatusResponseSchema.parse({
         card,
         error_code: null,
@@ -495,7 +492,9 @@ export class CardIntelligenceRepository {
   async listScans(limit = 20): Promise<ScanHistoryItem[]> {
     const { data, error } = await this.client
       .from("scans")
-      .select("id,status,meeting_goal,created_at,business_cards(name,company,title)")
+      .select(
+        "id,status,meeting_goal,created_at,business_cards(name,company,title)",
+      )
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -505,7 +504,11 @@ export class CardIntelligenceRepository {
 
     return (data ?? []).map((row) => {
       const cards = row.business_cards as
-        | Array<{ name: string | null; company: string | null; title: string | null }>
+        | Array<{
+            name: string | null;
+            company: string | null;
+            title: string | null;
+          }>
         | { name: string | null; company: string | null; title: string | null }
         | null;
       const card = Array.isArray(cards) ? (cards[0] ?? null) : cards;

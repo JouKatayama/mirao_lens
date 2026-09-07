@@ -1,7 +1,4 @@
-import type {
-  BusinessCardRecord,
-  ScanStatusResponse,
-} from "@miraio/domain";
+import type { BusinessCardRecord, ScanStatusResponse } from "@miraio/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {

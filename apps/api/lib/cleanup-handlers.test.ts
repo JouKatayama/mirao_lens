@@ -27,14 +27,10 @@ function makeDeps(
 }
 
 function makeRequest(secret?: string): Request {
-  return new Request(
-    "http://localhost/api/internal/cleanup-expired-scans",
-    {
-      method: "POST",
-      headers:
-        secret !== undefined ? { "x-cleanup-secret": secret } : {},
-    },
-  );
+  return new Request("http://localhost/api/internal/cleanup-expired-scans", {
+    method: "POST",
+    headers: secret !== undefined ? { "x-cleanup-secret": secret } : {},
+  });
 }
 
 // ─── POST /api/internal/cleanup-expired-scans ────────────────────────────────

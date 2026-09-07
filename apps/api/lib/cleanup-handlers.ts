@@ -1,7 +1,4 @@
-import {
-  createAdminSupabaseClient,
-  CleanupRepository,
-} from "@miraio/db";
+import { createAdminSupabaseClient, CleanupRepository } from "@miraio/db";
 
 import { readCleanupConfig } from "./server-config";
 

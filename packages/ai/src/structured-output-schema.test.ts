@@ -49,10 +49,7 @@ describe("structured output wire schemas", () => {
     };
 
     expect(schema.properties.company_description).toEqual({
-      anyOf: [
-        { type: "string", maxLength: 1000 },
-        { type: "null" },
-      ],
+      anyOf: [{ type: "string", maxLength: 1000 }, { type: "null" }],
     });
   });
 });

@@ -36,5 +36,7 @@ export const nextActionResponseSchema = z
 
 export type NoteRequest = z.infer<typeof noteRequestSchema>;
 export type NextActionRequest = z.infer<typeof nextActionRequestSchema>;
-export type InteractionNoteResponse = z.infer<typeof interactionNoteResponseSchema>;
+export type InteractionNoteResponse = z.infer<
+  typeof interactionNoteResponseSchema
+>;
 export type NextActionResponse = z.infer<typeof nextActionResponseSchema>;

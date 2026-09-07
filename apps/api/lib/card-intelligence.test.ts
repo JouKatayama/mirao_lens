@@ -151,7 +151,10 @@ describe("Card Intelligence processor", () => {
         new OpenAICardExtractor({
           model: "fixture-model",
           request: async () => {
-            throw { status: 400, message: "Invalid schema for response_format" };
+            throw {
+              status: 400,
+              message: "Invalid schema for response_format",
+            };
           },
         }),
     };

@@ -37,12 +37,14 @@ const validBrief: FlashBrief = {
 
 const validClaim: FlashBriefClaim = { runId: "run-001" };
 
-function makeRepository(overrides: Partial<{
-  claimBrief: () => Promise<FlashBriefClaim | null>;
-  completeBrief: () => Promise<void>;
-  failBrief: () => Promise<void>;
-  getFlashBriefInput: () => Promise<FlashBriefInput | null>;
-}> = {}) {
+function makeRepository(
+  overrides: Partial<{
+    claimBrief: () => Promise<FlashBriefClaim | null>;
+    completeBrief: () => Promise<void>;
+    failBrief: () => Promise<void>;
+    getFlashBriefInput: () => Promise<FlashBriefInput | null>;
+  }> = {},
+) {
   return {
     claimBrief: vi.fn().mockResolvedValue(validClaim),
     completeBrief: vi.fn().mockResolvedValue(undefined),

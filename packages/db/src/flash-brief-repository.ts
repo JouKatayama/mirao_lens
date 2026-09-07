@@ -179,8 +179,9 @@ export class FlashBriefRepository {
     const companyContextParsed = companyContextRaw
       ? companyContextSchema.safeParse(companyContextRaw)
       : null;
-    const companyContext =
-      companyContextParsed?.success ? companyContextParsed.data : null;
+    const companyContext = companyContextParsed?.success
+      ? companyContextParsed.data
+      : null;
 
     return {
       card: {

@@ -4,17 +4,17 @@ The supplied nine-screen reference uses a dark welcome screen and white/purple m
 
 ## Screens
 
-| Reference | Implementation |
-| --- | --- |
-| Welcome | Dark surface, vector lens mark, purple start button and login link. Both enter the existing email OTP flow. |
-| Camera | Black header/controls, corner guides, shutter, JPEG gallery selection and torch. Permission, preview, retake and upload recovery are retained. |
-| Person summary | Avatar fallback, identity, icon shortcuts, brief, chips, connection summary, analysis action. |
-| Analysis preparation | Approved personal context grouped into skills, interests, offer and seeking; meeting goal selected before upload. |
-| GIVE / GET | Dedicated tab with green/blue rows and visible fact/hypothesis labels. |
-| BRIDGE | Separate tab with paragraph cards and the user's existing interest themes. |
-| Conversation | Numbered questions, conversation tip and a route to record notes. |
-| Note | Note field, explicit next-action checkbox, editable action/timing, save controls. Partial save failures retain input and avoid resaving a successful note in the same visit. |
-| Home | Actual scan history, name/company/title search, status filters, cards, confirmed deletion and bottom navigation. |
+| Reference            | Implementation                                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Welcome              | Dark surface, vector lens mark, purple start button and login link. Both enter the existing email OTP flow.                                                                  |
+| Camera               | Black header/controls, corner guides, shutter, JPEG gallery selection and torch. Permission, preview, retake and upload recovery are retained.                               |
+| Person summary       | Avatar fallback, identity, icon shortcuts, brief, chips, connection summary, analysis action.                                                                                |
+| Analysis preparation | Approved personal context grouped into skills, interests, offer and seeking; meeting goal selected before upload.                                                            |
+| GIVE / GET           | Dedicated tab with green/blue rows and visible fact/hypothesis labels.                                                                                                       |
+| BRIDGE               | Separate tab with paragraph cards and the user's existing interest themes.                                                                                                   |
+| Conversation         | Numbered questions, conversation tip and a route to record notes.                                                                                                            |
+| Note                 | Note field, explicit next-action checkbox, editable action/timing, save controls. Partial save failures retain input and avoid resaving a successful note in the same visit. |
+| Home                 | Actual scan history, name/company/title search, status filters, cards, confirmed deletion and bottom navigation.                                                             |
 
 ## Data-dependent differences
 

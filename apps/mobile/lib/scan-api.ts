@@ -157,9 +157,12 @@ export class ScanApiClient {
   }
 
   async listScans(accessToken: string): Promise<ScanListResponse> {
-    const response = await this.fetchImplementation(`${this.baseUrl}/v1/scans`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
 
     if (!response.ok) {
       throw await toApiError(response);

@@ -46,9 +46,9 @@ describe("OpenAIFlashBriefGenerator", () => {
   });
 
   it("throws configuration error when no apiKey and no request", () => {
-    expect(
-      () => new OpenAIFlashBriefGenerator({ model: "gpt-4o" }),
-    ).toThrow(FlashBriefGeneratorError);
+    expect(() => new OpenAIFlashBriefGenerator({ model: "gpt-4o" })).toThrow(
+      FlashBriefGeneratorError,
+    );
   });
 
   it("implements FlashBriefGenerator interface", () => {
@@ -76,9 +76,10 @@ describe("OpenAIFlashBriefGenerator", () => {
   });
 
   it("preserves identity_status from provider output", async () => {
-    const request = vi
-      .fn()
-      .mockResolvedValue({ ...validOutput, identity_status: "high_confidence" });
+    const request = vi.fn().mockResolvedValue({
+      ...validOutput,
+      identity_status: "high_confidence",
+    });
     const generator = new OpenAIFlashBriefGenerator({
       model: "gpt-4o",
       request,
