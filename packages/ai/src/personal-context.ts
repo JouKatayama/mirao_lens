@@ -8,6 +8,8 @@ import {
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { classifyProviderFailure } from "./provider-error";
+
 export type PersonalContextStructuringErrorCode =
   | "configuration"
   | "invalid_output"
@@ -57,17 +59,7 @@ function toProviderError(error: unknown): PersonalContextStructuringError {
     return error;
   }
 
-  const candidate = error as { name?: unknown; status?: unknown };
-
-  if (candidate.status === 429) {
-    return new PersonalContextStructuringError("rate_limited");
-  }
-
-  if (candidate.name === "AbortError" || candidate.status === 408) {
-    return new PersonalContextStructuringError("timeout");
-  }
-
-  return new PersonalContextStructuringError("provider_unavailable");
+  return new PersonalContextStructuringError(classifyProviderFailure(error));
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
