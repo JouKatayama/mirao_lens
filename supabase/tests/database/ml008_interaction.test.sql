@@ -20,8 +20,11 @@ values
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4008-8000-000000000001', true);
 
-insert into public.profiles (user_id, current_role, current_company)
-values ('00000000-0000-4008-8000-000000000001', 'デザイナー', 'TestCo');
+insert into public.profiles (user_id, "current_role", current_company)
+values ('00000000-0000-4008-8000-000000000001', 'デザイナー', 'TestCo')
+on conflict (user_id) do update
+  set "current_role" = excluded."current_role",
+      current_company = excluded.current_company;
 
 -- Alice's deep_ready scan (prerequisite for interaction).
 insert into public.scans (id, user_id, status, meeting_goal)
@@ -34,8 +37,11 @@ values (
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4008-8000-000000000002', true);
 
-insert into public.profiles (user_id, current_role, current_company)
-values ('00000000-0000-4008-8000-000000000002', 'Engineer', 'OtherCo');
+insert into public.profiles (user_id, "current_role", current_company)
+values ('00000000-0000-4008-8000-000000000002', 'Engineer', 'OtherCo')
+on conflict (user_id) do update
+  set "current_role" = excluded."current_role",
+      current_company = excluded.current_company;
 
 insert into public.scans (id, user_id, status, meeting_goal)
 values (
@@ -284,12 +290,12 @@ select throws_ok(
   'T15: anon cannot call create_next_action'
 );
 
--- T16: anon cannot read interaction_notes.
-select is(
-  (
-    select count(*) from public.interaction_notes
-  ),
-  0::bigint,
+-- T16: anon cannot read interaction_notes. anon holds no table privilege at
+-- all, so the read is refused outright and never reaches RLS.
+select throws_ok(
+  $$ select count(*) from public.interaction_notes $$,
+  '42501',
+  null,
   'T16: anon cannot read interaction_notes'
 );
 
