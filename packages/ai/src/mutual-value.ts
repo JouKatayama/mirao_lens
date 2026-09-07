@@ -5,10 +5,13 @@ import {
   type MutualValue,
   type MutualValueInput,
 } from "@miraio/domain";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { classifyProviderFailure } from "./provider-error";
+import {
+  createOpenAIClient,
+  providerTimeoutMilliseconds,
+} from "./provider-client";
 
 export type MutualValueGeneratorErrorCode =
   | "configuration"
@@ -137,7 +140,10 @@ function toProviderError(error: unknown): MutualValueGeneratorError {
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAIClient(
+    apiKey,
+    providerTimeoutMilliseconds.mutualValue,
+  );
 
   return async ({ input, model }) => {
     const response = await client.responses.parse({

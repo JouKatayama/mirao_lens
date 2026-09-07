@@ -25,6 +25,7 @@ import {
   PrimaryButton,
   ScreenFrame,
   SecondaryButton,
+  TextButton,
 } from "./ui";
 
 export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
@@ -357,6 +358,7 @@ export function MyContextScreen({
 }) {
   const [items, setItems] = useState(sourceItems);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => setItems(sourceItems), [sourceItems]);
 
@@ -398,39 +400,61 @@ export function MyContextScreen({
             </Text>
             {groupedItems.map((item) => (
               <Card key={item.id}>
-                <Text style={styles.approvedLabel}>承認済み</Text>
-                <TypePicker
-                  onChange={(type) => update(item.id, { type })}
-                  value={item.type}
-                />
-                <Field
-                  label="内容"
-                  multiline
-                  onChangeText={(text) => update(item.id, { text })}
-                  value={item.text}
-                />
-                <PrimaryButton
-                  disabled={loading}
-                  label="変更を保存"
-                  onPress={() => {
-                    setError(null);
-                    void onSave(item.id, {
-                      type: item.type,
-                      text: item.text,
-                    }).catch(() => setError("変更を保存できませんでした。"));
-                  }}
-                />
-                <SecondaryButton
-                  danger
-                  disabled={loading}
-                  label="削除"
-                  onPress={() => {
-                    setError(null);
-                    void onDelete(item.id).catch(() =>
-                      setError("項目を削除できませんでした。"),
-                    );
-                  }}
-                />
+                <View style={styles.itemHeading}>
+                  <Text style={styles.approvedLabel}>承認済み</Text>
+                  <TextButton
+                    label={editingId === item.id ? "編集を閉じる" : "編集"}
+                    onPress={() =>
+                      setEditingId((current) =>
+                        current === item.id ? null : item.id,
+                      )
+                    }
+                  />
+                </View>
+                {editingId === item.id ? (
+                  <>
+                    <TypePicker
+                      onChange={(type) => update(item.id, { type })}
+                      value={item.type}
+                    />
+                    <Field
+                      label="内容"
+                      multiline
+                      onChangeText={(text) => update(item.id, { text })}
+                      value={item.text}
+                    />
+                    <PrimaryButton
+                      disabled={loading}
+                      label="変更を保存"
+                      onPress={() => {
+                        setError(null);
+                        void onSave(item.id, {
+                          type: item.type,
+                          text: item.text,
+                        })
+                          .then(() => setEditingId(null))
+                          .catch(() =>
+                            setError("変更を保存できませんでした。"),
+                          );
+                      }}
+                    />
+                    <SecondaryButton
+                      danger
+                      disabled={loading}
+                      label="この項目を削除"
+                      onPress={() => {
+                        setError(null);
+                        void onDelete(item.id)
+                          .then(() => setEditingId(null))
+                          .catch(() =>
+                            setError("項目を削除できませんでした。"),
+                          );
+                      }}
+                    />
+                  </>
+                ) : (
+                  <Text style={styles.itemText}>{item.text}</Text>
+                )}
               </Card>
             ))}
           </View>
@@ -444,6 +468,7 @@ export function MyContextScreen({
       />
       {onDeleteAccount ? (
         <SecondaryButton
+          danger
           label="アカウントを削除"
           onPress={() => {
             Alert.alert(
@@ -466,17 +491,29 @@ export function MyContextScreen({
 }
 
 const styles = StyleSheet.create({
-  approvedLabel: { color: colors.accent, fontSize: 12, fontWeight: "800" },
+  approvedLabel: {
+    color: colors.success,
+    fontSize: 12,
+    fontWeight: "800",
+  },
   contextGroup: { gap: spacing.md },
   contextGroupTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
-  draftLabel: { color: "#9A6700", fontSize: 12, fontWeight: "800" },
+  draftLabel: { color: colors.warning, fontSize: 12, fontWeight: "800" },
+  itemHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  itemText: { color: colors.text, fontSize: 16, lineHeight: 25 },
   profileLabel: { color: colors.muted, fontSize: 12, fontWeight: "700" },
   profileValue: { color: colors.text, fontSize: 17, fontWeight: "700" },
   typeChip: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
+    minHeight: 44,
+    justifyContent: "center",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },

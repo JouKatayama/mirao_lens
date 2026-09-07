@@ -11,6 +11,7 @@ import { colors, spacing } from "@miraio/ui-tokens";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { CameraFrame } from "./camera-frame";
+import { Icon } from "./icons";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -490,7 +491,9 @@ export function CardIntelligenceScreen({
       title="名刺の内容を確認"
     >
       <Card>
-        <Text style={styles.successMark}>✓</Text>
+        <View style={styles.successMark}>
+          <Icon name="check" color="#FFFFFF" size={28} />
+        </View>
         <Text style={styles.factBadge}>FACT / 名刺</Text>
         {editing && draft
           ? (Object.keys(cardFieldLabels) as CardFieldName[]).map((field) => (
@@ -666,9 +669,9 @@ const styles = StyleSheet.create({
   },
   factBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#E1F4EA",
+    backgroundColor: colors.successSoft,
     borderRadius: 999,
-    color: colors.accent,
+    color: colors.success,
     fontSize: 12,
     fontWeight: "900",
     paddingHorizontal: spacing.sm,
@@ -690,7 +693,14 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   previewImage: { height: "100%", width: "100%" },
-  successMark: { color: colors.accent, fontSize: 48, fontWeight: "900" },
+  successMark: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.success,
+  },
   evidenceConfidence: {
     color: colors.muted,
     fontSize: 13,

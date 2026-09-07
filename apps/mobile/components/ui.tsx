@@ -98,7 +98,7 @@ export function PrimaryButton({
       ]}
     >
       <LinearGradient
-        colors={["#AD72F7", "#A969F1"]}
+        colors={[colors.accentStrong, colors.accent]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.buttonFill}
@@ -216,7 +216,7 @@ export function Avatar({
       accessibilityLabel={name ? `${name}のプロフィール` : "プロフィール"}
       style={[styles.avatar, large && styles.avatarLarge]}
     >
-      <Icon name="person" size={large ? 45 : 27} color="#A79BBC" />
+      <Icon name="person" size={large ? 45 : 27} color={colors.accentStrong} />
     </View>
   );
 }
@@ -281,17 +281,22 @@ export function BottomNav({
   onProfile: () => void;
 }) {
   const items = [
-    { value: "home", label: "ホーム", icon: "home", onPress: onHome },
+    { value: "home", label: "履歴", icon: "home", onPress: onHome },
     {
       value: "camera",
       label: "名刺を撮影",
       icon: "camera",
       onPress: onCapture,
     },
-    { value: "analysis", label: "分析", icon: "bridge", onPress: onAnalysis },
+    {
+      value: "analysis",
+      label: "分析済み",
+      icon: "bridge",
+      onPress: onAnalysis,
+    },
     {
       value: "profile",
-      label: "プロフィール",
+      label: "My Context",
       icon: "person",
       onPress: onProfile,
     },
@@ -305,7 +310,11 @@ export function BottomNav({
           accessibilityState={{ selected: selected === item.value }}
           aria-current={selected === item.value ? "page" : undefined}
           onPress={item.onPress}
-          style={({ pressed }) => [styles.navItem, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.navItem,
+            selected === item.value && styles.navItemActive,
+            pressed && styles.pressed,
+          ]}
         >
           <Icon
             name={item.icon}
@@ -351,6 +360,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minHeight: 64,
     paddingHorizontal: 10,
+    backgroundColor: colors.background,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerSide: { width: 60 },
   headerRight: { alignItems: "flex-end" },
@@ -358,6 +370,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: colors.background,
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   iconButton: {
     alignItems: "center",
@@ -368,14 +382,14 @@ const styles = StyleSheet.create({
   textButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 6 },
   textButtonText: {
     color: colors.accentStrong,
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
   },
   avatar: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#F0EDF5",
+    backgroundColor: colors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -394,7 +408,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    marginBottom: 4,
+    backgroundColor: colors.background,
   },
   tab: {
     flex: 1,
@@ -407,7 +421,7 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     borderBottomColor: colors.accent,
-    backgroundColor: "#F9F5FF",
+    backgroundColor: colors.accentFaint,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
@@ -422,7 +436,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 6,
     backgroundColor: colors.surface,
   },
@@ -430,10 +444,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 58,
+    minHeight: 60,
     gap: 5,
+    marginHorizontal: 3,
+    borderRadius: 14,
   },
-  navText: { color: colors.muted, fontSize: 11 },
+  navItemActive: { backgroundColor: colors.accentFaint },
+  navText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
   buttonFill: {
     width: "100%",
     minHeight: 50,
@@ -450,31 +467,32 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 18,
     borderWidth: 1,
     gap: 12,
-    padding: spacing.md,
-    boxShadow: "0 2px 12px rgba(70, 35, 110, 0.035)",
+    padding: 18,
   },
   dangerButtonText: {
-    color: "#B42318",
+    color: colors.danger,
     fontSize: 15,
     fontWeight: "700",
   },
   disabled: { opacity: 0.5 },
   errorBox: {
-    backgroundColor: "#FEE4E2",
+    backgroundColor: colors.dangerSoft,
+    borderColor: "#F3C7C3",
+    borderWidth: 1,
     borderRadius: 12,
     padding: spacing.md,
   },
   errorText: { color: "#912018", fontSize: 14, lineHeight: 20 },
   fieldGroup: { gap: spacing.sm },
   input: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 9,
+    borderRadius: 12,
     borderWidth: 1,
     color: colors.text,
     fontSize: 16,
@@ -491,16 +509,16 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: colors.muted, fontSize: 15 },
   multiline: { minHeight: 88, textAlignVertical: "top" },
-  pressed: { opacity: 0.75 },
+  pressed: { opacity: 0.82 },
   primaryButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
-    borderRadius: 9,
+    borderRadius: 14,
     overflow: "hidden",
     justifyContent: "center",
     minHeight: 50,
   },
-  primaryButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  primaryButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
   screen: {
     gap: 20,
     padding: 20,
@@ -510,16 +528,16 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: spacing.md,
   },
   secondaryButtonText: {
-    color: colors.accent,
+    color: colors.accentStrong,
     fontSize: 15,
     fontWeight: "700",
   },

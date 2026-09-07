@@ -31,11 +31,16 @@ import {
   ServerConfigurationError,
 } from "./server-config";
 
+// One OPTIONS handler serves every route in this module, so the method list
+// must cover DELETE /v1/scans/:scanId as well as the collection route.
+// Browsers preflight DELETE unconditionally; omitting it here made history
+// deletion fail on the Expo web target before the request was ever sent.
 const corsHeaders = {
   "Access-Control-Allow-Headers":
     "Authorization, Content-Type, X-Meeting-Goal, X-Scan-Id",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Max-Age": "600",
   "Cache-Control": "no-store",
 } as const;
 
@@ -494,21 +499,38 @@ export const productionScanDependencies: ScanHandlerDependencies = {
   now: () => new Date(),
   scheduleExtraction(input) {
     after(async () => {
-      const cardResult = await processProductionCardIntelligence(input);
-      if (cardResult.status === "completed") {
-        // Card evidence records are created immediately so they are available
-        // for the full pipeline. Non-blocking on failure.
-        await processProductionCardEvidence(input);
-        // Company context: fail_company_context advances scan to
-        // generating_brief so Flash Brief still runs on failure.
-        await processProductionCompanyContext(input);
-        // Company evidence and identity resolution are both non-blocking.
-        await processProductionCompanyEvidence(input);
-        await processProductionIdentityResolution(input);
-        const briefResult = await processProductionFlashBrief(input);
-        if (briefResult.status === "completed") {
-          await processProductionMutualValue(input);
+      // Every stage below already converts its own expected failures into a
+      // persisted, sanitized failure row. This guard exists for the ones that
+      // cannot: a missing server configuration read inside `authenticate`, or
+      // any unforeseen throw. Without it the rejection escapes the `after`
+      // callback, the remaining stages never run, and the scan is stranded in
+      // an intermediate status that only the next claim attempt would clear —
+      // and nothing schedules one.
+      //
+      // The whole chain still runs inside this route's `maxDuration`, so a
+      // platform-level cut mid-pipeline remains possible; see
+      // `providerTimeoutMilliseconds` in packages/ai for the per-stage budget
+      // that keeps the sequence inside it. A durable queue is the real fix.
+      try {
+        const cardResult = await processProductionCardIntelligence(input);
+        if (cardResult.status === "completed") {
+          // Card evidence records are created immediately so they are available
+          // for the full pipeline. Non-blocking on failure.
+          await processProductionCardEvidence(input);
+          // Company context: fail_company_context advances scan to
+          // generating_brief so Flash Brief still runs on failure.
+          await processProductionCompanyContext(input);
+          // Company evidence and identity resolution are both non-blocking.
+          await processProductionCompanyEvidence(input);
+          await processProductionIdentityResolution(input);
+          const briefResult = await processProductionFlashBrief(input);
+          if (briefResult.status === "completed") {
+            await processProductionMutualValue(input);
+          }
         }
+      } catch {
+        // Never log provider output or card content. The scan keeps whatever
+        // status the last completed stage persisted.
       }
     });
   },

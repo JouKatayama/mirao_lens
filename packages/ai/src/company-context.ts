@@ -3,10 +3,13 @@ import {
   type CompanyContext,
   type CompanyContextInput,
 } from "@miraio/domain";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { classifyProviderFailure } from "./provider-error";
+import {
+  createOpenAIClient,
+  providerTimeoutMilliseconds,
+} from "./provider-client";
 
 export type CompanyContextGeneratorErrorCode =
   | "configuration"
@@ -97,7 +100,10 @@ function toProviderError(error: unknown): CompanyContextGeneratorError {
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAIClient(
+    apiKey,
+    providerTimeoutMilliseconds.companyContext,
+  );
 
   return async ({ input, model }) => {
     const response = await client.responses.parse({

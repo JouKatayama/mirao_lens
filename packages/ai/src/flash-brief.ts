@@ -5,10 +5,13 @@ import {
   type FlashBrief,
   type FlashBriefInput,
 } from "@miraio/domain";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { classifyProviderFailure } from "./provider-error";
+import {
+  createOpenAIClient,
+  providerTimeoutMilliseconds,
+} from "./provider-client";
 
 export type FlashBriefGeneratorErrorCode =
   | "configuration"
@@ -148,7 +151,10 @@ function toProviderError(error: unknown): FlashBriefGeneratorError {
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAIClient(
+    apiKey,
+    providerTimeoutMilliseconds.flashBrief,
+  );
 
   return async ({ input, model }) => {
     const response = await client.responses.parse({

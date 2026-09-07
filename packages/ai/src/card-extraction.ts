@@ -4,10 +4,13 @@ import {
   type CardExtraction,
   type ScanImageContentType,
 } from "@miraio/domain";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { classifyProviderFailure } from "./provider-error";
+import {
+  createOpenAIClient,
+  providerTimeoutMilliseconds,
+} from "./provider-client";
 
 export type CardExtractionErrorCode =
   | "configuration"
@@ -82,7 +85,10 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAIClient(
+    apiKey,
+    providerTimeoutMilliseconds.cardExtraction,
+  );
 
   return async ({ dataUrl, model }) => {
     const response = await client.responses.parse({
