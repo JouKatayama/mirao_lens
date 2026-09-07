@@ -185,8 +185,8 @@ describe("OpenAI Company Context generator", () => {
     expect(
       () => new OpenAICompanyContextGenerator({ apiKey: "key", model: " " }),
     ).toThrow(CompanyContextGeneratorError);
-    expect(
-      () => new OpenAICompanyContextGenerator({ model: "model" }),
-    ).toThrow(CompanyContextGeneratorError);
+    expect(() => new OpenAICompanyContextGenerator({ model: "model" })).toThrow(
+      CompanyContextGeneratorError,
+    );
   });
 });

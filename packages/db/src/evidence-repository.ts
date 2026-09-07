@@ -67,9 +67,7 @@ export class EvidenceRepository {
   ): Promise<string | null> {
     const { data: card } = await this.client
       .from("business_cards")
-      .select(
-        "name,company,title,department,email,phone,field_confidence",
-      )
+      .select("name,company,title,department,email,phone,field_confidence")
       .eq("scan_id", scanId)
       .maybeSingle();
 

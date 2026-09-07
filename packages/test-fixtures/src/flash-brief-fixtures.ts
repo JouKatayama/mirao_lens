@@ -197,7 +197,8 @@ export const flashBriefGoldenCases: readonly FlashBriefCase[] = [
   // ── No title ──────────────────────────────────────────────────────────────
   {
     caseName: "no-title-card",
-    description: "Card has name and company but no title — tests graceful degradation.",
+    description:
+      "Card has name and company but no title — tests graceful degradation.",
     expectations: {
       allowed_identity_statuses: [
         "unresolved",

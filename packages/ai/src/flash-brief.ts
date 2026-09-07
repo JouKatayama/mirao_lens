@@ -165,10 +165,7 @@ function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
       model,
       store: false,
       text: {
-        format: zodTextFormat(
-          flashBriefStructuredOutputSchema,
-          "flash_brief",
-        ),
+        format: zodTextFormat(flashBriefStructuredOutputSchema, "flash_brief"),
       },
     });
 

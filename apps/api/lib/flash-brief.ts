@@ -115,7 +115,9 @@ export async function processFlashBrief(
   const startedAt = dependencies.nowMilliseconds();
 
   try {
-    const briefInput = await session.repository.getFlashBriefInput(input.scanId);
+    const briefInput = await session.repository.getFlashBriefInput(
+      input.scanId,
+    );
 
     if (!briefInput) {
       await safelyFail(session.repository, input.scanId, claim.runId, {
@@ -151,8 +153,7 @@ export async function processProductionFlashBrief(input: {
   accessToken: string;
   scanId: string;
 }): Promise<FlashBriefProcessResult> {
-  let configuration:
-    ReturnType<typeof readOpenAIFlashBriefConfig> | undefined;
+  let configuration: ReturnType<typeof readOpenAIFlashBriefConfig> | undefined;
 
   try {
     configuration = readOpenAIFlashBriefConfig(process.env);

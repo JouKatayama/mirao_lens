@@ -49,11 +49,13 @@ function makeScanDeps(
   return {
     authenticate: overrides.authThrows
       ? vi.fn().mockRejectedValue(overrides.authThrows)
-      : vi.fn().mockResolvedValue(
-          overrides.session !== undefined
-            ? overrides.session
-            : { repository, userId },
-        ),
+      : vi
+          .fn()
+          .mockResolvedValue(
+            overrides.session !== undefined
+              ? overrides.session
+              : { repository, userId },
+          ),
   };
 }
 
@@ -73,11 +75,13 @@ function makeAccountDeps(
   return {
     authenticate: overrides.authThrows
       ? vi.fn().mockRejectedValue(overrides.authThrows)
-      : vi.fn().mockResolvedValue(
-          overrides.session !== undefined
-            ? overrides.session
-            : { repository, userId },
-        ),
+      : vi
+          .fn()
+          .mockResolvedValue(
+            overrides.session !== undefined
+              ? overrides.session
+              : { repository, userId },
+          ),
   };
 }
 
@@ -86,14 +90,15 @@ function makeAccountDeps(
 describe("createDeleteScanHandler", () => {
   it("returns 401 when Authorization header is absent", async () => {
     const handler = createDeleteScanHandler(makeScanDeps());
-    const res = await handler(makeRequest(undefined, undefined, false), makeContext());
+    const res = await handler(
+      makeRequest(undefined, undefined, false),
+      makeContext(),
+    );
     expect(res.status).toBe(401);
   });
 
   it("returns 401 when session is null", async () => {
-    const handler = createDeleteScanHandler(
-      makeScanDeps({ session: null }),
-    );
+    const handler = createDeleteScanHandler(makeScanDeps({ session: null }));
     const res = await handler(makeRequest(), makeContext());
     expect(res.status).toBe(401);
   });

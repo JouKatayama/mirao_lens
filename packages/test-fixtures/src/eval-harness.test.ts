@@ -179,7 +179,8 @@ const goodMutualValue: MutualValuePublic = {
     },
   ],
   next_action: {
-    action: "来週、DX推進の具体的な課題についてオンラインで30分話す機会を設ける",
+    action:
+      "来週、DX推進の具体的な課題についてオンラインで30分話す機会を設ける",
     reason: "共通の課題感があり、早期に深掘りする価値がある",
     timing: "1週間以内",
   },
@@ -201,8 +202,20 @@ describe("runMutualValueAssertions", () => {
     // mixed-claim-types requires both fact and hypothesis
     const hypothesisOnly: MutualValuePublic = {
       ...goodMutualValue,
-      get: [{ claim_type: "hypothesis", evidence_ids: [], text: "何かを学べる可能性" }],
-      give: [{ claim_type: "hypothesis", evidence_ids: [], text: "何かを提供できる可能性" }],
+      get: [
+        {
+          claim_type: "hypothesis",
+          evidence_ids: [],
+          text: "何かを学べる可能性",
+        },
+      ],
+      give: [
+        {
+          claim_type: "hypothesis",
+          evidence_ids: [],
+          text: "何かを提供できる可能性",
+        },
+      ],
     };
     const results = runMutualValueAssertions(hypothesisOnly, cas);
     const factCheck = results.find((r) => r.name === "claim_type_present:fact");
@@ -314,7 +327,9 @@ describe("golden dataset coverage", () => {
 
   it("all Flash Brief cases have at least one allowed identity status", () => {
     for (const cas of flashBriefGoldenCases) {
-      expect(cas.expectations.allowed_identity_statuses.length).toBeGreaterThan(0);
+      expect(cas.expectations.allowed_identity_statuses.length).toBeGreaterThan(
+        0,
+      );
     }
   });
 });

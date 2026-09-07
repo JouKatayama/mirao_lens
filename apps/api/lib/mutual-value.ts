@@ -34,7 +34,10 @@ type MutualValueRepositoryPort = Readonly<{
     errorCode: string,
   ): Promise<void>;
   getMutualValueInput(scanId: string): Promise<MutualValueInput | null>;
-  linkEvidenceIds(scanId: string, mutualValue: MutualValue): Promise<MutualValue>;
+  linkEvidenceIds(
+    scanId: string,
+    mutualValue: MutualValue,
+  ): Promise<MutualValue>;
 }>;
 
 type MutualValueSession = Readonly<{
@@ -172,8 +175,7 @@ export async function processProductionMutualValue(input: {
   accessToken: string;
   scanId: string;
 }): Promise<MutualValueProcessResult> {
-  let configuration:
-    ReturnType<typeof readOpenAIMutualValueConfig> | undefined;
+  let configuration: ReturnType<typeof readOpenAIMutualValueConfig> | undefined;
 
   try {
     configuration = readOpenAIMutualValueConfig(process.env);

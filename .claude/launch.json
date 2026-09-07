@@ -4,13 +4,32 @@
     {
       "name": "api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@miraio/api", "exec", "next", "dev", "--hostname", "0.0.0.0", "--port", "3000"],
+      "runtimeArgs": [
+        "--filter",
+        "@miraio/api",
+        "exec",
+        "next",
+        "dev",
+        "--hostname",
+        "0.0.0.0",
+        "--port",
+        "3000"
+      ],
       "port": 3000
     },
     {
       "name": "mobile-web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@miraio/mobile", "exec", "expo", "start", "--web", "--port", "8081"],
+      "runtimeArgs": [
+        "--filter",
+        "@miraio/mobile",
+        "exec",
+        "expo",
+        "start",
+        "--web",
+        "--port",
+        "8081"
+      ],
       "port": 8081
     }
   ]

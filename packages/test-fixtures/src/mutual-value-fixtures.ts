@@ -180,7 +180,8 @@ export const mutualValueGoldenCases: readonly MutualValueCase[] = [
   // ── Sales goal ────────────────────────────────────────────────────────────
   {
     caseName: "sales-goal-give-focused",
-    description: "Sales goal — GIVE should emphasize service value the user can offer.",
+    description:
+      "Sales goal — GIVE should emphasize service value the user can offer.",
     expectations: {
       forbidden_substrings: [],
       min_ask_count: 1,
@@ -247,7 +248,9 @@ export const mutualValueGoldenCases: readonly MutualValueCase[] = [
       },
       flash_brief: {
         potential: "大企業DX内製化とコンサル支援の補完関係が強い",
-        say_this: ["内製とアウトソーシングのバランスはどのようにお考えですか？"],
+        say_this: [
+          "内製とアウトソーシングのバランスはどのようにお考えですか？",
+        ],
         who: "渡辺さんは架空重工業のDXイノベーション推進本部長",
         why_you: "製造業DXの現場知識と提案力が直接役立つ",
       },
@@ -343,7 +346,9 @@ export const mutualValueGoldenCases: readonly MutualValueCase[] = [
       card: jpCorporateCard,
       flash_brief: {
         potential: "UXリサーチとプロダクト戦略の接点が強い",
-        say_this: ["ユーザーリサーチを現在どの程度プロダクト開発に取り込んでいますか？"],
+        say_this: [
+          "ユーザーリサーチを現在どの程度プロダクト開発に取り込んでいますか？",
+        ],
         who: "山田さんは架空産業株式会社のPM",
         why_you: "UXデザイナーの視点でプロダクトUX改善に貢献できる",
       },

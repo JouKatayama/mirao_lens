@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { MutualValueGeneratorError, OpenAIMutualValueGenerator } from "./mutual-value";
+import {
+  MutualValueGeneratorError,
+  OpenAIMutualValueGenerator,
+} from "./mutual-value";
 
 const validInput = {
   card: {
@@ -32,8 +35,20 @@ const validInput = {
 };
 
 const validOutput = {
-  give: [{ text: "UXリサーチの知見", claim_type: "hypothesis" as const, evidence_ids: [] as string[] }],
-  get: [{ text: "市場展開事例", claim_type: "hypothesis" as const, evidence_ids: [] as string[] }],
+  give: [
+    {
+      text: "UXリサーチの知見",
+      claim_type: "hypothesis" as const,
+      evidence_ids: [] as string[],
+    },
+  ],
+  get: [
+    {
+      text: "市場展開事例",
+      claim_type: "hypothesis" as const,
+      evidence_ids: [] as string[],
+    },
+  ],
   bridge: "両者ともデジタル製品に注力",
   ask: [{ question: "課題は何ですか？", validates_hypothesis: null }],
   next_action: {

@@ -189,8 +189,9 @@ export class MutualValueRepository {
     const companyContextParsed = companyContextRaw
       ? companyContextSchema.safeParse(companyContextRaw)
       : null;
-    const companyContext =
-      companyContextParsed?.success ? companyContextParsed.data : null;
+    const companyContext = companyContextParsed?.success
+      ? companyContextParsed.data
+      : null;
 
     return {
       card: {
@@ -237,9 +238,7 @@ export class MutualValueRepository {
     const aiEvidenceId =
       rows.find((r) => r.source_type === "ai_inference")?.id ?? null;
 
-    function assignIds(
-      items: MutualValue["give"],
-    ): MutualValue["give"] {
+    function assignIds(items: MutualValue["give"]): MutualValue["give"] {
       return items.map((item) => ({
         ...item,
         evidence_ids:

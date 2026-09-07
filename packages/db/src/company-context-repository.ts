@@ -1,7 +1,4 @@
-import {
-  type CompanyContext,
-  type CompanyContextInput,
-} from "@miraio/domain";
+import { type CompanyContext, type CompanyContextInput } from "@miraio/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database, Json } from "./database.types";
@@ -10,8 +7,7 @@ import {
   type UserScopedSupabaseConfig,
 } from "./personal-context-repository";
 
-export type CompanyContextRepositoryErrorCode =
-  "database_error" | "not_found";
+export type CompanyContextRepositoryErrorCode = "database_error" | "not_found";
 
 export class CompanyContextRepositoryError extends Error {
   constructor(

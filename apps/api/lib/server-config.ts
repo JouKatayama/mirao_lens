@@ -129,7 +129,9 @@ export type CleanupConfig = Readonly<{
   supabaseUrl: string;
 }>;
 
-export function readCleanupConfig(environment: ServerEnvironment): CleanupConfig {
+export function readCleanupConfig(
+  environment: ServerEnvironment,
+): CleanupConfig {
   return {
     serviceRoleKey: requireValue(environment, "SUPABASE_SERVICE_ROLE_KEY"),
     supabaseUrl: requireValue(environment, "SUPABASE_URL"),
