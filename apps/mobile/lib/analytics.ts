@@ -7,8 +7,12 @@ export interface AnalyticsClient {
 }
 
 export class NoopAnalyticsClient implements AnalyticsClient {
-  identify(_userId: string): void {}
-  track(_event: AnalyticsEvent): void {}
+  identify(_userId: string): void {
+    void _userId;
+  }
+  track(_event: AnalyticsEvent): void {
+    void _event;
+  }
   reset(): void {}
 }
 

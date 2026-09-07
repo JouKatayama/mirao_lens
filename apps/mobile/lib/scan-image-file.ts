@@ -1,7 +1,7 @@
 import { File } from "expo-file-system";
 
 export async function readCapturedCardBytes(uri: string): Promise<ArrayBuffer> {
-  if (uri.startsWith("data:")) {
+  if (uri.startsWith("data:") || uri.startsWith("blob:")) {
     return (await fetch(uri)).arrayBuffer();
   }
 

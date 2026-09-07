@@ -371,9 +371,9 @@ export function MyContextScreen({
   return (
     <ScreenFrame
       subtitle="ここに表示される内容はあなた専用です。いつでも修正・削除できます。"
-      title="My Context"
+      title="プロフィール"
+      onBack={onBack}
     >
-      <SecondaryButton label="Home / Scanへ戻る" onPress={onBack} />
       <Card>
         <Text style={styles.profileLabel}>現在の会社・組織</Text>
         <Text style={styles.profileValue}>
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   profileValue: { color: colors.text, fontSize: 17, fontWeight: "700" },
   typeChip: {
     backgroundColor: "#FFFFFF",
-    borderColor: "#B8C7BF",
+    borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
