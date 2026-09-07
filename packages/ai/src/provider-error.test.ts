@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { APIConnectionTimeoutError, APIUserAbortError } from "openai";
+
 import { classifyProviderFailure } from "./provider-error";
 
 describe("classifyProviderFailure", () => {
@@ -10,6 +12,15 @@ describe("classifyProviderFailure", () => {
   it("treats an abort or a 408 as a timeout", () => {
     expect(classifyProviderFailure({ name: "AbortError" })).toBe("timeout");
     expect(classifyProviderFailure({ status: 408 })).toBe("timeout");
+  });
+
+  it("treats the SDK's own deadline failures as a timeout", () => {
+    // Neither class sets `name` or a status, so before this was handled both
+    // reported the provider as down when our own budget had expired.
+    expect(classifyProviderFailure(new APIConnectionTimeoutError({}))).toBe(
+      "timeout",
+    );
+    expect(classifyProviderFailure(new APIUserAbortError({}))).toBe("timeout");
   });
 
   it("keeps rate limiting ahead of an abort raised on the same error", () => {

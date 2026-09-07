@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createPostScanHandler,
+  OPTIONS,
   type ScanHandlerDependencies,
 } from "./scan-handlers";
 
@@ -176,5 +177,20 @@ describe("POST /v1/scans", () => {
     expect(response.status).toBe(409);
     expect(body.error.code).toBe("scan_conflict");
     expect(repository.uploadRawImage).not.toHaveBeenCalled();
+  });
+});
+
+describe("OPTIONS /v1/scans", () => {
+  it("advertises every method the module's routes implement", () => {
+    const allowed = new Set(
+      OPTIONS()
+        .headers.get("access-control-allow-methods")
+        ?.split(",")
+        .map((method) => method.trim().toUpperCase()),
+    );
+
+    // DELETE belongs to /v1/scans/:scanId, which re-exports this same handler.
+    // Browsers preflight it, so leaving it out blocks the request entirely.
+    expect(allowed).toEqual(new Set(["GET", "POST", "DELETE", "OPTIONS"]));
   });
 });

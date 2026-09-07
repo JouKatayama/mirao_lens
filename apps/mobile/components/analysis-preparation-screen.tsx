@@ -4,7 +4,7 @@ import type {
   PersonalContextType,
 } from "@miraio/domain";
 import { colors } from "@miraio/ui-tokens";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { meetingGoalLabels, meetingGoalOptions } from "../lib/scan-capture";
 import { Card, Chips, PrimaryButton, ScreenFrame, TextButton } from "./ui";
 
@@ -82,13 +82,30 @@ export function AnalysisPreparationScreen({
         {captured ? (
           <Text style={styles.body}>{meetingGoalLabels[meetingGoal]}</Text>
         ) : (
-          <View style={styles.options}>
+          <View accessibilityRole="radiogroup" style={styles.options}>
             {meetingGoalOptions.map((option) => (
-              <TextButton
+              <Pressable
                 key={option.value}
-                label={`${option.value === meetingGoal ? "✓  " : ""}${option.label}`}
                 onPress={() => onMeetingGoalChange(option.value)}
-              />
+                accessibilityRole="radio"
+                accessibilityState={{
+                  checked: option.value === meetingGoal,
+                }}
+                style={({ pressed }) => [
+                  styles.option,
+                  option.value === meetingGoal && styles.optionSelected,
+                  pressed && styles.optionPressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.optionText,
+                    option.value === meetingGoal && styles.optionTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
             ))}
           </View>
         )}
@@ -103,8 +120,24 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   label: { color: colors.text, fontSize: 14, fontWeight: "700" },
-  body: { color: colors.text, fontSize: 14, lineHeight: 22 },
-  muted: { color: colors.muted, fontSize: 13 },
+  body: { color: colors.text, fontSize: 15, lineHeight: 23 },
+  muted: { color: colors.muted, fontSize: 14 },
   group: { gap: 7 },
-  options: { flexDirection: "row", flexWrap: "wrap", columnGap: 12 },
+  options: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  option: {
+    minHeight: 44,
+    justifyContent: "center",
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 15,
+    backgroundColor: colors.surface,
+  },
+  optionSelected: {
+    backgroundColor: colors.accentStrong,
+    borderColor: colors.accentStrong,
+  },
+  optionPressed: { opacity: 0.8 },
+  optionText: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  optionTextSelected: { color: "#FFFFFF" },
 });

@@ -64,18 +64,20 @@ export function FlashBriefScreen({
     unresolved: "本人未確認",
   };
   const shortcuts = [
-    { label: "プロフィール", icon: "person", action: onViewCard },
-    { label: "会社情報", icon: "company", action: onViewEvidence },
-    { label: "つながり", icon: "people", action: onViewMutualValue },
+    { label: "名刺情報", icon: "person", action: onViewCard },
+    { label: "根拠", icon: "company", action: onViewEvidence },
     { label: "メモ", icon: "note", action: onViewInteraction },
   ] as const;
   return (
     <ScreenFrame
-      title="人物サマリー"
+      title="Flash Brief"
       onBack={onDone}
       action={<TextButton label="編集" onPress={onViewCard} />}
       footer={
-        <PrimaryButton label="分析を始める" onPress={onViewMutualValue} />
+        <PrimaryButton
+          label="Win-Winを詳しく見る"
+          onPress={onViewMutualValue}
+        />
       }
     >
       <View style={s.person}>
@@ -86,54 +88,81 @@ export function FlashBriefScreen({
           <Text style={s.body}>{card.title}</Text>
         </View>
       </View>
-      <View style={s.shortcuts}>
-        {shortcuts.map((shortcut) => (
-          <Pressable
-            key={shortcut.label}
-            accessibilityRole="button"
-            accessibilityLabel={shortcut.label}
-            accessibilityState={{ disabled: !shortcut.action }}
-            disabled={!shortcut.action}
-            onPress={shortcut.action}
-            style={({ pressed }) => [
-              s.shortcut,
-              pressed && s.pressed,
-              !shortcut.action && s.disabled,
-            ]}
-          >
-            <View style={s.shortcutIcon}>
-              <Icon name={shortcut.icon} />
-            </View>
-            <Text style={s.shortcutText}>{shortcut.label}</Text>
-          </Pressable>
+      <View style={s.briefHeader}>
+        <Text style={s.eyebrow}>5-SECOND BRIEF</Text>
+        <Text style={s.meta}>会話の前に、ここだけ確認</Text>
+      </View>
+      <Card>
+        <View style={s.briefLabelRow}>
+          <Text style={s.briefLabel}>WHO</Text>
+          <View style={s.neutralBadge}>
+            <Text style={s.neutralBadgeText}>
+              {identityLabels[brief.identity_status]}
+            </Text>
+          </View>
+        </View>
+        <Text style={s.briefBody}>{brief.who}</Text>
+      </Card>
+      <View style={[s.briefPanel, s.whyPanel]}>
+        <View style={s.briefLabelRow}>
+          <Text style={s.briefLabel}>WHY YOU</Text>
+          <View style={s.hypothesisBadge}>
+            <Text style={s.hypothesisBadgeText}>仮説</Text>
+          </View>
+        </View>
+        <Text style={s.briefBody}>{brief.why_you}</Text>
+      </View>
+      <View style={s.sayPanel}>
+        <View style={s.briefLabelRow}>
+          <Text style={[s.briefLabel, s.sayLabel]}>SAY THIS</Text>
+          <View style={s.askBadge}>
+            <Text style={s.askBadgeText}>質問</Text>
+          </View>
+        </View>
+        {brief.say_this.map((question, index) => (
+          <View key={`${question}-${index}`} style={s.sayRow}>
+            <Icon name="bulb" color="#D9BCFF" size={22} />
+            <Text style={[s.sayQuestion, s.flex]}>{question}</Text>
+          </View>
         ))}
       </View>
-      <Card>
-        <View style={s.row}>
-          <Text style={s.heading}>5秒Brief</Text>
-          <Chips items={["AI生成"]} />
+      <View style={[s.briefPanel, s.potentialPanel]}>
+        <View style={s.briefLabelRow}>
+          <Text style={s.briefLabel}>POTENTIAL</Text>
+          <View style={s.hypothesisBadge}>
+            <Text style={s.hypothesisBadgeText}>可能性・仮説</Text>
+          </View>
         </View>
-        <Text style={s.body}>{brief.who}</Text>
-      </Card>
-      <View style={s.section}>
-        <Text style={s.heading}>キーワード</Text>
-        <Chips
-          items={[card.company, card.title].filter((value): value is string =>
-            Boolean(value),
-          )}
-        />
-      </View>
-      <Card>
-        <Text style={s.heading}>あなたとの接点</Text>
-        <Text style={s.body}>{brief.why_you}</Text>
-      </Card>
-      <View style={s.section}>
-        <Text style={s.meta}>
-          {identityLabels[brief.identity_status]} · AIによる推測を含みます
-        </Text>
+        <Text style={s.briefBody}>{brief.potential}</Text>
         {deepEnriching ? (
-          <Text style={s.meta}>詳しい分析を準備しています…</Text>
+          <View style={s.enrichingRow}>
+            <ActivityIndicator color={colors.accent} size="small" />
+            <Text style={s.meta}>詳しい分析を準備しています…</Text>
+          </View>
         ) : null}
+      </View>
+      <Text style={s.disclaimer}>
+        AIによる仮説は、相手への質問を通じて確かめてください。
+      </Text>
+      <View style={s.shortcuts}>
+        {shortcuts.map((shortcut) =>
+          shortcut.action ? (
+            <Pressable
+              key={shortcut.label}
+              accessibilityRole="button"
+              accessibilityLabel={shortcut.label}
+              onPress={shortcut.action}
+              style={({ pressed }) => [s.shortcut, pressed && s.pressed]}
+            >
+              <Icon
+                name={shortcut.icon}
+                color={colors.accentStrong}
+                size={20}
+              />
+              <Text style={s.shortcutText}>{shortcut.label}</Text>
+            </Pressable>
+          ) : null,
+        )}
       </View>
       <ErrorNotice message={error} />
       {error ? (
@@ -479,13 +508,13 @@ const s = StyleSheet.create({
   section: { gap: 10 },
   heading: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-    lineHeight: 23,
+    fontSize: 16,
+    fontWeight: "800",
+    lineHeight: 24,
   },
-  body: { color: colors.text, fontSize: 14, lineHeight: 24 },
-  meta: { color: colors.muted, fontSize: 12, lineHeight: 19 },
-  caption: { color: colors.muted, fontSize: 12, lineHeight: 19, marginTop: 4 },
+  body: { color: colors.text, fontSize: 15, lineHeight: 24 },
+  meta: { color: colors.muted, fontSize: 13, lineHeight: 20 },
+  caption: { color: colors.muted, fontSize: 13, lineHeight: 20, marginTop: 4 },
   small: { color: "#483773", fontSize: 13, lineHeight: 22 },
   person: {
     flexDirection: "row",
@@ -496,21 +525,99 @@ const s = StyleSheet.create({
   personText: { flex: 1, gap: 4 },
   name: {
     color: colors.text,
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 22,
+    fontWeight: "800",
     marginBottom: 5,
   },
-  shortcuts: { flexDirection: "row", gap: 8 },
-  shortcut: { flex: 1, alignItems: "center", gap: 7, minHeight: 68 },
-  shortcutIcon: {
-    width: "100%",
-    height: 48,
-    borderRadius: 25,
-    backgroundColor: "#F8F6FB",
+  briefHeader: { gap: 2, marginTop: 2 },
+  eyebrow: {
+    color: colors.accentStrong,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1.4,
+  },
+  briefLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  briefLabel: {
+    color: colors.accentStrong,
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+  },
+  briefBody: { color: colors.text, fontSize: 16, lineHeight: 26 },
+  briefPanel: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+    gap: 12,
+  },
+  whyPanel: {
+    backgroundColor: colors.accentFaint,
+    borderColor: colors.accentSoft,
+  },
+  potentialPanel: {
+    backgroundColor: "#F6F9FF",
+    borderColor: "#DCE6FA",
+  },
+  sayPanel: {
+    backgroundColor: colors.dark,
+    borderRadius: 20,
+    padding: 20,
+    gap: 14,
+  },
+  sayLabel: { color: "#D9BCFF" },
+  sayRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  sayQuestion: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 29,
+  },
+  neutralBadge: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  neutralBadgeText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
+  hypothesisBadge: {
+    backgroundColor: colors.warningSoft,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  hypothesisBadgeText: {
+    color: colors.warning,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  askBadge: {
+    backgroundColor: "#342348",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  askBadgeText: { color: "#E5D3FF", fontSize: 11, fontWeight: "800" },
+  enrichingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  disclaimer: { color: colors.muted, fontSize: 12, lineHeight: 20 },
+  shortcuts: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  shortcut: {
+    minHeight: 48,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 7,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  shortcutText: { color: colors.muted, fontSize: 11 },
+  shortcutText: { color: colors.accentStrong, fontSize: 13, fontWeight: "700" },
   valueSection: { gap: 12, paddingVertical: 6 },
   valueIcon: {
     width: 28,

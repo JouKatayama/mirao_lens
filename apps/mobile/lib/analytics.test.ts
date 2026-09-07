@@ -123,6 +123,38 @@ describe("PostHogAnalyticsClient", () => {
     expect(() => client.track({ name: "brief_viewed" })).not.toThrow();
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
   });
+
+  it("does not let a synchronous transport failure reach the caller", () => {
+    // Browsers throw "Illegal invocation" synchronously when fetch is called
+    // with the wrong receiver, which no promise `.catch` can absorb.
+    const fetchMock = vi.fn(() => {
+      throw new TypeError("Illegal invocation");
+    });
+    const client = new PostHogAnalyticsClient(
+      config,
+      fetchMock as unknown as typeof fetch,
+    );
+    client.identify("user-1");
+    expect(() => client.track({ name: "brief_viewed" })).not.toThrow();
+  });
+
+  it("calls the default fetch with its own receiver", async () => {
+    const nativeFetch = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    const original = globalThis.fetch;
+    globalThis.fetch = nativeFetch as unknown as typeof fetch;
+
+    try {
+      const client = new PostHogAnalyticsClient(config);
+      client.identify("user-1");
+      client.track({ name: "brief_viewed" });
+      await vi.waitFor(() => expect(nativeFetch).toHaveBeenCalledOnce());
+      expect(nativeFetch.mock.instances[0]).toBe(globalThis);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });
 
 // ─── createAnalyticsClient ────────────────────────────────────────────────────

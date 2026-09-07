@@ -5,10 +5,13 @@ import {
   type PersonalContextOnboardingInput,
   type PersonalContextStructuredOutput,
 } from "@miraio/domain";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import { classifyProviderFailure } from "./provider-error";
+import {
+  createOpenAIClient,
+  providerTimeoutMilliseconds,
+} from "./provider-client";
 
 export type PersonalContextStructuringErrorCode =
   | "configuration"
@@ -63,7 +66,10 @@ function toProviderError(error: unknown): PersonalContextStructuringError {
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
-  const client = new OpenAI({ apiKey });
+  const client = createOpenAIClient(
+    apiKey,
+    providerTimeoutMilliseconds.personalContext,
+  );
 
   return async ({ input, model }) => {
     const response = await client.responses.parse({

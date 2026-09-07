@@ -13,11 +13,10 @@
  * malformed request classified as `provider_unavailable` is retried forever,
  * bills for every attempt, and can never succeed.
  */
+import { APIConnectionTimeoutError, APIUserAbortError } from "openai";
+
 export type ProviderFailureCode =
-  | "configuration"
-  | "rate_limited"
-  | "timeout"
-  | "provider_unavailable";
+  "configuration" | "rate_limited" | "timeout" | "provider_unavailable";
 
 type ProviderErrorShape = Readonly<{ name?: unknown; status?: unknown }>;
 
@@ -25,6 +24,22 @@ function httpStatusOf(error: unknown): number | null {
   const status = (error as ProviderErrorShape | null)?.status;
 
   return typeof status === "number" ? status : null;
+}
+
+/**
+ * The OpenAI SDK signals its own client-side deadline with
+ * `APIConnectionTimeoutError`, and a caller-supplied `AbortSignal` with
+ * `APIUserAbortError`. Neither sets `name` (it stays "Error") and neither
+ * carries an HTTP status, so without this check both fell through to
+ * `provider_unavailable` — reporting the provider as down when it was our own
+ * budget that expired. The `AbortError` name below still covers a bare
+ * `AbortController` abort that never reached the SDK.
+ */
+function isDeadlineFailure(error: unknown): boolean {
+  return (
+    error instanceof APIConnectionTimeoutError ||
+    error instanceof APIUserAbortError
+  );
 }
 
 export function classifyProviderFailure(error: unknown): ProviderFailureCode {
@@ -35,6 +50,10 @@ export function classifyProviderFailure(error: unknown): ProviderFailureCode {
   }
 
   if ((error as ProviderErrorShape | null)?.name === "AbortError") {
+    return "timeout";
+  }
+
+  if (isDeadlineFailure(error)) {
     return "timeout";
   }
 

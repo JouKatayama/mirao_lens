@@ -79,7 +79,10 @@ export function HomeScreen({
   });
   return (
     <View style={s.fill}>
-      <ScreenFrame title="ホーム">
+      <ScreenFrame
+        title="出会いの履歴"
+        action={<TextButton label="撮影" onPress={onCapture} />}
+      >
         <View style={s.search}>
           <Icon name="search" size={20} />
           <TextInput
@@ -115,12 +118,35 @@ export function HomeScreen({
                   {item.card_title ? (
                     <Text style={s.meta}>{item.card_title}</Text>
                   ) : null}
-                  <View style={[s.badge, item.status === "failed" && s.failed]}>
-                    <Text style={s.badgeText}>{statusLabels[item.status]}</Text>
+                  <View
+                    style={[
+                      s.badge,
+                      ["deep_ready", "brief_ready"].includes(item.status) &&
+                        s.readyBadge,
+                      item.status === "failed" && s.failedBadge,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        s.badgeText,
+                        ["deep_ready", "brief_ready"].includes(item.status) &&
+                          s.readyBadgeText,
+                        item.status === "failed" && s.failedBadgeText,
+                      ]}
+                    >
+                      {statusLabels[item.status]}
+                    </Text>
                   </View>
                 </View>
                 <View style={s.trailing}>
-                  <View style={s.statusIcon}>
+                  <View
+                    style={[
+                      s.statusIcon,
+                      ["deep_ready", "brief_ready"].includes(item.status) &&
+                        s.readyStatusIcon,
+                      item.status === "failed" && s.failedStatusIcon,
+                    ]}
+                  >
                     <Icon
                       name={
                         item.status === "deep_ready"
@@ -129,7 +155,13 @@ export function HomeScreen({
                             ? "close"
                             : "note"
                       }
-                      color={colors.accentStrong}
+                      color={
+                        item.status === "failed"
+                          ? colors.danger
+                          : ["deep_ready", "brief_ready"].includes(item.status)
+                            ? colors.success
+                            : colors.accentStrong
+                      }
                       size={23}
                     />
                   </View>
@@ -144,6 +176,7 @@ export function HomeScreen({
               <IconButton
                 label={`${item.card_name || "スキャン"}を削除`}
                 name="trash"
+                color={colors.danger}
                 onPress={() => setPendingDelete(item.scan_id)}
               />
               {pendingDelete === item.scan_id ? (
@@ -221,27 +254,28 @@ const s = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     alignItems: "center",
-    backgroundColor: "#F2F1F7",
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 14,
     paddingHorizontal: 13,
     minHeight: 44,
   },
   searchInput: {
     flex: 1,
     color: colors.text,
-    fontSize: 14,
+    fontSize: 16,
     paddingVertical: 12,
   },
   contact: {
-    borderRadius: 12,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    padding: 10,
-    boxShadow: "0 2px 12px rgba(70,35,110,0.025)",
+    padding: 12,
   },
   contactMain: {
     flex: 1,
@@ -252,7 +286,7 @@ const s = StyleSheet.create({
   },
   details: { flex: 1, minWidth: 0, gap: 4 },
   name: { color: colors.text, fontSize: 16, fontWeight: "700" },
-  meta: { color: colors.text, fontSize: 12, lineHeight: 19 },
+  meta: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   badge: {
     alignSelf: "flex-start",
     backgroundColor: colors.accentSoft,
@@ -261,8 +295,11 @@ const s = StyleSheet.create({
     paddingVertical: 3,
     marginTop: 4,
   },
-  failed: { backgroundColor: "#FFF0E7" },
-  badgeText: { color: "#644099", fontSize: 10 },
+  readyBadge: { backgroundColor: colors.successSoft },
+  failedBadge: { backgroundColor: colors.dangerSoft },
+  badgeText: { color: colors.accentStrong, fontSize: 11, fontWeight: "700" },
+  readyBadgeText: { color: colors.success },
+  failedBadgeText: { color: colors.danger },
   trailing: { gap: 10, alignItems: "center" },
   statusIcon: {
     width: 45,
@@ -273,7 +310,9 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  date: { color: colors.muted, fontSize: 10 },
+  readyStatusIcon: { borderColor: colors.successSoft },
+  failedStatusIcon: { borderColor: colors.dangerSoft },
+  date: { color: colors.muted, fontSize: 12 },
   emptyTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
   emptyText: { color: colors.muted, fontSize: 14, lineHeight: 23 },
   confirm: {

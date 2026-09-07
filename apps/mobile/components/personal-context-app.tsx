@@ -13,7 +13,7 @@ import type {
 import { colors } from "@miraio/ui-tokens";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -42,6 +42,7 @@ import {
   ReviewScreen,
 } from "./personal-context-screens";
 import { isScanPending, scanNavigationTarget } from "../lib/scan-navigation";
+import { nextScanPollDelay } from "../lib/scan-polling";
 import { LoadingScreen, PrimaryButton } from "./ui";
 import { HomeScreen } from "./home-screen";
 import { WelcomeScreen } from "./welcome-screen";
@@ -55,7 +56,6 @@ type ViewName =
   | "context"
   | "evidence"
   | "flash-brief"
-  | "history"
   | "home"
   | "interaction"
   | "loading"
@@ -117,11 +117,17 @@ export function PersonalContextApp() {
   );
   const [historyError, setHistoryError] = useState<string | null>(null);
   const scanStatusValue = scanStatus?.status;
+  // Bumped when the user asks for a refresh, so a loop that stopped at its
+  // budget can start over on demand.
+  const [pollEpoch, setPollEpoch] = useState(0);
+  // The polling effect re-runs on every status transition, so the budget has to
+  // survive those re-runs. The key resets it for a new scan or a new epoch.
+  const pollStart = useRef<{ key: string; startedAt: number } | null>(null);
 
   const loadApprovedContext = useCallback(
     async (
       activeSession: Session,
-      preferredView: "context" | "home" = "home",
+      preferredView: "context" | "home" | "preparation" = "home",
     ) => {
       if (!services.ok) {
         return;
@@ -152,6 +158,33 @@ export function PersonalContextApp() {
     },
     [services],
   );
+
+  // One implementation for both the automatic load on entering Home and the
+  // user's pull-to-refresh. The two used to be written out separately and had
+  // drifted into showing different messages for the same failure.
+  const loadHistory = useCallback(async () => {
+    if (!services.ok || !session) {
+      return;
+    }
+
+    setHistoryItems(null);
+    setHistoryError(null);
+
+    try {
+      const response = await services.scanApi.listScans(session.access_token);
+      setHistoryItems(response.items);
+    } catch (error) {
+      if (error instanceof ScanApiError && error.status === 401) {
+        await services.supabase.auth.signOut();
+        return;
+      }
+
+      setHistoryItems([]);
+      setHistoryError(
+        "履歴を読み込めませんでした。通信状態を確認して再試行してください。",
+      );
+    }
+  }, [services, session]);
 
   useEffect(() => {
     if (!services.ok) {
@@ -214,28 +247,9 @@ export function PersonalContextApp() {
   }, [session, services]);
 
   useEffect(() => {
-    if (!services.ok || !session || view !== "home") return;
-    let active = true;
-    setHistoryItems(null);
-    setHistoryError(null);
-    void services.scanApi
-      .listScans(session.access_token)
-      .then((response) => {
-        if (active) setHistoryItems(response.items);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        if (error instanceof ScanApiError && error.status === 401) {
-          void services.supabase.auth.signOut();
-          return;
-        }
-        setHistoryItems([]);
-        setHistoryError("履歴を読み込めませんでした。再試行してください。");
-      });
-    return () => {
-      active = false;
-    };
-  }, [services, session, view]);
+    if (view !== "home") return;
+    void loadHistory();
+  }, [loadHistory, view]);
 
   useEffect(() => {
     if (
@@ -253,6 +267,28 @@ export function PersonalContextApp() {
 
     let active = true;
     let timeout: ReturnType<typeof setTimeout> | undefined;
+
+    const pollKey = `${scanResult.scan_id}:${pollEpoch}`;
+
+    if (pollStart.current?.key !== pollKey) {
+      pollStart.current = { key: pollKey, startedAt: Date.now() };
+    }
+    const startedAt = pollStart.current.startedAt;
+
+    function scheduleNext(outcome: "pending" | "failed") {
+      const delay = nextScanPollDelay(Date.now() - startedAt, outcome);
+
+      if (delay === null) {
+        // Budget spent. Stop rather than spin forever against a scan the
+        // server may never advance; every scan screen offers a refresh.
+        setScanStatusError(
+          "分析に時間がかかっています。再読み込みで最新の状態を確認してください。",
+        );
+        return;
+      }
+
+      timeout = setTimeout(() => void poll(), delay);
+    }
 
     async function poll() {
       if (!services.ok || !session || !scanResult) {
@@ -279,7 +315,7 @@ export function PersonalContextApp() {
           setView(destination);
         }
         if (isScanPending(nextStatus.status)) {
-          timeout = setTimeout(() => void poll(), 1500);
+          scheduleNext("pending");
         }
       } catch (error) {
         if (!active) {
@@ -294,7 +330,7 @@ export function PersonalContextApp() {
         setScanStatusError(
           "読み取り状態を確認できませんでした。通信状態を確認してください。",
         );
-        timeout = setTimeout(() => void poll(), 3000);
+        scheduleNext("failed");
       }
     }
 
@@ -306,7 +342,7 @@ export function PersonalContextApp() {
         clearTimeout(timeout);
       }
     };
-  }, [scanResult, scanStatusValue, services, session, view]);
+  }, [pollEpoch, scanResult, scanStatusValue, services, session, view]);
 
   if (welcome) {
     return (
@@ -433,7 +469,7 @@ export function PersonalContextApp() {
       return;
     }
 
-    await loadApprovedContext(session);
+    await loadApprovedContext(session, contextReturn);
     services.analytics.track({ name: "personal_context_completed" });
     setBusy(false);
   }
@@ -519,6 +555,10 @@ export function PersonalContextApp() {
       setScanStatusError(null);
       const destination = scanNavigationTarget(view, nextStatus.status);
       if (destination) setView(destination);
+      // Give the polling loop a fresh budget so a wait that already gave up
+      // resumes from here. The effect re-polls once on restart; that extra
+      // request is the cost of the user having asked for an update.
+      setPollEpoch((epoch) => epoch + 1);
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
         await services.supabase.auth.signOut();
@@ -647,15 +687,19 @@ export function PersonalContextApp() {
     }
   }
 
-  async function deleteScan(scanId: string): Promise<void> {
+  // Named to keep the component's own `scanId` state visible here; the two are
+  // unrelated and the shadowed parameter read as if deleting the active scan.
+  async function deleteScan(targetScanId: string): Promise<void> {
     if (!session || !services.ok) {
       return;
     }
 
     try {
-      await services.scanApi.deleteScan(session.access_token, scanId);
+      await services.scanApi.deleteScan(session.access_token, targetScanId);
       setHistoryItems((current) =>
-        current ? current.filter((item) => item.scan_id !== scanId) : current,
+        current
+          ? current.filter((item) => item.scan_id !== targetScanId)
+          : current,
       );
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
@@ -675,30 +719,6 @@ export function PersonalContextApp() {
     await services.supabase.auth.signOut();
   }
 
-  async function loadHistory(): Promise<void> {
-    if (!session || !services.ok) {
-      return;
-    }
-
-    setHistoryItems(null);
-    setHistoryError(null);
-
-    try {
-      const resp = await services.scanApi.listScans(session.access_token);
-      setHistoryItems(resp.items);
-    } catch (error) {
-      if (error instanceof ScanApiError && error.status === 401) {
-        await services.supabase.auth.signOut();
-        return;
-      }
-
-      setHistoryError(
-        "履歴を読み込めませんでした。通信状態を確認してください。",
-      );
-      setHistoryItems([]);
-    }
-  }
-
   return (
     <SafeAreaView
       style={[
@@ -707,7 +727,7 @@ export function PersonalContextApp() {
       ]}
     >
       <StatusBar style={view === "camera" ? "light" : "dark"} />
-      {(view === "home" || view === "history") && context ? (
+      {view === "home" && context ? (
         <HomeScreen
           items={historyItems}
           error={historyError}
