@@ -52,7 +52,11 @@ async function toApiError(response: Response): Promise<ContextApiError> {
 export class PersonalContextApiClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly fetchImplementation: Fetch = fetch,
+    // Calling the native fetch as a method of this class sets `this` to the
+    // instance, which browsers reject with "Illegal invocation". React Native
+    // tolerates it, so the web target is the one that breaks. Bind the default
+    // so it keeps its own receiver while tests can still inject a fake.
+    private readonly fetchImplementation: Fetch = fetch.bind(globalThis),
   ) {}
 
   private async request(
