@@ -6,6 +6,8 @@ import {
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { classifyProviderFailure } from "./provider-error";
+
 export type CompanyContextGeneratorErrorCode =
   | "configuration"
   | "invalid_output"
@@ -91,17 +93,7 @@ function toProviderError(error: unknown): CompanyContextGeneratorError {
     return error;
   }
 
-  const candidate = error as { name?: unknown; status?: unknown };
-
-  if (candidate.status === 429) {
-    return new CompanyContextGeneratorError("rate_limited");
-  }
-
-  if (candidate.name === "AbortError" || candidate.status === 408) {
-    return new CompanyContextGeneratorError("timeout");
-  }
-
-  return new CompanyContextGeneratorError("provider_unavailable");
+  return new CompanyContextGeneratorError(classifyProviderFailure(error));
 }
 
 function createOpenAIRequest(apiKey: string): StructuredOutputRequest {

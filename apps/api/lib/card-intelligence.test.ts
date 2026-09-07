@@ -1,4 +1,4 @@
-import { CardExtractionError } from "@miraio/ai";
+import { CardExtractionError, OpenAICardExtractor } from "@miraio/ai";
 import { CardIntelligenceRepositoryError } from "@miraio/db";
 import type { CardExtraction } from "@miraio/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -135,6 +135,33 @@ describe("Card Intelligence processor", () => {
     expect(repository.failExtraction).toHaveBeenCalledWith(
       scanId,
       expect.any(String),
+      "configuration",
+      true,
+    );
+  });
+
+  it("marks a request the provider rejected terminal rather than retrying it", async () => {
+    // Crosses the packages/ai boundary on purpose: the 4xx-to-`configuration`
+    // mapping lives in the adapter, but the behaviour that matters — not
+    // retrying a request that can never succeed — is decided here. A stub
+    // extractor would assert neither half of that chain.
+    dependencies = {
+      ...dependencies,
+      createExtractor: () =>
+        new OpenAICardExtractor({
+          model: "fixture-model",
+          request: async () => {
+            throw { status: 400, message: "Invalid schema for response_format" };
+          },
+        }),
+    };
+
+    await expect(
+      processCardIntelligence({ accessToken: "token", scanId }, dependencies),
+    ).resolves.toMatchObject({ status: "failed_terminal" });
+    expect(repository.failExtraction).toHaveBeenCalledWith(
+      scanId,
+      "00000000-0000-4000-8000-000000000515",
       "configuration",
       true,
     );

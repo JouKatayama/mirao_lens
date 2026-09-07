@@ -7,6 +7,8 @@ import {
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { classifyProviderFailure } from "./provider-error";
+
 export type CardExtractionErrorCode =
   | "configuration"
   | "invalid_output"
@@ -62,17 +64,7 @@ function toProviderError(error: unknown): CardExtractionError {
     return error;
   }
 
-  const candidate = error as { name?: unknown; status?: unknown };
-
-  if (candidate.status === 429) {
-    return new CardExtractionError("rate_limited");
-  }
-
-  if (candidate.name === "AbortError" || candidate.status === 408) {
-    return new CardExtractionError("timeout");
-  }
-
-  return new CardExtractionError("provider_unavailable");
+  return new CardExtractionError(classifyProviderFailure(error));
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
