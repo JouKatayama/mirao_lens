@@ -17,6 +17,20 @@ Cases are implemented in `@miraio/test-fixtures` (`packages/test-fixtures/src/`)
 
 **Total: 35 synthetic cases** (≥ 30 required per product spec §15).
 
+## 項目割り当ての実測ケース
+
+| File                    | 対象                        | Cases |
+| ----------------------- | --------------------------- | ----- |
+| `card-text-fixtures.ts` | OCRテキスト→8項目の割り当て | 20    |
+
+上の35ケースは「合成されたプロバイダー出力」を検証するもので、実モデルの精度は測れません。`card-text-fixtures.ts`
+は実モデルを測るためのセットで、OCRが読んだ行を入力として与え、氏名・会社・部署・役職など
+8項目への割り当てを正解と照らし合わせます。向け先を変えても同じ尺度で比較できるので、OpenAI とローカルモデルを
+並べられます（`packages/ai/src/card-field-assignment.eval.test.ts`、`docs/local-ai-provider.md`）。
+
+文字認識（OCR）自体の精度はここでは測れません。合成画像には斜め・影・反射・折れがなく、
+実際の撮影条件を表さないためです。そちらは架空の実物名刺を撮影した少数セットで別途測る必要があります。
+
 ## What each case contains
 
 **Card extraction** (`FlashBriefCase`):
