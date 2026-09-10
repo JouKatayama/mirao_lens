@@ -4,11 +4,12 @@ Scoring utilities are implemented in `@miraio/test-fixtures` (`packages/test-fix
 
 ## Files
 
-| File                   | Contents                                                         |
-| ---------------------- | ---------------------------------------------------------------- |
-| `eval-rubric.ts`       | 8-dimension scoring schema, `EvalResult`, `summarizeEvalResults` |
-| `eval-assertions.ts`   | Automated structural checks (deterministic, no AI call needed)   |
-| `eval-harness.test.ts` | Vitest tests for the harness itself                              |
+| File                    | Contents                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `eval-rubric.ts`        | 8-dimension scoring schema, `EvalResult`, `summarizeEvalResults`                  |
+| `eval-assertions.ts`    | Automated structural checks (deterministic, no AI call needed)                    |
+| `eval-harness.test.ts`  | Vitest tests for the harness itself                                               |
+| `card-field-scoring.ts` | 名刺8項目の割り当てスコアと集計（`scoreCardTextCase`、`summarizeCardTextScores`） |
 
 ## Eight scoring dimensions (product spec §15)
 

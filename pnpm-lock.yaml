@@ -158,6 +158,13 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+    devDependencies:
+      '@miraio/test-fixtures':
+        specifier: workspace:*
+        version: link:../test-fixtures
+      '@types/node':
+        specifier: ^22.19.0
+        version: 22.20.1
 
   packages/db:
     dependencies:
