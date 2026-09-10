@@ -38,6 +38,7 @@ type StructuredOutputRequest = (request: {
 
 export type OpenAIMutualValueGeneratorOptions = Readonly<{
   apiKey?: string;
+  baseUrl?: string;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -139,10 +140,14 @@ function toProviderError(error: unknown): MutualValueGeneratorError {
   return new MutualValueGeneratorError(classifyProviderFailure(error));
 }
 
-function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
+function createOpenAIRequest(
+  apiKey: string,
+  baseUrl?: string,
+): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
     providerTimeoutMilliseconds.mutualValue,
+    baseUrl,
   );
 
   return async ({ input, model }) => {
@@ -187,7 +192,10 @@ export class OpenAIMutualValueGenerator implements MutualValueGenerator {
       throw new MutualValueGeneratorError("configuration");
     }
 
-    this.request = createOpenAIRequest(apiKey);
+    this.request = createOpenAIRequest(
+      apiKey,
+      options.baseUrl?.trim() || undefined,
+    );
   }
 
   async generate(input: MutualValueInput): Promise<MutualValue> {

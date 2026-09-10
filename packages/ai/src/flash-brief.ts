@@ -38,6 +38,7 @@ type StructuredOutputRequest = (request: {
 
 export type OpenAIFlashBriefGeneratorOptions = Readonly<{
   apiKey?: string;
+  baseUrl?: string;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -150,10 +151,14 @@ function toProviderError(error: unknown): FlashBriefGeneratorError {
   return new FlashBriefGeneratorError(classifyProviderFailure(error));
 }
 
-function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
+function createOpenAIRequest(
+  apiKey: string,
+  baseUrl?: string,
+): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
     providerTimeoutMilliseconds.flashBrief,
+    baseUrl,
   );
 
   return async ({ input, model }) => {
@@ -195,7 +200,10 @@ export class OpenAIFlashBriefGenerator implements FlashBriefGenerator {
       throw new FlashBriefGeneratorError("configuration");
     }
 
-    this.request = createOpenAIRequest(apiKey);
+    this.request = createOpenAIRequest(
+      apiKey,
+      options.baseUrl?.trim() || undefined,
+    );
   }
 
   async generate(input: FlashBriefInput): Promise<FlashBrief> {
