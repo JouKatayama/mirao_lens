@@ -40,6 +40,7 @@ type StructuredOutputRequest = (request: {
 
 export type OpenAIPersonalContextStructurerOptions = Readonly<{
   apiKey?: string;
+  baseUrl?: string;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -65,10 +66,14 @@ function toProviderError(error: unknown): PersonalContextStructuringError {
   return new PersonalContextStructuringError(classifyProviderFailure(error));
 }
 
-function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
+function createOpenAIRequest(
+  apiKey: string,
+  baseUrl?: string,
+): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
     providerTimeoutMilliseconds.personalContext,
+    baseUrl,
   );
 
   return async ({ input, model }) => {
@@ -120,7 +125,10 @@ export class OpenAIPersonalContextStructurer implements PersonalContextStructure
       throw new PersonalContextStructuringError("configuration");
     }
 
-    this.request = createOpenAIRequest(apiKey);
+    this.request = createOpenAIRequest(
+      apiKey,
+      options.baseUrl?.trim() || undefined,
+    );
   }
 
   async structure(

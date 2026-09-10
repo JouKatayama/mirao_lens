@@ -36,6 +36,7 @@ type StructuredOutputRequest = (request: {
 
 export type OpenAICompanyContextGeneratorOptions = Readonly<{
   apiKey?: string;
+  baseUrl?: string;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -99,10 +100,14 @@ function toProviderError(error: unknown): CompanyContextGeneratorError {
   return new CompanyContextGeneratorError(classifyProviderFailure(error));
 }
 
-function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
+function createOpenAIRequest(
+  apiKey: string,
+  baseUrl?: string,
+): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
     providerTimeoutMilliseconds.companyContext,
+    baseUrl,
   );
 
   return async ({ input, model }) => {
@@ -147,7 +152,10 @@ export class OpenAICompanyContextGenerator implements CompanyContextGenerator {
       throw new CompanyContextGeneratorError("configuration");
     }
 
-    this.request = createOpenAIRequest(apiKey);
+    this.request = createOpenAIRequest(
+      apiKey,
+      options.baseUrl?.trim() || undefined,
+    );
   }
 
   async generate(input: CompanyContextInput): Promise<CompanyContext> {

@@ -32,13 +32,26 @@ export const providerTimeoutMilliseconds = {
   personalContext: 20_000,
 } as const;
 
+/**
+ * `baseUrl` points the SDK at an OpenAI-compatible server instead of OpenAI.
+ * vLLM implements `/v1/responses`, and Ollama has since v0.13.3, so the
+ * structured-output calls in this package can run against a locally served
+ * model without rewriting them for Chat Completions. Whether a given server
+ * honors the strict JSON-schema format these stages send has to be verified
+ * against that server; a mismatch surfaces as `invalid_output`, which the
+ * stages already treat as terminal rather than retrying.
+ *
+ * Omit it and the client talks to OpenAI exactly as before.
+ */
 export function createOpenAIClient(
   apiKey: string,
   timeoutMilliseconds: number,
+  baseUrl?: string,
 ): OpenAI {
   return new OpenAI({
     apiKey,
     maxRetries: 0,
     timeout: timeoutMilliseconds,
+    ...(baseUrl ? { baseURL: baseUrl } : {}),
   });
 }

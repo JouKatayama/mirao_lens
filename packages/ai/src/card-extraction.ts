@@ -42,6 +42,7 @@ type StructuredOutputRequest = (request: {
 
 export type OpenAICardExtractorOptions = Readonly<{
   apiKey?: string;
+  baseUrl?: string;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -84,10 +85,14 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(chunks.join(""));
 }
 
-function createOpenAIRequest(apiKey: string): StructuredOutputRequest {
+function createOpenAIRequest(
+  apiKey: string,
+  baseUrl?: string,
+): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
     providerTimeoutMilliseconds.cardExtraction,
+    baseUrl,
   );
 
   return async ({ dataUrl, model }) => {
@@ -145,7 +150,10 @@ export class OpenAICardExtractor implements CardExtractor {
       throw new CardExtractionError("configuration");
     }
 
-    this.request = createOpenAIRequest(apiKey);
+    this.request = createOpenAIRequest(
+      apiKey,
+      options.baseUrl?.trim() || undefined,
+    );
   }
 
   async extract(image: CardImageInput): Promise<CardExtraction> {

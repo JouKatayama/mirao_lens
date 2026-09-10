@@ -4,16 +4,19 @@ type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 
 export type OpenAIPersonalContextConfig = Readonly<{
   apiKey: string;
+  baseUrl?: string;
   model: string;
 }>;
 
 export type OpenAICardExtractionConfig = Readonly<{
   apiKey: string;
+  baseUrl?: string;
   model: string;
 }>;
 
 export type OpenAIFlashBriefConfig = Readonly<{
   apiKey: string;
+  baseUrl?: string;
   model: string;
 }>;
 
@@ -35,6 +38,38 @@ function requireValue(
   }
 
   return value;
+}
+
+/**
+ * Optional override that points every AI stage at an OpenAI-compatible server
+ * instead of OpenAI — a locally served model, for instance. Absent, the stages
+ * talk to OpenAI. An unparseable or non-HTTP value is a configuration defect
+ * rather than a silent fallback to OpenAI: a deployment that meant to keep card
+ * images on its own hardware must not start sending them to a third party
+ * because a URL had a typo.
+ */
+function readProviderBaseUrl(
+  environment: ServerEnvironment,
+): string | undefined {
+  const raw = environment["AI_PROVIDER_BASE_URL"]?.trim();
+
+  if (!raw) {
+    return undefined;
+  }
+
+  let url: URL;
+
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ServerConfigurationError("AI_PROVIDER_BASE_URL");
+  }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new ServerConfigurationError("AI_PROVIDER_BASE_URL");
+  }
+
+  return url.toString().replace(/\/$/, "");
 }
 
 export function readServerSupabaseConfig(
@@ -74,6 +109,7 @@ export function readOpenAIPersonalContextConfig(
 ): OpenAIPersonalContextConfig {
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
+    baseUrl: readProviderBaseUrl(environment),
     model: requireValue(environment, "AI_PERSONAL_CONTEXT_MODEL"),
   };
 }
@@ -83,17 +119,20 @@ export function readOpenAICardExtractionConfig(
 ): OpenAICardExtractionConfig {
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
+    baseUrl: readProviderBaseUrl(environment),
     model: requireValue(environment, "AI_CARD_EXTRACTION_MODEL"),
   };
 }
 
 export type OpenAICompanyContextConfig = Readonly<{
   apiKey: string;
+  baseUrl?: string;
   model: string;
 }>;
 
 export type OpenAIMutualValueConfig = Readonly<{
   apiKey: string;
+  baseUrl?: string;
   model: string;
 }>;
 
@@ -102,6 +141,7 @@ export function readOpenAICompanyContextConfig(
 ): OpenAICompanyContextConfig {
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
+    baseUrl: readProviderBaseUrl(environment),
     model: requireValue(environment, "AI_COMPANY_CONTEXT_MODEL"),
   };
 }
@@ -111,6 +151,7 @@ export function readOpenAIFlashBriefConfig(
 ): OpenAIFlashBriefConfig {
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
+    baseUrl: readProviderBaseUrl(environment),
     model: requireValue(environment, "AI_FLASH_BRIEF_MODEL"),
   };
 }
@@ -120,6 +161,7 @@ export function readOpenAIMutualValueConfig(
 ): OpenAIMutualValueConfig {
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
+    baseUrl: readProviderBaseUrl(environment),
     model: requireValue(environment, "AI_MUTUAL_VALUE_MODEL"),
   };
 }
