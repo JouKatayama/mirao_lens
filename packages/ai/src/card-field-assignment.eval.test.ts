@@ -33,6 +33,10 @@ import { createOpenAIClient } from "./provider-client";
  */
 const runEval = process.env.MIRAIO_RUN_CARD_FIELD_EVAL === "1";
 
+const perCaseTimeoutMilliseconds = Number(
+  process.env.AI_CARD_FIELD_EVAL_TIMEOUT_MS ?? 60_000,
+);
+
 const instructions = `
 You are the Card Intelligence transcription stage for Miraio Lens.
 
@@ -52,73 +56,82 @@ field separated by a newline. Never add commentary outside the schema.
 `.trim();
 
 describe.runIf(runEval)("card field assignment eval", () => {
-  it("scores every case and reports per-field accuracy", async () => {
-    const apiKey = process.env.OPENAI_API_KEY;
-    const model =
-      process.env.AI_CARD_FIELD_EVAL_MODEL ??
-      process.env.AI_CARD_EXTRACTION_MODEL;
+  it(
+    "scores every case and reports per-field accuracy",
+    async () => {
+      const apiKey = process.env.OPENAI_API_KEY;
+      const model =
+        process.env.AI_CARD_FIELD_EVAL_MODEL ??
+        process.env.AI_CARD_EXTRACTION_MODEL;
 
-    if (!apiKey || !model) {
-      throw new Error(
-        "OPENAI_API_KEY and AI_CARD_FIELD_EVAL_MODEL are required for this eval.",
-      );
-    }
-
-    // One generous budget per case: this is a measurement, not a request path
-    // bounded by a route deadline.
-    const client = createOpenAIClient(
-      apiKey,
-      60_000,
-      process.env.AI_PROVIDER_BASE_URL,
-    );
-
-    const scores = [];
-    const failures: string[] = [];
-
-    for (const fixture of cardTextFixtures) {
-      const response = await client.responses.parse({
-        input: [
-          { role: "system", content: instructions },
-          { role: "user", content: fixture.ocrLines.join("\n") },
-        ],
-        model,
-        store: false,
-        text: {
-          format: zodTextFormat(
-            cardExtractionStructuredOutputSchema,
-            "card_extraction",
-          ),
-        },
-      });
-
-      const score = scoreCardTextCase(fixture, response.output_parsed ?? {});
-      scores.push(score);
-
-      for (const outcome of score.outcomes) {
-        if (outcome.matched) {
-          continue;
-        }
-
-        failures.push(
-          `  ${fixture.caseName}.${outcome.field}: expected ${JSON.stringify(
-            outcome.expected,
-          )} got ${JSON.stringify(outcome.actual)}`,
+      if (!apiKey || !model) {
+        throw new Error(
+          "OPENAI_API_KEY and AI_CARD_FIELD_EVAL_MODEL are required for this eval.",
         );
       }
-    }
 
-    const summary = summarizeCardTextScores(scores);
+      // A measurement is not a request path bounded by a route deadline, and a
+      // locally served model is far slower than the API: a 4B model on a laptop
+      // spent 22s on one case, and a reasoning model spends its budget thinking
+      // before it answers. So the per-case budget is configurable, and 60s is
+      // only the default that suits a hosted model.
+      const client = createOpenAIClient(
+        apiKey,
+        perCaseTimeoutMilliseconds,
+        process.env.AI_PROVIDER_BASE_URL,
+      );
 
-    console.info(
-      [
-        `model: ${model}`,
-        `endpoint: ${process.env.AI_PROVIDER_BASE_URL ?? "openai"}`,
-        formatCardFieldSummary(summary),
-        failures.length > 0 ? "mismatches:" : "no mismatches",
-        ...failures,
-      ].join("\n"),
-    );
+      const scores = [];
+      const failures: string[] = [];
 
-    expect(summary.cases).toBe(cardTextFixtures.length);
-  }, 900_000);
+      for (const fixture of cardTextFixtures) {
+        const response = await client.responses.parse({
+          input: [
+            { role: "system", content: instructions },
+            { role: "user", content: fixture.ocrLines.join("\n") },
+          ],
+          model,
+          store: false,
+          text: {
+            format: zodTextFormat(
+              cardExtractionStructuredOutputSchema,
+              "card_extraction",
+            ),
+          },
+        });
+
+        const score = scoreCardTextCase(fixture, response.output_parsed ?? {});
+        scores.push(score);
+
+        for (const outcome of score.outcomes) {
+          if (outcome.matched) {
+            continue;
+          }
+
+          failures.push(
+            `  ${fixture.caseName}.${outcome.field}: expected ${JSON.stringify(
+              outcome.expected,
+            )} got ${JSON.stringify(outcome.actual)}`,
+          );
+        }
+      }
+
+      const summary = summarizeCardTextScores(scores);
+
+      console.info(
+        [
+          `model: ${model}`,
+          `endpoint: ${process.env.AI_PROVIDER_BASE_URL ?? "openai"}`,
+          formatCardFieldSummary(summary),
+          failures.length > 0 ? "mismatches:" : "no mismatches",
+          ...failures,
+        ].join("\n"),
+      );
+
+      expect(summary.cases).toBe(cardTextFixtures.length);
+      // The whole run has to outlast every case's own budget, or vitest kills a
+      // slow local model mid-set and the partial scores are thrown away.
+    },
+    perCaseTimeoutMilliseconds * cardTextFixtures.length + 60_000,
+  );
 });
