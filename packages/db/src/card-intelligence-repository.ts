@@ -3,6 +3,7 @@ import {
   flashBriefSchema,
   mutualValueSchema,
   scanHistoryItemSchema,
+  scanHistoryPageSize,
   scanStatusResponseSchema,
   contentTypeForScanImagePath,
   toBusinessCardPublic,
@@ -528,14 +529,26 @@ export class CardIntelligenceRepository {
     return data ? data.is_favorite : null;
   }
 
-  async listScans(limit = 20): Promise<ScanHistoryItem[]> {
-    const { data, error } = await this.client
+  async listScans(
+    limit = scanHistoryPageSize,
+    before?: string,
+  ): Promise<ScanHistoryItem[]> {
+    let query = this.client
       .from("scans")
       .select(
         "id,status,meeting_goal,created_at,is_favorite,business_cards(name,company,title)",
       )
       .order("created_at", { ascending: false })
       .limit(limit);
+
+    // Strictly older than the last row of the previous page. Two scans created
+    // in the same millisecond would drop one, which no real capture flow can
+    // produce: a scan needs a photograph between it and the one before.
+    if (before) {
+      query = query.lt("created_at", before);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new CardIntelligenceRepositoryError("list_scans");

@@ -42,6 +42,9 @@ const statusLabels = {
 export function HomeScreen({
   items,
   error,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
   onRefresh,
   onOpenScan,
   onDeleteScan,
@@ -51,6 +54,9 @@ export function HomeScreen({
 }: {
   items: ScanHistoryItem[] | null;
   error: string | null;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
   onRefresh: () => void;
   onOpenScan: (id: string) => void;
   onDeleteScan: (id: string) => Promise<void>;
@@ -240,6 +246,22 @@ export function HomeScreen({
             <SecondaryButton label="名刺を撮影する" onPress={onCapture} />
           </Card>
         )}
+        {/* Paging is server-side, so the search box only filters what has been
+            loaded. Saying how many are on screen makes that visible instead of
+            letting an empty result read as "this person is not in my history".
+            */}
+        {onLoadMore && hasMore && items?.length ? (
+          <View style={s.more}>
+            <Text style={s.meta}>
+              {`${items.length}件を表示中。検索は読み込み済みの範囲が対象です。`}
+            </Text>
+            <SecondaryButton
+              disabled={loadingMore}
+              label={loadingMore ? "読み込み中…" : "さらに読み込む"}
+              onPress={onLoadMore}
+            />
+          </View>
+        ) : null}
         <ErrorNotice message={localError || error} />
         {error ? (
           <SecondaryButton label="再読み込み" onPress={onRefresh} />
@@ -301,6 +323,7 @@ const s = StyleSheet.create({
   details: { flex: 1, minWidth: 0, gap: 4 },
   name: { color: colors.text, fontSize: 16, fontWeight: "700" },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  more: { gap: 8, paddingTop: 4 },
   meta: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   badge: {
     alignSelf: "flex-start",

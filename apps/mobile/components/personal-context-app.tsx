@@ -156,6 +156,9 @@ export function PersonalContextApp() {
     null,
   );
   const [historyError, setHistoryError] = useState<string | null>(null);
+  // Null once the server says the page it returned was the last one.
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
   const scanStatusValue = scanStatus?.status;
   // Bumped when the user asks for a refresh, so a loop that stopped at its
   // budget can start over on demand.
@@ -253,10 +256,12 @@ export function PersonalContextApp() {
 
     setHistoryItems(null);
     setHistoryError(null);
+    setHistoryCursor(null);
 
     try {
       const response = await services.scanApi.listScans(session.access_token);
       setHistoryItems(response.items);
+      setHistoryCursor(response.next_cursor);
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
         await services.supabase.auth.signOut();
@@ -334,6 +339,38 @@ export function PersonalContextApp() {
       services.analytics.reset();
     }
   }, [session, services]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!services.ok || !session || !historyCursor || historyLoadingMore) {
+      return;
+    }
+
+    setHistoryLoadingMore(true);
+    setHistoryError(null);
+
+    try {
+      const response = await services.scanApi.listScans(
+        session.access_token,
+        historyCursor,
+      );
+      // Appending rather than replacing: the pages the user already scrolled
+      // past stay put, and a scan captured meanwhile cannot duplicate a row
+      // because the cursor asks only for scans older than the last one shown.
+      setHistoryItems((items) => [...(items ?? []), ...response.items]);
+      setHistoryCursor(response.next_cursor);
+    } catch (error) {
+      if (error instanceof ScanApiError && error.status === 401) {
+        await services.supabase.auth.signOut();
+        return;
+      }
+
+      setHistoryError(
+        "続きを読み込めませんでした。通信状態を確認して再試行してください。",
+      );
+    } finally {
+      setHistoryLoadingMore(false);
+    }
+  }, [historyCursor, historyLoadingMore, services, session]);
 
   useEffect(() => {
     if (view !== "home") return;
@@ -1026,6 +1063,9 @@ export function PersonalContextApp() {
         <HomeScreen
           items={historyItems}
           error={historyError}
+          hasMore={historyCursor !== null}
+          loadingMore={historyLoadingMore}
+          onLoadMore={() => void loadMoreHistory()}
           onRefresh={() => void loadHistory()}
           onProfile={() => {
             setContextReturn("home");

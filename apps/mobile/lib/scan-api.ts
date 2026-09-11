@@ -265,13 +265,19 @@ export class ScanApiClient {
     return evidenceListResponseSchema.parse(await response.json());
   }
 
-  async listScans(accessToken: string): Promise<ScanListResponse> {
-    const response = await this.fetchImplementation(
-      `${this.baseUrl}/v1/scans`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      },
-    );
+  async listScans(
+    accessToken: string,
+    before?: string,
+  ): Promise<ScanListResponse> {
+    const url = new URL(`${this.baseUrl}/v1/scans`);
+
+    if (before) {
+      url.searchParams.set("before", before);
+    }
+
+    const response = await this.fetchImplementation(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
     if (!response.ok) {
       throw await toApiError(response);

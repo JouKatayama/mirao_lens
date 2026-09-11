@@ -364,6 +364,8 @@ function DemoScreen({ initial }: { initial: string }) {
         onDeleteScan={async (id) =>
           setHistory((items) => items.filter((item) => item.scan_id !== id))
         }
+        hasMore
+        onLoadMore={() => setNotice("次のページを読み込みます")}
         onCapture={() => setScreen("camera")}
         onProfile={() => setScreen("preparation")}
       />
