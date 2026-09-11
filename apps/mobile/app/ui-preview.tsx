@@ -31,11 +31,14 @@ const person = {
   title: "営業部 部長",
 };
 const brief: FlashBriefPublic = {
+  connection_keywords: ["AI活用", "営業DX", "学生エンジニア"],
   identity_status: "unresolved",
   who: "株式会社サンプルの営業部長。法人向けSaaSの提案営業を担当。展示会やイベントでの情報交換を大切にしています。",
   why_you: "AI・Web開発の知識と、営業現場の経験を交換できる可能性があります。",
+  why_you_claim_type: "hypothesis",
   potential:
     "お互いの強みを持ち寄り、新しいサービスのアイデアを一緒に考えられそうです。",
+  potential_score: 4,
   say_this: ["今、営業の現場でどんな課題がありますか？"],
 };
 const value: MutualValuePublic = {

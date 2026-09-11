@@ -2,6 +2,7 @@ import type { FlashBriefPublic, MutualValuePublic } from "@miraio/domain";
 import { describe, expect, it } from "vitest";
 
 import {
+  checkPotentialScoreRange,
   runFlashBriefAssertions,
   runMutualValueAssertions,
 } from "./eval-assertions";
@@ -82,11 +83,14 @@ describe("eval rubric", () => {
 // ─── Flash Brief assertion tests ─────────────────────────────────────────────
 
 const goodFlashBrief: FlashBriefPublic = {
+  connection_keywords: ["製造業DX", "プロダクト開発"],
   identity_status: "medium_confidence",
   potential: "製造業DX分野での協業可能性がある",
+  potential_score: 4,
   say_this: ["現在のDX推進の課題は何ですか？"],
   who: "山田さんは架空産業株式会社のPMで、プロダクト開発を担当している",
   why_you: "DXコンサルとして直接貢献できる接点がある",
+  why_you_claim_type: "hypothesis",
 };
 
 describe("runFlashBriefAssertions", () => {
@@ -331,5 +335,37 @@ describe("golden dataset coverage", () => {
         0,
       );
     }
+  });
+});
+
+describe("checkPotentialScoreRange", () => {
+  it("passes an integer inside the heuristic range", () => {
+    expect(checkPotentialScoreRange(1).passed).toBe(true);
+    expect(checkPotentialScoreRange(5).passed).toBe(true);
+  });
+
+  it("fails a score outside the range, a fraction, or a missing score", () => {
+    for (const score of [0, 6, 3.5, null]) {
+      expect(checkPotentialScoreRange(score).passed).toBe(false);
+    }
+  });
+
+  it("catches a forbidden string hidden in a connection keyword", () => {
+    const cas = flashBriefGoldenCases.find(
+      (c) => c.caseName === "japanese-corporate-networking",
+    );
+    if (!cas) throw new Error("fixture case missing");
+
+    const results = runFlashBriefAssertions(
+      {
+        ...goodFlashBrief,
+        connection_keywords: [cas.expectations.forbidden_substrings[0] ?? "x"],
+      },
+      cas,
+    );
+
+    expect(
+      results.find((r) => r.name === "no_forbidden_substrings")?.passed,
+    ).toBe(false);
   });
 });

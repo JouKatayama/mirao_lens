@@ -163,17 +163,41 @@ export function FlashBriefScreen({
       <View style={[s.briefPanel, s.whyPanel]}>
         <View style={s.briefLabelRow}>
           <Text style={s.briefLabel}>WHY YOU</Text>
-          <View style={s.hypothesisBadge}>
-            <Text style={s.hypothesisBadgeText}>仮説</Text>
+          <View
+            style={
+              brief.why_you_claim_type === "fact"
+                ? s.factBadge
+                : s.hypothesisBadge
+            }
+          >
+            <Text
+              style={
+                brief.why_you_claim_type === "fact"
+                  ? s.factBadgeText
+                  : s.hypothesisBadgeText
+              }
+            >
+              {brief.why_you_claim_type === "fact" ? "事実" : "仮説"}
+            </Text>
           </View>
         </View>
         <Text style={s.briefBody}>{brief.why_you}</Text>
+        {brief.connection_keywords.length > 0 ? (
+          <View style={s.keywords}>
+            <Text style={s.meta}>接点キーワード</Text>
+            <Chips items={brief.connection_keywords} />
+          </View>
+        ) : null}
         {onMarkHypothesisUnhelpful ? (
           hypothesisFlagged ? (
-            <Text style={s.caption}>役に立たない仮説として記録しました。</Text>
+            <Text style={s.caption}>役に立たない内容として記録しました。</Text>
           ) : (
             <TextButton
-              label="この仮説は役に立たない"
+              label={
+                brief.why_you_claim_type === "fact"
+                  ? "この内容は役に立たない"
+                  : "この仮説は役に立たない"
+              }
               onPress={() => {
                 setHypothesisFlagged(true);
                 onMarkHypothesisUnhelpful();
@@ -203,6 +227,32 @@ export function FlashBriefScreen({
             <Text style={s.hypothesisBadgeText}>可能性・仮説</Text>
           </View>
         </View>
+        {brief.potential_score !== null ? (
+          <View
+            accessibilityRole="image"
+            accessibilityLabel={`関係性の可能性 5段階中${brief.potential_score}`}
+            style={s.scoreRow}
+          >
+            {[1, 2, 3, 4, 5].map((step) => (
+              <Icon
+                key={step}
+                name="star"
+                color={
+                  brief.potential_score !== null &&
+                  step <= brief.potential_score
+                    ? colors.accentStrong
+                    : colors.border
+                }
+                filled={
+                  brief.potential_score !== null &&
+                  step <= brief.potential_score
+                }
+                size={20}
+              />
+            ))}
+            <Text style={s.scoreText}>{`${brief.potential_score} / 5`}</Text>
+          </View>
+        ) : null}
         <Text style={s.briefBody}>{brief.potential}</Text>
         {deepEnriching ? (
           <View style={s.enrichingRow}>
@@ -833,6 +883,21 @@ const s = StyleSheet.create({
     paddingVertical: 5,
   },
   neutralBadgeText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
+  factBadge: {
+    backgroundColor: colors.successSoft,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  factBadgeText: { color: colors.success, fontSize: 11, fontWeight: "800" },
+  keywords: { gap: 6 },
+  scoreRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  scoreText: {
+    color: colors.accentStrong,
+    fontSize: 13,
+    fontWeight: "800",
+    marginLeft: 6,
+  },
   hypothesisBadge: {
     backgroundColor: colors.warningSoft,
     borderRadius: 999,

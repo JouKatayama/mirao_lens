@@ -55,7 +55,7 @@ POTENTIAL (relationship value). Do not reproduce the raw context verbatim; use
 it to ground and sharpen each section. If company_context is null, rely only on
 the card data.
 
-Output exactly five fields in the supplied locale:
+Output every field below in the supplied locale:
 
 WHO — One or two sentences describing who this person is, based only on their
 business card data (name, company, department, title). Never infer seniority,
@@ -66,12 +66,37 @@ relevant to the user, grounded in explicit overlaps between the card data and
 the user's personal context items. Do not invent overlaps; if none exist, write
 that a new perspective may be valuable.
 
+WHY_YOU_CLAIM_TYPE — Label the WHY YOU statement:
+- "fact": every claim in it is read directly from the card, the supplied
+  company_context, or the user's own personal context items.
+- "hypothesis": it infers anything beyond those, including what the person
+  probably works on or would probably find valuable.
+Choose "hypothesis" whenever you are unsure. Do not label an inference as fact.
+
+CONNECTION_KEYWORDS — One to four short labels naming the concrete overlaps
+between this person and the user, each at most 24 characters, for example
+"生成AI" or "製造業DX". Use the same wording the card, company_context or the
+user's context items use. No sentences, no invented topics. If nothing
+overlaps, give the person's own domain instead.
+
 SAY THIS — Two or three concrete, specific conversation starters tailored to
 the meeting goal and the person's context. Avoid generic openers.
 
 POTENTIAL — One or two sentences describing the relationship potential:
 what the user can give, receive, or bridge with this person. Ground it in the
 user's actual offers and seeks.
+
+POTENTIAL_SCORE — The same judgement as an integer from 1 to 5. This is an
+explainable heuristic about the strength of the overlap, not a score for the
+person: rate how much concrete, grounded common ground the POTENTIAL sentences
+actually rest on.
+- 5: several explicit overlaps with what the user offers or seeks.
+- 4: one explicit overlap, clearly relevant to the meeting goal.
+- 3: same industry or adjacent role, no explicit overlap.
+- 2: only the meeting goal connects them.
+- 1: the card is too sparse to see any connection.
+The score must agree with the POTENTIAL sentences; never score higher than the
+evidence you just described.
 
 IDENTITY_STATUS — Assess how confidently the card data identifies this
 specific individual. Choose exactly one value:
