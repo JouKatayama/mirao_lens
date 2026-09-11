@@ -1,17 +1,22 @@
 import {
+  encounterHistoryResponseSchema,
   evidenceListResponseSchema,
   interactionNoteResponseSchema,
+  nextActionListResponseSchema,
   nextActionResponseSchema,
   scanCreateResponseSchema,
   scanListResponseSchema,
   scanResumeResponseSchema,
   scanStatusResponseSchema,
   type CardCorrection,
+  type EncounterHistoryResponse,
   type EvidenceListResponse,
   type InteractionNoteResponse,
   type MeetingGoal,
+  type NextActionListResponse,
   type NextActionRequest,
   type NextActionResponse,
+  type NextActionStatusUpdateRequest,
   type ScanCreateResponse,
   type ScanImageContentType,
   type ScanListResponse,
@@ -160,6 +165,60 @@ export class ScanApiClient {
     }
 
     return scanStatusResponseSchema.parse(await response.json());
+  }
+
+  async listNextActions(
+    accessToken: string,
+    scanId: string,
+  ): Promise<NextActionListResponse> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/next-action`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+
+    return nextActionListResponseSchema.parse(await response.json());
+  }
+
+  async updateNextActionStatus(
+    accessToken: string,
+    scanId: string,
+    update: NextActionStatusUpdateRequest,
+  ): Promise<void> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/next-action`,
+      {
+        body: JSON.stringify(update),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+  }
+
+  async getEncounters(
+    accessToken: string,
+    scanId: string,
+  ): Promise<EncounterHistoryResponse> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/encounters`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+
+    return encounterHistoryResponseSchema.parse(await response.json());
   }
 
   async getEvidence(

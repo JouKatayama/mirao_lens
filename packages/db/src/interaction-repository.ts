@@ -1,3 +1,8 @@
+import {
+  nextActionResponseSchema,
+  type NextActionOutcomeStatus,
+  type NextActionResponse,
+} from "@miraio/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "./database.types";
@@ -81,6 +86,41 @@ export class InteractionRepository {
 
     if (error) {
       throw new InteractionRepositoryError("create_next_action");
+    }
+
+    const row = data[0];
+
+    return row ? { id: row.action_id } : null;
+  }
+
+  async listNextActions(scanId: string): Promise<NextActionResponse[]> {
+    const { data, error } = await this.client
+      .from("next_actions")
+      .select("id,scan_id,action_text,timing_text,source,status")
+      .eq("scan_id", scanId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new InteractionRepositoryError("list_next_actions");
+    }
+
+    return (data ?? []).map((row) => nextActionResponseSchema.parse(row));
+  }
+
+  // Settling an action is an update, so it cannot reuse create_next_action.
+  // A null result means the action does not exist for this user; the caller
+  // turns that into a 404 rather than reporting a write that never happened.
+  async updateNextActionStatus(
+    actionId: string,
+    status: NextActionOutcomeStatus,
+  ): Promise<{ id: string } | null> {
+    const { data, error } = await this.client.rpc("update_next_action_status", {
+      p_action_id: actionId,
+      p_status: status,
+    });
+
+    if (error) {
+      throw new InteractionRepositoryError("update_next_action_status");
     }
 
     const row = data[0];

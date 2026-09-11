@@ -1,4 +1,6 @@
 import {
+  createGetNextActionsHandler,
+  createPatchNextActionHandler,
   createPostNextActionHandler,
   INTERACTION_OPTIONS,
   productionInteractionHandlerDependencies,
@@ -6,6 +8,12 @@ import {
 
 export const runtime = "nodejs";
 
+export const GET = createGetNextActionsHandler(
+  productionInteractionHandlerDependencies,
+);
+export const PATCH = createPatchNextActionHandler(
+  productionInteractionHandlerDependencies,
+);
 export const POST = createPostNextActionHandler(
   productionInteractionHandlerDependencies,
 );

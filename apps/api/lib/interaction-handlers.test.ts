@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createGetNextActionsHandler,
+  createPatchNextActionHandler,
   createPostNextActionHandler,
   createPostNoteHandler,
   type InteractionHandlerDependencies,
 } from "./interaction-handlers";
 
 const scanId = "00000000-0000-4013-8000-000000000801";
+const actionId = "00000000-0000-4013-8000-000000000901";
 
 function makeRequest(
   url: string,
@@ -355,6 +358,167 @@ describe("createPostNextActionHandler", () => {
       }),
       makeContext(),
     );
+    expect(res.status).toBe(500);
+  });
+});
+
+describe("createGetNextActionsHandler", () => {
+  const repository = {
+    createNextAction: vi.fn(),
+    listNextActions: vi.fn(),
+    updateNextActionStatus: vi.fn(),
+    upsertNote: vi.fn(),
+  };
+  let dependencies: InteractionHandlerDependencies;
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dependencies = {
+      authenticate: vi.fn().mockResolvedValue({
+        repository,
+        userId: "00000000-0000-4013-8000-000000000001",
+      }),
+    };
+  });
+
+  it("returns 401 without an Authorization header", async () => {
+    const res = await createGetNextActionsHandler(dependencies)(
+      makeRequest(`http://api/v1/scans/${scanId}/next-action`, {}, false),
+      makeContext(),
+    );
+    expect(res.status).toBe(401);
+    expect(repository.listNextActions).not.toHaveBeenCalled();
+  });
+
+  it("returns the actions recorded for the scan", async () => {
+    repository.listNextActions.mockResolvedValue([
+      {
+        action_text: "事例資料を共有する",
+        id: actionId,
+        scan_id: scanId,
+        source: "ai",
+        status: "accepted",
+        timing_text: "3日以内",
+      },
+    ]);
+
+    const res = await createGetNextActionsHandler(dependencies)(
+      makeRequest(`http://api/v1/scans/${scanId}/next-action`),
+      makeContext(),
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.scan_id).toBe(scanId);
+    expect(body.items).toHaveLength(1);
+  });
+
+  it("returns 500 when the read fails", async () => {
+    repository.listNextActions.mockRejectedValue(new Error("db error"));
+    const res = await createGetNextActionsHandler(dependencies)(
+      makeRequest(`http://api/v1/scans/${scanId}/next-action`),
+      makeContext(),
+    );
+    expect(res.status).toBe(500);
+  });
+});
+
+describe("createPatchNextActionHandler", () => {
+  const repository = {
+    createNextAction: vi.fn(),
+    listNextActions: vi.fn(),
+    updateNextActionStatus: vi.fn(),
+    upsertNote: vi.fn(),
+  };
+  let dependencies: InteractionHandlerDependencies;
+
+  function patch(body: unknown, authenticated = true) {
+    return createPatchNextActionHandler(dependencies)(
+      makeRequest(
+        `http://api/v1/scans/${scanId}/next-action`,
+        { body: JSON.stringify(body), method: "PATCH" },
+        authenticated,
+      ),
+      makeContext(),
+    );
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dependencies = {
+      authenticate: vi.fn().mockResolvedValue({
+        repository,
+        userId: "00000000-0000-4013-8000-000000000001",
+      }),
+    };
+  });
+
+  it("records a completed outcome", async () => {
+    repository.updateNextActionStatus.mockResolvedValue({ id: actionId });
+
+    const res = await patch({ action_id: actionId, status: "completed" });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      id: actionId,
+      scan_id: scanId,
+      status: "completed",
+    });
+    expect(repository.updateNextActionStatus).toHaveBeenCalledWith(
+      actionId,
+      "completed",
+    );
+  });
+
+  it("rejects a status the outcome contract does not allow", async () => {
+    const res = await patch({ action_id: actionId, status: "suggested" });
+
+    expect(res.status).toBe(400);
+    expect(repository.updateNextActionStatus).not.toHaveBeenCalled();
+  });
+
+  it("rejects an action id that is not a UUID", async () => {
+    const res = await patch({ action_id: "nope", status: "completed" });
+
+    expect(res.status).toBe(400);
+    expect(repository.updateNextActionStatus).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the action belongs to someone else or is unknown", async () => {
+    repository.updateNextActionStatus.mockResolvedValue(null);
+
+    const res = await patch({ action_id: actionId, status: "completed" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 for a malformed body", async () => {
+    const res = await createPatchNextActionHandler(dependencies)(
+      makeRequest(`http://api/v1/scans/${scanId}/next-action`, {
+        body: "{",
+        method: "PATCH",
+      }),
+      makeContext(),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 401 without an Authorization header", async () => {
+    const res = await patch(
+      { action_id: actionId, status: "completed" },
+      false,
+    );
+
+    expect(res.status).toBe(401);
+    expect(repository.updateNextActionStatus).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when the update fails", async () => {
+    repository.updateNextActionStatus.mockRejectedValue(new Error("db error"));
+
+    const res = await patch({ action_id: actionId, status: "completed" });
+
     expect(res.status).toBe(500);
   });
 });

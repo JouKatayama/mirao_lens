@@ -4,8 +4,11 @@ import {
 } from "@miraio/db";
 import {
   nextActionRequestSchema,
+  nextActionStatusUpdateRequestSchema,
   noteRequestSchema,
   scanRecordSchema,
+  type NextActionOutcomeStatus,
+  type NextActionResponse,
 } from "@miraio/domain";
 
 import {
@@ -15,7 +18,7 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, PATCH, POST, OPTIONS",
   "Access-Control-Allow-Origin": "*",
   "Cache-Control": "no-store",
 } as const;
@@ -27,6 +30,11 @@ type InteractionRepositoryPort = Readonly<{
     timingText: string | null,
     source: "ai" | "user",
     status: "accepted" | "dismissed",
+  ): Promise<{ id: string } | null>;
+  listNextActions(scanId: string): Promise<NextActionResponse[]>;
+  updateNextActionStatus(
+    actionId: string,
+    status: NextActionOutcomeStatus,
   ): Promise<{ id: string } | null>;
   upsertNote(scanId: string, noteText: string): Promise<{ id: string } | null>;
 }>;
@@ -267,6 +275,99 @@ export function createPostNextActionHandler(
         },
         201,
       );
+    } catch (error) {
+      return persistenceError(error);
+    }
+  };
+}
+
+export function createGetNextActionsHandler(
+  dependencies: InteractionHandlerDependencies,
+): (request: Request, context: ScanRouteContext) => Promise<Response> {
+  return async (request, context) => {
+    const session = await authenticateRequest(request, dependencies);
+
+    if (session instanceof Response) {
+      return session;
+    }
+
+    const scanId = await readOwnedScanId(context);
+
+    if (!scanId) {
+      return errorResponse(404, "not_found", "Scan not found.");
+    }
+
+    try {
+      const items = await session.repository.listNextActions(scanId);
+
+      return jsonResponse({ items, scan_id: scanId });
+    } catch (error) {
+      return persistenceError(error);
+    }
+  };
+}
+
+export function createPatchNextActionHandler(
+  dependencies: InteractionHandlerDependencies,
+): (request: Request, context: ScanRouteContext) => Promise<Response> {
+  return async (request, context) => {
+    const session = await authenticateRequest(request, dependencies);
+
+    if (session instanceof Response) {
+      return session;
+    }
+
+    const scanId = await readOwnedScanId(context);
+
+    if (!scanId) {
+      return errorResponse(404, "not_found", "Scan not found.");
+    }
+
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return errorResponse(
+        400,
+        "invalid_json",
+        "A valid JSON body is required.",
+      );
+    }
+
+    const statusRequest = nextActionStatusUpdateRequestSchema.safeParse(body);
+
+    if (!statusRequest.success) {
+      return errorResponse(
+        400,
+        "invalid_next_action_status",
+        "Check the request fields.",
+        {
+          details: statusRequest.error.issues.map((issue) => ({
+            message: issue.message,
+            path: issue.path.join("."),
+          })),
+        },
+      );
+    }
+
+    try {
+      const row = await session.repository.updateNextActionStatus(
+        statusRequest.data.action_id,
+        statusRequest.data.status,
+      );
+
+      // The RPC is owner-scoped, so an empty result is either an unknown
+      // action or another user's. Both are "not found" to this caller.
+      if (!row) {
+        return errorResponse(404, "not_found", "Next action not found.");
+      }
+
+      return jsonResponse({
+        id: row.id,
+        scan_id: scanId,
+        status: statusRequest.data.status,
+      });
     } catch (error) {
       return persistenceError(error);
     }

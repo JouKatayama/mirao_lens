@@ -1,6 +1,8 @@
 import type {
   CardCorrection,
+  EncounterHistoryItem,
   EvidenceItem,
+  NextActionResponse,
   MeetingGoal,
   PersonalContextItem,
   PersonalContextItemUpdate,
@@ -56,6 +58,7 @@ import {
   type StallWatch,
 } from "../lib/scan-polling";
 import { LoadingScreen, PrimaryButton } from "./ui";
+import { EncounterHistoryScreen } from "./encounter-history-screen";
 import { HomeScreen } from "./home-screen";
 import { WelcomeScreen } from "./welcome-screen";
 import { AnalysisPreparationScreen } from "./analysis-preparation-screen";
@@ -66,6 +69,7 @@ type ViewName =
   | "card-details"
   | "camera"
   | "context"
+  | "encounters"
   | "evidence"
   | "flash-brief"
   | "home"
@@ -130,6 +134,11 @@ export function PersonalContextApp() {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<EvidenceItem[] | null>(null);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [encounters, setEncounters] = useState<EncounterHistoryItem[]>([]);
+  const [encountersError, setEncountersError] = useState<string | null>(null);
+  const [recordedActions, setRecordedActions] = useState<NextActionResponse[]>(
+    [],
+  );
   const [historyItems, setHistoryItems] = useState<ScanHistoryItem[] | null>(
     null,
   );
@@ -427,6 +436,44 @@ export function PersonalContextApp() {
     session,
     view,
   ]);
+
+  // The "Nth meeting" badge has to be known before the user asks for it, so
+  // the history is read as soon as the card resolves rather than on demand.
+  const resolvedCardScanId = scanStatus?.card ? scanStatus.scan_id : null;
+
+  useEffect(() => {
+    if (!services.ok || !session || !resolvedCardScanId) {
+      setEncounters([]);
+      setEncountersError(null);
+      return;
+    }
+
+    let active = true;
+
+    void (async () => {
+      try {
+        const response = await services.scanApi.getEncounters(
+          session.access_token,
+          resolvedCardScanId,
+        );
+        if (active) {
+          setEncounters(response.items);
+          setEncountersError(null);
+        }
+      } catch {
+        // Relationship history is supporting context. A failure must leave the
+        // brief itself usable, so it only suppresses the badge.
+        if (active) {
+          setEncounters([]);
+          setEncountersError("これまでの接点を読み込めませんでした。");
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [resolvedCardScanId, services, session]);
 
   if (welcome) {
     return (
@@ -760,6 +807,45 @@ export function PersonalContextApp() {
     }
   }
 
+  async function loadRecordedActions(): Promise<void> {
+    if (!session || !services.ok || !scanResult) {
+      return;
+    }
+
+    try {
+      const response = await services.scanApi.listNextActions(
+        session.access_token,
+        scanResult.scan_id,
+      );
+      setRecordedActions(response.items);
+    } catch {
+      // The note screen still works without the earlier actions; showing an
+      // empty list is better than blocking the note the user came to write.
+      setRecordedActions([]);
+    }
+  }
+
+  async function completeNextAction(actionId: string): Promise<void> {
+    if (!session || !services.ok || !scanResult) {
+      throw new Error("An authenticated scan is required.");
+    }
+
+    try {
+      await services.scanApi.updateNextActionStatus(
+        session.access_token,
+        scanResult.scan_id,
+        { action_id: actionId, status: "completed" },
+      );
+      await loadRecordedActions();
+    } catch (error) {
+      if (error instanceof ScanApiError && error.status === 401) {
+        await services.supabase.auth.signOut();
+      }
+
+      throw error;
+    }
+  }
+
   async function loadEvidence(): Promise<void> {
     if (!session || !services.ok || !scanResult) {
       return;
@@ -992,14 +1078,37 @@ export function PersonalContextApp() {
           onViewCard={() => setView("card-details")}
           onViewInteraction={
             scanStatus.status === "deep_ready"
-              ? () => setView("interaction")
+              ? () => {
+                  setView("interaction");
+                  void loadRecordedActions();
+                }
               : undefined
           }
+          onViewEncounters={() => setView("encounters")}
           onViewEvidence={() => {
             setView("evidence");
             void loadEvidence();
           }}
           onViewMutualValue={() => setView("preparation")}
+          previousEncounters={encounters.length}
+        />
+      ) : null}
+      {view === "encounters" && scanStatus?.card ? (
+        <EncounterHistoryScreen
+          card={{
+            company: scanStatus.card.company,
+            name: scanStatus.card.name,
+          }}
+          error={encountersError}
+          items={encounters}
+          onBack={() => setView("flash-brief")}
+          onOpenEncounter={(id) => {
+            setScanResult({ scan_id: id, status: "extracting" });
+            setScanStatus(null);
+            observedMilestones.current = null;
+            setScanStatusError(null);
+            setView("scan-accepted");
+          }}
         />
       ) : null}
       {view === "mutual-value" &&
@@ -1040,7 +1149,10 @@ export function PersonalContextApp() {
             })
           }
           onViewBrief={() => setView("flash-brief")}
-          onViewInteraction={() => setView("interaction")}
+          onViewInteraction={() => {
+            setView("interaction");
+            void loadRecordedActions();
+          }}
         />
       ) : null}
       {view === "interaction" &&
@@ -1065,6 +1177,7 @@ export function PersonalContextApp() {
                 : "user";
             await saveNextAction(actionText, timingText, source, "accepted");
           }}
+          onCompleteNextAction={completeNextAction}
           onDismissNextAction={async (actionText) => {
             await saveNextAction(actionText, null, "ai", "dismissed");
           }}
@@ -1079,6 +1192,7 @@ export function PersonalContextApp() {
           }}
           onSaveNote={saveNote}
           onViewMutualValue={() => setView("mutual-value")}
+          recordedActions={recordedActions}
         />
       ) : null}
       {view === "evidence" && scanStatus?.card ? (

@@ -15,6 +15,7 @@ export * from "./analytics/analytics";
 export * from "./company-context/company-context";
 export * from "./context/personal-context";
 export * from "./card-intelligence/card-extraction";
+export * from "./encounter/encounter-history";
 export * from "./evidence/evidence";
 export * from "./flash-brief/flash-brief";
 export * from "./identity/identity-assessment";

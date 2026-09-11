@@ -15,6 +15,23 @@ export const nextActionRequestSchema = z
   })
   .strict();
 
+// An action that was accepted is a promise; recording what became of it is
+// what turns a saved next action into outcome data.
+export const nextActionOutcomeStatuses = [
+  "accepted",
+  "dismissed",
+  "completed",
+] as const;
+
+export const nextActionOutcomeStatusSchema = z.enum(nextActionOutcomeStatuses);
+
+export const nextActionStatusUpdateRequestSchema = z
+  .object({
+    action_id: z.string().uuid(),
+    status: nextActionOutcomeStatusSchema,
+  })
+  .strict();
+
 export const interactionNoteResponseSchema = z
   .object({
     id: z.string().uuid(),
@@ -34,6 +51,22 @@ export const nextActionResponseSchema = z
   })
   .strict();
 
+export const nextActionListResponseSchema = z
+  .object({
+    items: z.array(nextActionResponseSchema),
+    scan_id: z.string().uuid(),
+  })
+  .strict();
+
+export type NextActionOutcomeStatus = z.infer<
+  typeof nextActionOutcomeStatusSchema
+>;
+export type NextActionStatusUpdateRequest = z.infer<
+  typeof nextActionStatusUpdateRequestSchema
+>;
+export type NextActionListResponse = z.infer<
+  typeof nextActionListResponseSchema
+>;
 export type NoteRequest = z.infer<typeof noteRequestSchema>;
 export type NextActionRequest = z.infer<typeof nextActionRequestSchema>;
 export type InteractionNoteResponse = z.infer<
