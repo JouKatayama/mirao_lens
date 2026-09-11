@@ -1,6 +1,29 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+
 import { createAdminSupabaseClient, CleanupRepository } from "@miraio/db";
 
 import { readCleanupConfig } from "./server-config";
+
+/**
+ * Compares a presented secret with the configured one in constant time. This
+ * endpoint holds a service-role client, so a plain `===`, which returns at
+ * the first differing character, would leak how much of a guess was right.
+ * Hashing first gives both sides the same length, which timingSafeEqual needs.
+ */
+export function cleanupSecretMatches(
+  provided: string,
+  expected: string | undefined,
+): boolean {
+  const configured = expected?.trim();
+
+  if (!configured || !provided) {
+    return false;
+  }
+
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+
+  return timingSafeEqual(digest(provided), digest(configured));
+}
 
 export type CleanupHandlerDependencies = Readonly<{
   verifySecret(provided: string): boolean;
@@ -33,8 +56,7 @@ export function createPostCleanupHandler(
 export const productionCleanupHandlerDependencies: CleanupHandlerDependencies =
   {
     verifySecret(provided) {
-      const expected = process.env.CLEANUP_SECRET?.trim();
-      return !!expected && provided === expected;
+      return cleanupSecretMatches(provided, process.env.CLEANUP_SECRET);
     },
     async sweepExpiredImages() {
       const config = readCleanupConfig(process.env);

@@ -1056,7 +1056,14 @@ export function PersonalContextApp() {
           error={scanError}
           mutualValue={scanStatus.mutual_value}
           onAcceptNextAction={async (actionText, timingText) => {
-            await saveNextAction(actionText, timingText, "ai", "accepted");
+            // An action the user rewrote is theirs; recording it as the AI's
+            // suggestion would inflate the measured suggestion acceptance.
+            const source =
+              actionText.trim() ===
+              scanStatus.mutual_value.next_action.action.trim()
+                ? "ai"
+                : "user";
+            await saveNextAction(actionText, timingText, source, "accepted");
           }}
           onDismissNextAction={async (actionText) => {
             await saveNextAction(actionText, null, "ai", "dismissed");
