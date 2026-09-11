@@ -4,8 +4,11 @@ import {
   type ScanResumeState,
 } from "@miraio/db";
 import {
+  scanReanalysisRequestSchema,
+  scanReanalysisResponseSchema,
   scanRecordSchema,
   scanResumeResponseSchema,
+  type MeetingGoal,
   type ScanDatabaseStatus,
   type ScanResumeResponse,
 } from "@miraio/domain";
@@ -18,7 +21,7 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "Authorization",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "PATCH, POST, OPTIONS",
   "Access-Control-Allow-Origin": "*",
   "Cache-Control": "no-store",
 } as const;
@@ -137,6 +140,10 @@ type ScanResumeRepositoryPort = Readonly<{
     stage: ReleasableStage,
     runId: string,
   ): Promise<boolean>;
+  restartAnalysis(
+    scanId: string,
+    meetingGoal: MeetingGoal,
+  ): Promise<"card_ready" | null>;
 }>;
 
 type ScanResumeSession = Readonly<{
@@ -292,6 +299,101 @@ export function createPostScanResumeHandler(
       }
     } catch {
       return internalError("scan_resume_failed");
+    }
+  };
+}
+
+/**
+ * Re-runs the analysis under a different meeting goal.
+ *
+ * It lives beside resume because it ends the same way: the scan is put back at
+ * card_ready and the pipeline is scheduled for the stages that are missing.
+ * The difference is that this one makes them missing on purpose.
+ */
+export function createPatchScanReanalysisHandler(
+  dependencies: ScanResumeHandlerDependencies,
+): (request: Request, context: ScanRouteContext) => Promise<Response> {
+  return async (request, context) => {
+    const accessToken = readBearerToken(request);
+
+    if (!accessToken) {
+      return errorResponse(401, "unauthorized", "Authentication is required.");
+    }
+
+    let session: ScanResumeSession | null;
+
+    try {
+      session = await dependencies.authenticate(accessToken);
+    } catch (error) {
+      return error instanceof ServerConfigurationError
+        ? internalError("service_unconfigured")
+        : internalError("authentication_unavailable");
+    }
+
+    if (!session) {
+      return errorResponse(401, "unauthorized", "Authentication is required.");
+    }
+
+    const { scanId: rawScanId } = await context.params;
+    const parsedScanId = scanRecordSchema.shape.id.safeParse(rawScanId);
+
+    if (!parsedScanId.success) {
+      return errorResponse(404, "not_found", "Scan not found.");
+    }
+
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return errorResponse(
+        400,
+        "invalid_json",
+        "A valid JSON body is required.",
+      );
+    }
+
+    const parsedBody = scanReanalysisRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      return errorResponse(
+        400,
+        "invalid_meeting_goal",
+        "Check the meeting_goal field.",
+      );
+    }
+
+    const scanId = parsedScanId.data;
+
+    try {
+      const status = await session.repository.restartAnalysis(
+        scanId,
+        parsedBody.data.meeting_goal,
+      );
+
+      // Unknown, another user's, or mid-pipeline. Only the last is worth
+      // distinguishing, and the client offers this action from a finished
+      // brief, so a scan that moved on is a conflict rather than a mistake.
+      if (!status) {
+        return errorResponse(
+          409,
+          "scan_not_reanalyzable",
+          "This scan is not in a state that can be analysed again.",
+        );
+      }
+
+      dependencies.schedule({ accessToken, scanId });
+
+      return jsonResponse(
+        scanReanalysisResponseSchema.parse({
+          meeting_goal: parsedBody.data.meeting_goal,
+          scan_id: scanId,
+          status,
+        }),
+        202,
+      );
+    } catch {
+      return internalError("scan_reanalysis_failed");
     }
   };
 }

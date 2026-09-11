@@ -1,5 +1,6 @@
 import {
   scanDatabaseStatusSchema,
+  type MeetingGoal,
   type ScanDatabaseStatus,
 } from "@miraio/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -55,6 +56,27 @@ export async function authenticateScanResumeSession(
 }
 
 export class ScanResumeRepository {
+  /**
+   * Clears the goal-dependent analyses and puts the scan back where the
+   * pipeline picks it up. Null means the scan is unknown, another user's, or
+   * not in a settled state: restarting mid-pipeline would race a live run.
+   */
+  async restartAnalysis(
+    scanId: string,
+    meetingGoal: MeetingGoal,
+  ): Promise<"card_ready" | null> {
+    const { data, error } = await this.client.rpc("restart_scan_analysis", {
+      p_meeting_goal: meetingGoal,
+      p_scan_id: scanId,
+    });
+
+    if (error) {
+      throw new ScanResumeRepositoryError("restart_analysis");
+    }
+
+    return data[0]?.status === "card_ready" ? "card_ready" : null;
+  }
+
   constructor(private readonly client: SupabaseClient<Database>) {}
 
   /** The scan's status and every AI run recorded for it, or null if not owned. */

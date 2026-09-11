@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AnalysisPreparationScreen } from "../components/analysis-preparation-screen";
 import { CameraFrame } from "../components/camera-frame";
 import { EncounterHistoryScreen } from "../components/encounter-history-screen";
+import { ReanalysisScreen } from "../components/reanalysis-screen";
 import { EvidenceScreen } from "../components/card-scan-screens";
 import { HomeScreen } from "../components/home-screen";
 import {
@@ -201,6 +202,7 @@ const screens = [
   "note-revisit",
   "encounters",
   "evidence",
+  "reanalysis",
   "home",
 ] as const;
 const titles = [
@@ -215,6 +217,7 @@ const titles = [
   "会話を記録（再訪）",
   "これまでの接点",
   "根拠・ソース",
+  "面談ゴール変更",
   "ホーム",
 ];
 
@@ -263,6 +266,7 @@ function DemoScreen({ initial }: { initial: string }) {
         onMarkHypothesisUnhelpful={() => undefined}
         onRateUsefulness={() => undefined}
         isFavorite
+        onChangeMeetingGoal={() => setScreen("reanalysis")}
         onRefresh={noOp}
         onToggleFavorite={noOp}
         onViewCard={() => setScreen("detail")}
@@ -342,6 +346,16 @@ function DemoScreen({ initial }: { initial: string }) {
         items={demoEvidence}
         onBack={summary}
         onOpenSource={(url) => setNotice(`ソースを開く: ${url}`)}
+      />
+    );
+  if (screen === "reanalysis")
+    return (
+      <ReanalysisScreen
+        card={person}
+        currentGoal="networking"
+        error={null}
+        onBack={summary}
+        onReanalyze={noOp}
       />
     );
   if (screen === "encounters")

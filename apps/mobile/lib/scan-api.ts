@@ -1,6 +1,7 @@
 import {
   encounterHistoryResponseSchema,
   scanFavoriteResponseSchema,
+  scanReanalysisResponseSchema,
   evidenceListResponseSchema,
   interactionNoteReadResponseSchema,
   interactionNoteResponseSchema,
@@ -22,6 +23,7 @@ import {
   type NextActionStatusUpdateRequest,
   type ScanCreateResponse,
   type ScanFavoriteResponse,
+  type ScanReanalysisResponse,
   type ScanImageContentType,
   type ScanListResponse,
   type ScanResumeResponse,
@@ -207,6 +209,30 @@ export class ScanApiClient {
     if (!response.ok) {
       throw await toApiError(response);
     }
+  }
+
+  async reanalyze(
+    accessToken: string,
+    scanId: string,
+    meetingGoal: MeetingGoal,
+  ): Promise<ScanReanalysisResponse> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/reanalysis`,
+      {
+        body: JSON.stringify({ meeting_goal: meetingGoal }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+
+    return scanReanalysisResponseSchema.parse(await response.json());
   }
 
   async setFavorite(

@@ -122,6 +122,28 @@ export const scanHistoryItemSchema = z
   .strict();
 export type ScanHistoryItem = z.infer<typeof scanHistoryItemSchema>;
 
+/**
+ * The meeting goal is an input to the Flash Brief and Mutual Value prompts, so
+ * changing it after the fact means regenerating both. The card and the company
+ * context are derived from the card rather than the goal and are kept.
+ */
+export const scanReanalysisRequestSchema = z
+  .object({ meeting_goal: meetingGoalSchema })
+  .strict();
+
+export const scanReanalysisResponseSchema = z
+  .object({
+    meeting_goal: meetingGoalSchema,
+    scan_id: z.string().uuid(),
+    status: z.literal("card_ready"),
+  })
+  .strict();
+
+export type ScanReanalysisRequest = z.infer<typeof scanReanalysisRequestSchema>;
+export type ScanReanalysisResponse = z.infer<
+  typeof scanReanalysisResponseSchema
+>;
+
 export const scanFavoriteRequestSchema = z
   .object({ is_favorite: z.boolean() })
   .strict();

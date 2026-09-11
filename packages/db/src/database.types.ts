@@ -679,6 +679,12 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      restart_scan_analysis: {
+        Args: { p_meeting_goal: string; p_scan_id: string }
+        Returns: {
+          status: string
+        }[]
+      }
       update_next_action_status: {
         Args: { p_action_id: string; p_status: string }
         Returns: {
