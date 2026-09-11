@@ -193,6 +193,12 @@ export type OpenAICompanyContextConfig = Readonly<{
   webSearch: boolean;
 }>;
 
+export type OpenAIEmbeddingConfig = Readonly<{
+  apiKey: string;
+  baseUrl?: string;
+  model: string;
+}>;
+
 export type OpenAIMutualValueConfig = Readonly<{
   apiKey: string;
   baseUrl?: string;
@@ -209,6 +215,27 @@ export function readOpenAICompanyContextConfig(
     effort: readReasoningEffort(environment, "AI_COMPANY_CONTEXT_EFFORT"),
     model: requireValue(environment, "AI_COMPANY_CONTEXT_MODEL"),
     webSearch: readCompanyWebSearchEnabled(environment),
+  };
+}
+
+/**
+ * Semantic retrieval of Personal Context. Absent, the Flash Brief keeps
+ * receiving every approved item, which is what it did before ML-023: a
+ * deployment must be able to run without paying for embeddings.
+ */
+export function readOpenAIEmbeddingConfig(
+  environment: ServerEnvironment,
+): OpenAIEmbeddingConfig | null {
+  const model = environment["AI_EMBEDDING_MODEL"]?.trim();
+
+  if (!model) {
+    return null;
+  }
+
+  return {
+    apiKey: requireValue(environment, "OPENAI_API_KEY"),
+    baseUrl: readProviderBaseUrl(environment),
+    model,
   };
 }
 

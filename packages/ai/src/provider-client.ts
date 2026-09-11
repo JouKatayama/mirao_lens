@@ -36,6 +36,12 @@ export const providerTimeoutMilliseconds = {
   mutualValue: 14_000,
   /** Runs alone on the onboarding route rather than in the card pipeline. */
   personalContext: 20_000,
+  /**
+   * Embeddings are a small, non-generative call, but one runs inside the Flash
+   * Brief's budget: it embeds the person being met before the brief is
+   * written. A tight bound keeps a slow embedding from eating the brief.
+   */
+  embedding: 6_000,
 } as const;
 
 /**

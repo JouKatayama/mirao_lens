@@ -585,6 +585,18 @@ export type Database = {
         Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
         Returns: boolean
       }
+      match_personal_context_items: {
+        Args: {
+          p_embedding: string
+          p_limit?: number
+          p_offer_limit?: number
+        }
+        Returns: {
+          item_tags: string[]
+          item_text: string
+          item_type: string
+        }[]
+      }
       persist_card_extraction: {
         Args: {
           p_extraction: Json

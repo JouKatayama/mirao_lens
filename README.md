@@ -255,6 +255,25 @@ All three fields default for briefs stored before ML-018 (no score, no
 keywords, the hypothesis label the screen used to hardcode), so existing scans
 keep rendering.
 
+ML-023 implements the Personal Context retrieval product spec 5.4 asks for:
+"do not send the full profile to every call". Set `AI_EMBEDDING_MODEL` and the
+Flash Brief receives the items that relate to the person on the card — the
+nearest by cosine distance, plus the user's offers, which are returned
+whatever the query says because an offer that never reaches the prompt cannot
+be proposed. The `embedding` column has existed since ML-002 and nothing ever
+wrote or read it.
+
+Every failure path falls back to sending the whole profile: no model
+configured, nothing embedded yet, a card that says nothing to match against, a
+provider error, or a stored vector of a different size because the model
+changed. Retrieval is an optimisation, and the alternative to too much context
+is not none.
+
+Vectors are written by a sweep at the end of the scan pipeline rather than
+before the brief, because embedding is a provider call and the brief is the
+part with a five-second promise. The first scan after approving context
+therefore still sends everything; later ones retrieve.
+
 ML-022 lets a finished scan be analysed again under a different meeting goal
 (`PATCH /v1/scans/:scanId/reanalysis`). The goal feeds the Flash Brief and
 Mutual Value prompts, so a scan captured as networking that turned into a

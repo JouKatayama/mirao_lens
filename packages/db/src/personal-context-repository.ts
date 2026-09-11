@@ -163,6 +163,45 @@ export class PersonalContextRepository {
     return data ? mapItem(data) : null;
   }
 
+  /**
+   * Stores the vector for one approved item. Failure is reported so the caller
+   * can decide, but no caller treats it as fatal: an item without an embedding
+   * is simply not retrievable by similarity yet.
+   */
+  async setItemEmbedding(itemId: string, embedding: string): Promise<boolean> {
+    const { data, error } = await this.client
+      .from("personal_context_items")
+      .update({ embedding })
+      .eq("id", itemId)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new PersonalContextRepositoryError("set_item_embedding");
+    }
+
+    return data !== null;
+  }
+
+  /** Approved items that still have no vector, oldest first. */
+  async listItemsMissingEmbedding(
+    limit: number,
+  ): Promise<{ id: string; text: string }[]> {
+    const { data, error } = await this.client
+      .from("personal_context_items")
+      .select("id,text")
+      .is("embedding", null)
+      .eq("user_approved", true)
+      .order("created_at")
+      .limit(limit);
+
+    if (error) {
+      throw new PersonalContextRepositoryError("list_items_missing_embedding");
+    }
+
+    return data ?? [];
+  }
+
   async deleteItem(itemId: string): Promise<boolean> {
     const { data, error } = await this.client
       .from("personal_context_items")

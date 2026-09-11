@@ -30,6 +30,7 @@ function stages(statuses: Partial<Record<StageName, string>> = {}): {
       flashBrief: stage("flashBrief", "completed"),
       identityResolution: stage("identityResolution", "completed"),
       mutualValue: stage("mutualValue", "completed"),
+      personalContextEmbedding: stage("personalContextEmbedding", "completed"),
     },
   };
 }
@@ -48,6 +49,7 @@ describe("runScanPipeline", () => {
       "identityResolution",
       "flashBrief",
       "mutualValue",
+      "personalContextEmbedding",
     ]);
     expect(value.flashBrief).toHaveBeenCalledWith(input);
   });
@@ -76,6 +78,7 @@ describe("runScanPipeline", () => {
       "identityResolution",
       "flashBrief",
       "mutualValue",
+      "personalContextEmbedding",
     ]);
   });
 
@@ -98,7 +101,9 @@ describe("runScanPipeline", () => {
 
     await runScanPipeline(input, value);
 
-    expect(calls.at(-1)).toBe("mutualValue");
+    expect(calls).toContain("mutualValue");
+    // The embedding sweep trails every run, including a resumed one.
+    expect(calls.at(-1)).toBe("personalContextEmbedding");
     expect(calls).not.toContain("cardEvidence");
     expect(calls).not.toContain("companyEvidence");
   });
