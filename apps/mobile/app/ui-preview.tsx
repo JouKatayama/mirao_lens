@@ -197,6 +197,7 @@ const screens = [
   "bridge",
   "conversation",
   "note",
+  "note-revisit",
   "encounters",
   "evidence",
   "home",
@@ -210,6 +211,7 @@ const titles = [
   "BRIDGE",
   "会話提案",
   "会話を記録",
+  "会話を記録（再訪）",
   "これまでの接点",
   "根拠・ソース",
   "ホーム",
@@ -263,7 +265,7 @@ function DemoScreen({ initial }: { initial: string }) {
         onViewCard={() => setScreen("detail")}
         onViewEncounters={() => setScreen("encounters")}
         onViewEvidence={() => setScreen("detail")}
-        onViewMutualValue={() => setScreen("preparation")}
+        onViewMutualValue={() => setScreen("give-get")}
         onViewInteraction={() => setScreen("note")}
         previousEncounters={demoEncounters.length}
       />
@@ -275,9 +277,8 @@ function DemoScreen({ initial }: { initial: string }) {
         meetingGoal={goal}
         onMeetingGoalChange={setGoal}
         onEdit={() => setScreen("detail")}
-        onBack={summary}
-        onContinue={() => setScreen("give-get")}
-        captured
+        onBack={home}
+        onContinue={() => setScreen("camera")}
       />
     );
   if (screen === "give-get" || screen === "bridge" || screen === "conversation")
@@ -290,7 +291,6 @@ function DemoScreen({ initial }: { initial: string }) {
         themes={["生成AI", "SaaS", "業務改善", "データ分析"]}
         onDone={home}
         onRefresh={noOp}
-        onSayThisUsed={() => undefined}
         onViewBrief={summary}
         onViewInteraction={() => setScreen("note")}
         initialTab={screen}
@@ -303,12 +303,32 @@ function DemoScreen({ initial }: { initial: string }) {
         error={null}
         mutualValue={value}
         onAcceptNextAction={noOp}
+        onBack={() => setScreen("give-get")}
+        onCompleteNextAction={noOp}
+        onDismissNextAction={noOp}
+        onSaveNote={noOp}
+        onSayThisUsed={() => undefined}
+        onDone={home}
+        record={{ actions: [], note: null }}
+        sayThis={brief.say_this}
+      />
+    );
+  if (screen === "note-revisit")
+    return (
+      <InteractionScreen
+        card={person}
+        error={null}
+        mutualValue={value}
+        onAcceptNextAction={noOp}
+        onBack={() => setScreen("give-get")}
         onCompleteNextAction={noOp}
         onDismissNextAction={noOp}
         onSaveNote={noOp}
         onDone={home}
-        onViewMutualValue={() => setScreen("give-get")}
-        recordedActions={demoRecordedActions}
+        record={{
+          actions: demoRecordedActions,
+          note: "生成AIの社内展開で悩んでいるとのこと。事例を送る約束をした。",
+        }}
       />
     );
   if (screen === "evidence")

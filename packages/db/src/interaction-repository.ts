@@ -66,6 +66,29 @@ export class InteractionRepository {
     return row ? { id: row.note_id } : null;
   }
 
+  // Both reads go through the caller's RLS scope, so another user's scan is
+  // indistinguishable from a missing one and comes back as null.
+  async getNote(scanId: string): Promise<{ note_text: string | null } | null> {
+    const [scanResult, noteResult] = await Promise.all([
+      this.client.from("scans").select("id").eq("id", scanId).maybeSingle(),
+      this.client
+        .from("interaction_notes")
+        .select("note_text")
+        .eq("scan_id", scanId)
+        .maybeSingle(),
+    ]);
+
+    if (scanResult.error || noteResult.error) {
+      throw new InteractionRepositoryError("get_note");
+    }
+
+    if (!scanResult.data) {
+      return null;
+    }
+
+    return { note_text: noteResult.data?.note_text ?? null };
+  }
+
   async createNextAction(
     scanId: string,
     actionText: string,

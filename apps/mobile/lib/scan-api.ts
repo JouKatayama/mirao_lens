@@ -1,6 +1,7 @@
 import {
   encounterHistoryResponseSchema,
   evidenceListResponseSchema,
+  interactionNoteReadResponseSchema,
   interactionNoteResponseSchema,
   nextActionListResponseSchema,
   nextActionResponseSchema,
@@ -11,6 +12,7 @@ import {
   type CardCorrection,
   type EncounterHistoryResponse,
   type EvidenceListResponse,
+  type InteractionNoteReadResponse,
   type InteractionNoteResponse,
   type MeetingGoal,
   type NextActionListResponse,
@@ -250,6 +252,22 @@ export class ScanApiClient {
     }
 
     return scanListResponseSchema.parse(await response.json());
+  }
+
+  async getNote(
+    accessToken: string,
+    scanId: string,
+  ): Promise<InteractionNoteReadResponse> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/note`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+
+    return interactionNoteReadResponseSchema.parse(await response.json());
   }
 
   async saveNote(

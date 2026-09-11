@@ -268,6 +268,16 @@ resolution already reuses a person across scans, so this is a read over
 recorded data: a card that resolved to no person returns an empty list rather
 than guessing by name.
 
+`GET /v1/scans/:scanId/note` returns the note already saved for a scan
+(`note_text` is `null` when there is none). `POST` upserts, so the note screen
+reads this first and opens with the stored text; it used to open empty, and
+saving on a later visit silently replaced the earlier note. The note screen is
+available as soon as the Flash Brief exists and no longer waits for Mutual
+Value, so a scan whose analysis failed can still have its conversation
+recorded. The AI's Next Action is an explicit choice (実行する / 今回は見送る /
+no choice); a scan that already has an action on record is not offered the
+suggestion again.
+
 `PATCH /v1/scans/:scanId/next-action` settles an action through the
 `update_next_action_status` function (`accepted`, `dismissed` or `completed`).
 `next_actions.status` always allowed `completed`, but nothing could write it,
@@ -282,11 +292,11 @@ environment to enable tracking; the client is a no-op when the key is absent.
 Every name in `analyticsEventNames` is emitted by the app. Three groups need
 more than a single call site:
 
-| Group                | Events                                                                                                                     | Where                                                                      |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Activation, per user | `signup_completed`, `first_scan_started`, `first_brief_viewed`                                                             | `lib/funnel-events.ts`, deduplicated by an AsyncStorage marker per user    |
-| Funnel, per scan     | `card_extraction_success`, `brief_ready`                                                                                   | the status poll, on the transition this client observed                    |
-| Value and trust      | `brief_usefulness_rated`, `say_this_used_yes/no`, `identity_flagged_wrong`, `hypothesis_marked_unhelpful`, `source_opened` | Flash Brief feedback controls, the conversation tab, and the evidence view |
+| Group                | Events                                                                                                                     | Where                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Activation, per user | `signup_completed`, `first_scan_started`, `first_brief_viewed`                                                             | `lib/funnel-events.ts`, deduplicated by an AsyncStorage marker per user |
+| Funnel, per scan     | `card_extraction_success`, `brief_ready`                                                                                   | the status poll, on the transition this client observed                 |
+| Value and trust      | `brief_usefulness_rated`, `say_this_used_yes/no`, `identity_flagged_wrong`, `hypothesis_marked_unhelpful`, `source_opened` | Flash Brief feedback controls, the note screen, and the evidence view   |
 
 `signup_completed` has no dedicated client signal, because email OTP sign-up
 and sign-in are the same flow. It fires on the first session an install sees
@@ -296,7 +306,14 @@ re-emit an activation event; count unique users, not raw events.
 
 `brief_usefulness_rated` carries a `rating` property of 1–5, and
 `say_this_used_yes` / `say_this_used_no` supply the pilot North Star
-(Conversation Adoption Rate).
+(Conversation Adoption Rate). The adoption question is asked on the note screen,
+after the conversation, about the Flash Brief's `SAY THIS` questions.
+
+The per-scan value and trust events (`brief_usefulness_rated`,
+`say_this_used_*`, `conversation_note_saved`, `next_action_*`,
+`identity_flagged_wrong`, `hypothesis_marked_unhelpful`) carry a `scan_id`
+property. A user can answer again on a later visit, so count these once per
+scan rather than per event.
 
 ML-016 adds:
 

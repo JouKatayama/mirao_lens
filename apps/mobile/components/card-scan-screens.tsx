@@ -23,6 +23,7 @@ import {
   View,
 } from "react-native";
 
+import { fieldNeedsReview } from "../lib/card-review";
 import { type CapturedCardImage } from "../lib/scan-capture";
 import { toOpenableSourceUrl } from "../lib/source-url";
 import {
@@ -302,23 +303,67 @@ const cardFieldLabels: Record<CardFieldName, string> = {
   website: "Webサイト",
 };
 
+const progressSteps = [
+  "名刺の文字を読み取る",
+  "会社・役職とあなたとの接点を分析",
+  "会話のきっかけ（Flash Brief）を作成",
+] as const;
+
+/**
+ * The pipeline exposes two waiting states, so the third step only ever shows
+ * as next. It is listed anyway: the user should know what they are waiting
+ * for, and that the wait ends in something to say rather than a card record.
+ */
+function ScanProgress({ activeStep }: { activeStep: 0 | 1 }) {
+  return (
+    <View accessibilityRole="progressbar" style={styles.progress}>
+      {progressSteps.map((label, index) => {
+        const done = index < activeStep;
+        const active = index === activeStep;
+        return (
+          <View key={label} style={styles.progressRow}>
+            {done ? (
+              <View style={[styles.progressDot, styles.progressDotDone]}>
+                <Icon name="check" color="#FFFFFF" size={14} />
+              </View>
+            ) : active ? (
+              <ActivityIndicator color={colors.accent} size="small" />
+            ) : (
+              <View style={styles.progressDot} />
+            )}
+            <Text
+              style={[
+                styles.progressLabel,
+                (done || active) && styles.progressLabelActive,
+              ]}
+            >
+              {`${label}${done ? "" : active ? "中…" : ""}`}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export function CardIntelligenceScreen({
+  canRetry,
   error,
   onCorrect,
   onDone,
   onRecapture,
   onRefresh,
   onRetry,
-  result,
   status,
 }: {
+  /** False when the captured image is no longer on this device. */
+  canRetry: boolean;
   error: string | null;
   onCorrect: (correction: CardCorrection) => Promise<void>;
   onDone: () => void;
   onRecapture: () => void;
   onRefresh: () => Promise<void>;
   onRetry: () => Promise<void>;
-  result: ScanCreateResponse;
   status: ScanStatusResponse | null;
 }) {
   const [editing, setEditing] = useState(false);
@@ -410,17 +455,29 @@ export function CardIntelligenceScreen({
     }
   }
 
-  if (!status || status.status === "extracting") {
+  if (!status) {
+    // Opening a scan from history: nothing is known until the first read.
     return (
-      <ScreenFrame
-        subtitle="画像は非公開のまま処理され、抽出後に削除されます。"
-        title="名刺を読み取りました"
-      >
+      <ScreenFrame title="読み込み中">
         <Card>
           <ActivityIndicator color={colors.accent} size="large" />
-          <Text style={styles.cardTitle}>会社・役職を確認しています</Text>
+        </Card>
+        <ErrorNotice message={error} />
+        <SecondaryButton label="Homeへ戻る" onPress={onDone} />
+      </ScreenFrame>
+    );
+  }
+
+  if (status.status === "extracting") {
+    return (
+      <ScreenFrame
+        subtitle="画像は非公開のまま処理され、読み取り後に削除されます。"
+        title="名刺を読み取っています"
+      >
+        <Card>
+          <ScanProgress activeStep={0} />
           <Text style={styles.bodyText}>
-            Scan ID: {result.scan_id.slice(0, 8)}…
+            画面を見続ける必要はありません。準備ができると自動で切り替わります。
           </Text>
         </Card>
         <ErrorNotice message={error} />
@@ -440,14 +497,17 @@ export function CardIntelligenceScreen({
         title="Flash Briefを生成中"
       >
         <Card>
-          <ActivityIndicator color={colors.accent} size="large" />
+          {/* The name is already known here and is the first thing the user
+              needs, so it leads while the rest is prepared. */}
           <Text style={styles.cardTitle}>
-            {status.card.name ?? "相手"}さんとの接点を分析中…
+            {status.card.name ?? "お名前を確認中"}
           </Text>
           <Text style={styles.bodyText}>
-            {status.card.company ?? "会社名未取得"} /{" "}
-            {status.card.title ?? "役職未取得"}
+            {[status.card.company, status.card.title]
+              .filter(Boolean)
+              .join(" / ") || "会社・役職は名刺に記載がありません"}
           </Text>
+          <ScanProgress activeStep={1} />
         </Card>
         <ErrorNotice message={error} />
         <SecondaryButton
@@ -463,7 +523,9 @@ export function CardIntelligenceScreen({
     status.status === "failed_retryable" ||
     status.status === "failed_terminal"
   ) {
-    const retryable = status.status === "failed_retryable";
+    // The same-image retry re-uploads the capture held on this device; a scan
+    // opened from history has none, so the button could only ever fail.
+    const retryable = status.status === "failed_retryable" && canRetry;
 
     return (
       <ScreenFrame
@@ -476,7 +538,7 @@ export function CardIntelligenceScreen({
             error ??
             (retryable
               ? "一時的に名刺を読み取れませんでした。同じ画像で再試行できます。"
-              : "画像を読み取れませんでした。新しく撮影してください。")
+              : "名刺を読み取れませんでした。お手数ですが新しく撮影してください。")
           }
         />
         {retryable ? (
@@ -526,15 +588,29 @@ export function CardIntelligenceScreen({
                 value={draft[field]}
               />
             ))
-          : (Object.keys(cardFieldLabels) as CardFieldName[]).map((field) => (
-              <View key={field} style={styles.factRow}>
-                <Text style={styles.factLabel}>{cardFieldLabels[field]}</Text>
-                <Text style={styles.factValue}>{card[field] ?? "未記載"}</Text>
-                <Text style={styles.confidenceText}>
-                  信頼度 {Math.round(card.field_confidence[field] * 100)}%
-                </Text>
-              </View>
-            ))}
+          : (Object.keys(cardFieldLabels) as CardFieldName[]).map((field) => {
+              const value = card[field];
+              // A percentage on every row, including "0%" on blank ones, was
+              // noise. What the user needs is which readings to double-check.
+              const uncertain = fieldNeedsReview(card, field);
+              return (
+                <View key={field} style={styles.factRow}>
+                  <View style={styles.factLabelRow}>
+                    <Text style={styles.factLabel}>
+                      {cardFieldLabels[field]}
+                    </Text>
+                    {uncertain ? (
+                      <Text style={styles.checkBadge}>要確認</Text>
+                    ) : null}
+                  </View>
+                  <Text
+                    style={value === null ? styles.factEmpty : styles.factValue}
+                  >
+                    {value ?? "未記載"}
+                  </Text>
+                </View>
+              );
+            })}
       </Card>
       <ErrorNotice message={localError ?? error} />
       {editing ? (
@@ -724,7 +800,35 @@ const styles = StyleSheet.create({
   },
   cameraLoadingText: { color: colors.muted, fontSize: 15 },
   cardTitle: { color: colors.text, fontSize: 20, fontWeight: "800" },
-  confidenceText: { color: colors.muted, fontSize: 12 },
+  checkBadge: {
+    backgroundColor: colors.warningSoft,
+    borderRadius: 999,
+    color: colors.warning,
+    fontSize: 11,
+    fontWeight: "800",
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  factEmpty: { color: colors.muted, fontSize: 15 },
+  factLabelRow: { alignItems: "center", flexDirection: "row", gap: 8 },
+  progress: { gap: spacing.sm },
+  progressDot: {
+    alignItems: "center",
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 2,
+    height: 20,
+    justifyContent: "center",
+    width: 20,
+  },
+  progressDotDone: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  progressLabel: { color: colors.muted, flex: 1, fontSize: 15 },
+  progressLabelActive: { color: colors.text, fontWeight: "700" },
+  progressRow: { alignItems: "center", flexDirection: "row", gap: 12 },
   eyebrow: {
     color: colors.accent,
     fontSize: 12,

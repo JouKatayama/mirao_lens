@@ -41,6 +41,7 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
   const [codeSent, setCodeSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function sendCode() {
     const normalizedEmail = email.trim().toLocaleLowerCase();
@@ -52,6 +53,7 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
 
     setLoading(true);
     setError(null);
+    setNotice(null);
     const { error: authError } = await client.auth.signInWithOtp({
       email: normalizedEmail,
       options: { shouldCreateUser: true },
@@ -64,6 +66,11 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
     }
 
     setEmail(normalizedEmail);
+    setNotice(
+      codeSent
+        ? "新しいコードを送信しました。最新のメールのコードを入力してください。"
+        : `${normalizedEmail} にコードを送信しました。迷惑メールフォルダも確認してください。`,
+    );
     setCodeSent(true);
   }
 
@@ -113,6 +120,7 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
             value={code}
           />
         ) : null}
+        {notice && !error ? <Text style={styles.notice}>{notice}</Text> : null}
         <ErrorNotice message={error} />
         <PrimaryButton
           label={codeSent ? "コードを確認" : "ログインコードを送る"}
@@ -120,15 +128,26 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
           onPress={codeSent ? verifyCode : sendCode}
         />
         {codeSent ? (
-          <SecondaryButton
-            disabled={loading}
-            label="メールアドレスを変更"
-            onPress={() => {
-              setCode("");
-              setCodeSent(false);
-              setError(null);
-            }}
-          />
+          <>
+            <SecondaryButton
+              disabled={loading}
+              label="コードを再送する"
+              onPress={() => {
+                setCode("");
+                void sendCode();
+              }}
+            />
+            <SecondaryButton
+              disabled={loading}
+              label="メールアドレスを変更"
+              onPress={() => {
+                setCode("");
+                setCodeSent(false);
+                setError(null);
+                setNotice(null);
+              }}
+            />
+          </>
         ) : null}
       </Card>
     </ScreenFrame>
@@ -138,10 +157,13 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
 export function OnboardingScreen({
   initialProfile,
   loading,
+  onBack,
   onSubmit,
 }: {
   initialProfile?: PersonalContextProfile;
   loading: boolean;
+  /** Absent on first-run onboarding, which has nowhere to go back to. */
+  onBack?: () => void;
   onSubmit: (input: PersonalContextOnboardingInput) => Promise<void>;
 }) {
   const [values, setValues] = useState<OnboardingFormValues>({
@@ -175,6 +197,7 @@ export function OnboardingScreen({
 
   return (
     <ScreenFrame
+      onBack={onBack}
       subtitle="約3分。AIが整理した候補は、あなたが承認するまで利用されません。"
       title="あなたについて教えてください"
     >
@@ -531,6 +554,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   itemText: { color: colors.text, fontSize: 16, lineHeight: 25 },
+  notice: { color: colors.muted, fontSize: 14, lineHeight: 21 },
   profileLabel: { color: colors.muted, fontSize: 12, fontWeight: "700" },
   profileValue: { color: colors.text, fontSize: 17, fontWeight: "700" },
   typeChip: {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createGetNextActionsHandler,
+  createGetNoteHandler,
   createPatchNextActionHandler,
   createPostNextActionHandler,
   createPostNoteHandler,
@@ -180,6 +181,81 @@ describe("createPostNoteHandler", () => {
       makeContext(),
     );
     expect(res.status).toBe(500);
+  });
+});
+
+describe("createGetNoteHandler", () => {
+  const repository = {
+    createNextAction: vi.fn(),
+    getNote: vi.fn(),
+    listNextActions: vi.fn(),
+    updateNextActionStatus: vi.fn(),
+    upsertNote: vi.fn(),
+  };
+  let dependencies: InteractionHandlerDependencies;
+
+  function get(id = scanId, authenticated = true) {
+    return createGetNoteHandler(dependencies)(
+      makeRequest(`http://api/v1/scans/${id}/note`, {}, authenticated),
+      makeContext(id),
+    );
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dependencies = {
+      authenticate: vi.fn().mockResolvedValue({
+        repository,
+        userId: "00000000-0000-4013-8000-000000000001",
+      }),
+    };
+  });
+
+  it("returns the saved note so the client can edit rather than overwrite it", async () => {
+    repository.getNote.mockResolvedValue({ note_text: "事例を送る約束" });
+
+    const res = await get();
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      note_text: "事例を送る約束",
+      scan_id: scanId,
+    });
+    expect(repository.getNote).toHaveBeenCalledWith(scanId);
+  });
+
+  it("returns a null note for an owned scan without one", async () => {
+    repository.getNote.mockResolvedValue({ note_text: null });
+
+    const res = await get();
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      note_text: null,
+      scan_id: scanId,
+    });
+  });
+
+  it("returns 404 for a scan the caller does not own", async () => {
+    repository.getNote.mockResolvedValue(null);
+
+    expect((await get()).status).toBe(404);
+  });
+
+  it("returns 404 for a scan id that is not a UUID", async () => {
+    expect((await get("not-a-uuid")).status).toBe(404);
+    expect(repository.getNote).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 without an Authorization header", async () => {
+    expect((await get(scanId, false)).status).toBe(401);
+    expect(repository.getNote).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when the read fails", async () => {
+    repository.getNote.mockRejectedValue(new Error("db error"));
+
+    expect((await get()).status).toBe(500);
   });
 });
 

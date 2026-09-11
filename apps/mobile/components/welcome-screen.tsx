@@ -6,6 +6,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LensMark } from "./icons";
 import { PrimaryButton } from "./ui";
 
+const valuePoints = [
+  "名刺を撮るだけで、相手とあなたの「接点」がわかる",
+  "会話の最初に聞くとよい質問を、その場で提案",
+  "会話メモと次の一手まで、ひとつの流れで記録",
+] as const;
+
 export function WelcomeScreen({
   onStart,
   onLogin,
@@ -31,6 +37,16 @@ export function WelcomeScreen({
             <Text style={styles.tagline}>
               人との出会いを、未来の価値に変える。
             </Text>
+            {/* The tagline alone never said what the app does. A first-time
+                user decides here whether it is worth an email address. */}
+            <View style={styles.points}>
+              {valuePoints.map((point) => (
+                <View key={point} style={styles.point}>
+                  <View style={styles.pointDot} />
+                  <Text style={styles.pointText}>{point}</Text>
+                </View>
+              ))}
+            </View>
           </View>
           <View style={styles.actions}>
             <View style={styles.start}>
@@ -82,7 +98,17 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: "center",
   },
-  actions: { paddingBottom: 55, gap: 20, paddingTop: 100 },
+  points: { alignSelf: "stretch", gap: 12, paddingTop: 12 },
+  point: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+  pointDot: {
+    backgroundColor: "#D2AAFF",
+    borderRadius: 4,
+    height: 8,
+    marginTop: 8,
+    width: 8,
+  },
+  pointText: { color: "#F4F0F9", flex: 1, fontSize: 15, lineHeight: 24 },
+  actions: { paddingBottom: 55, gap: 20, paddingTop: 40 },
   start: { borderRadius: 26, overflow: "hidden" },
   login: { minHeight: 44, justifyContent: "center", alignItems: "center" },
   loginText: { color: "#D2AAFF", fontSize: 14, fontWeight: "600" },
