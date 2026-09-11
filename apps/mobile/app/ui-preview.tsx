@@ -1,8 +1,10 @@
 // Opt-in development gallery. Uses synthetic content and never calls an API.
 import type {
+  EncounterHistoryItem,
   FlashBriefPublic,
   MeetingGoal,
   MutualValuePublic,
+  NextActionResponse,
   PersonalContextResponse,
   ScanHistoryItem,
 } from "@miraio/domain";
@@ -13,6 +15,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AnalysisPreparationScreen } from "../components/analysis-preparation-screen";
 import { CameraFrame } from "../components/camera-frame";
+import { EncounterHistoryScreen } from "../components/encounter-history-screen";
 import { HomeScreen } from "../components/home-screen";
 import {
   FlashBriefScreen,
@@ -118,6 +121,39 @@ const demoHistory: ScanHistoryItem[] = [
   meeting_goal: "networking",
   status: i === 1 ? "deep_enrichment" : "deep_ready",
 }));
+const demoEncounters: EncounterHistoryItem[] = [
+  {
+    created_at: "2026-08-20T04:00:00.000Z",
+    meeting_goal: "networking",
+    note_excerpt:
+      "生成AIの社内展開で悩んでいるとのこと。事例を送る約束をした。",
+    scan_id: "00000000-0000-4013-8000-0000000009a1",
+  },
+  {
+    created_at: "2026-06-02T02:30:00.000Z",
+    meeting_goal: "learning_information_exchange",
+    note_excerpt: null,
+    scan_id: "00000000-0000-4013-8000-0000000009a2",
+  },
+];
+const demoRecordedActions: NextActionResponse[] = [
+  {
+    action_text: "生成AI導入の事例資料を共有する",
+    id: "00000000-0000-4013-8000-0000000009b1",
+    scan_id: "00000000-0000-4013-8000-0000000009b0",
+    source: "ai",
+    status: "accepted",
+    timing_text: "3日以内",
+  },
+  {
+    action_text: "前回話した勉強会に招待する",
+    id: "00000000-0000-4013-8000-0000000009b2",
+    scan_id: "00000000-0000-4013-8000-0000000009b0",
+    source: "user",
+    status: "completed",
+    timing_text: null,
+  },
+];
 const screens = [
   "welcome",
   "camera",
@@ -127,6 +163,7 @@ const screens = [
   "bridge",
   "conversation",
   "note",
+  "encounters",
   "home",
 ] as const;
 const titles = [
@@ -138,6 +175,7 @@ const titles = [
   "BRIDGE",
   "会話提案",
   "会話を記録",
+  "これまでの接点",
   "ホーム",
 ];
 
@@ -187,9 +225,11 @@ function DemoScreen({ initial }: { initial: string }) {
         onRateUsefulness={() => undefined}
         onRefresh={noOp}
         onViewCard={() => setScreen("detail")}
+        onViewEncounters={() => setScreen("encounters")}
         onViewEvidence={() => setScreen("detail")}
         onViewMutualValue={() => setScreen("preparation")}
         onViewInteraction={() => setScreen("note")}
+        previousEncounters={demoEncounters.length}
       />
     );
   if (screen === "preparation")
@@ -227,10 +267,22 @@ function DemoScreen({ initial }: { initial: string }) {
         error={null}
         mutualValue={value}
         onAcceptNextAction={noOp}
+        onCompleteNextAction={noOp}
         onDismissNextAction={noOp}
         onSaveNote={noOp}
         onDone={home}
         onViewMutualValue={() => setScreen("give-get")}
+        recordedActions={demoRecordedActions}
+      />
+    );
+  if (screen === "encounters")
+    return (
+      <EncounterHistoryScreen
+        card={person}
+        error={null}
+        items={demoEncounters}
+        onBack={summary}
+        onOpenEncounter={() => setScreen("note")}
       />
     );
   if (screen === "home")

@@ -676,6 +676,12 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      update_next_action_status: {
+        Args: { p_action_id: string; p_status: string }
+        Returns: {
+          action_id: string
+        }[]
+      }
       upsert_interaction_note: {
         Args: { p_note_text: string; p_scan_id: string }
         Returns: {

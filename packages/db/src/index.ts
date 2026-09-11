@@ -2,6 +2,7 @@ export type { Database, Json } from "./database.types";
 export * from "./card-intelligence-repository";
 export * from "./cleanup-repository";
 export * from "./company-context-repository";
+export * from "./encounter-history-repository";
 export * from "./evidence-repository";
 export * from "./flash-brief-repository";
 export * from "./identity-resolution-repository";

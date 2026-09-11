@@ -41,8 +41,10 @@ ML-001 through ML-017 currently provide:
   viewing flow,
 - deep enrichment via company-context, identity resolution, mutual-value, and
   evidence chain stages with per-stage AI-run latency tracking,
-- an Interaction layer with conversation notes, next-action capture, and
-  acceptance tracking,
+- an Interaction layer with conversation notes, next-action capture,
+  acceptance tracking, and completion recorded as outcome data,
+- relationship history: earlier scans of the same resolved person, surfaced as
+  an "Nth meeting" badge and a list of past encounters with their notes,
 - scan history listing with status badges and a mobile history screen,
 - evidence-view source opening, restricted to `http`/`https` links,
 - event analytics via the PostHog HTTP Capture API with 20 named events
@@ -212,6 +214,27 @@ ML-006 through ML-014 add Flash Brief generation, deep enrichment stages
 (company context, identity resolution, mutual value, evidence chains),
 interaction logging (notes and next actions), scan history listing, and
 evidence source opening.
+
+ML-018 closes the loop from a meeting back to the next one:
+
+```text
+GET   /v1/scans/:scanId/encounters
+GET   /v1/scans/:scanId/next-action
+PATCH /v1/scans/:scanId/next-action
+```
+
+`encounters` lists earlier scans whose card resolved to the same `people` row,
+newest first, each with a one-line excerpt of that meeting's note. Identity
+resolution already reuses a person across scans, so this is a read over
+recorded data: a card that resolved to no person returns an empty list rather
+than guessing by name.
+
+`PATCH /v1/scans/:scanId/next-action` settles an action through the
+`update_next_action_status` function (`accepted`, `dismissed` or `completed`).
+`next_actions.status` always allowed `completed`, but nothing could write it,
+so an accepted action could never be shown as done and no outcome data
+accumulated. Moving back to `suggested` is rejected, and an action belonging to
+another user is reported as not found.
 
 ML-015 adds event analytics via the PostHog HTTP Capture API. Set
 `EXPO_PUBLIC_POSTHOG_API_KEY` and `EXPO_PUBLIC_POSTHOG_HOST` in the mobile

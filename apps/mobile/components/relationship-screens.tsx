@@ -1,4 +1,8 @@
-import type { FlashBriefPublic, MutualValuePublic } from "@miraio/domain";
+import type {
+  FlashBriefPublic,
+  MutualValuePublic,
+  NextActionResponse,
+} from "@miraio/domain";
 import { colors } from "@miraio/ui-tokens";
 import { useState } from "react";
 import {
@@ -45,9 +49,11 @@ export function FlashBriefScreen({
   onRateUsefulness,
   onRefresh,
   onViewCard,
+  onViewEncounters,
   onViewEvidence,
   onViewMutualValue,
   onViewInteraction,
+  previousEncounters = 0,
 }: {
   brief: FlashBriefPublic;
   card: Person;
@@ -59,9 +65,11 @@ export function FlashBriefScreen({
   onRateUsefulness?: (rating: number) => void;
   onRefresh: () => Promise<void>;
   onViewCard: () => void;
+  onViewEncounters?: () => void;
   onViewEvidence: () => void;
   onViewMutualValue: () => void;
   onViewInteraction?: () => void;
+  previousEncounters?: number;
 }) {
   // Trust and usefulness feedback is reported once per visit. The screen keeps
   // the acknowledgement locally: there is no server record of a report yet, so
@@ -75,11 +83,24 @@ export function FlashBriefScreen({
     medium_confidence: "本人確認が必要",
     unresolved: "本人未確認",
   };
-  const shortcuts = [
+  const shortcuts: {
+    label: string;
+    icon: "person" | "company" | "note" | "people";
+    action?: () => void;
+  }[] = [
     { label: "名刺情報", icon: "person", action: onViewCard },
     { label: "根拠", icon: "company", action: onViewEvidence },
     { label: "メモ", icon: "note", action: onViewInteraction },
-  ] as const;
+    ...(previousEncounters > 0
+      ? [
+          {
+            label: "これまでの接点",
+            icon: "people" as const,
+            action: onViewEncounters,
+          },
+        ]
+      : []),
+  ];
   return (
     <ScreenFrame
       title="Flash Brief"
@@ -107,10 +128,19 @@ export function FlashBriefScreen({
       <Card>
         <View style={s.briefLabelRow}>
           <Text style={s.briefLabel}>WHO</Text>
-          <View style={s.neutralBadge}>
-            <Text style={s.neutralBadgeText}>
-              {identityLabels[brief.identity_status]}
-            </Text>
+          <View style={s.badgeRow}>
+            {previousEncounters > 0 ? (
+              <View style={s.encounterBadge}>
+                <Text style={s.encounterBadgeText}>
+                  {`この人とは${previousEncounters + 1}回目`}
+                </Text>
+              </View>
+            ) : null}
+            <View style={s.neutralBadge}>
+              <Text style={s.neutralBadgeText}>
+                {identityLabels[brief.identity_status]}
+              </Text>
+            </View>
           </View>
         </View>
         <Text style={s.briefBody}>{brief.who}</Text>
@@ -471,15 +501,24 @@ export function MutualValueScreen({
   );
 }
 
+const nextActionStatusLabels: Record<NextActionResponse["status"], string> = {
+  accepted: "実行予定",
+  completed: "完了",
+  dismissed: "見送り",
+  suggested: "提案中",
+};
+
 export function InteractionScreen({
   card,
   error,
   mutualValue,
   onAcceptNextAction,
+  onCompleteNextAction,
   onDismissNextAction,
   onDone,
   onSaveNote,
   onViewMutualValue,
+  recordedActions = [],
 }: {
   card: Person;
   error: string | null;
@@ -488,10 +527,12 @@ export function InteractionScreen({
     actionText: string,
     timingText: string | null,
   ) => Promise<void>;
+  onCompleteNextAction?: (actionId: string) => Promise<void>;
   onDismissNextAction: (actionText: string) => Promise<void>;
   onDone: () => void;
   onSaveNote: (noteText: string) => Promise<void>;
   onViewMutualValue: () => void;
+  recordedActions?: NextActionResponse[];
 }) {
   const [note, setNote] = useState("");
   const [action, setAction] = useState(mutualValue.next_action.action);
@@ -503,6 +544,27 @@ export function InteractionScreen({
   const [localError, setLocalError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const actionKey = JSON.stringify([accepted, action.trim(), timing.trim()]);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const settledActions = recordedActions.filter(
+    (item) => item.status === "completed" || item.status === "dismissed",
+  );
+  const openActions = recordedActions.filter(
+    (item) => item.status === "accepted" || item.status === "suggested",
+  );
+
+  async function complete(actionId: string) {
+    if (!onCompleteNextAction || completingId) return;
+    setCompletingId(actionId);
+    setLocalError(null);
+    try {
+      await onCompleteNextAction(actionId);
+    } catch {
+      setLocalError("完了を記録できませんでした。再試行してください。");
+    } finally {
+      setCompletingId(null);
+    }
+  }
+
   async function save() {
     if (saving) return;
     if (accepted && !action.trim()) {
@@ -599,6 +661,51 @@ export function InteractionScreen({
           ) : null}
         </Card>
       </View>
+      {recordedActions.length > 0 ? (
+        <View style={s.section}>
+          <Text style={s.heading}>記録済みのNext Action</Text>
+          <Text style={s.caption}>
+            実行できたものを完了にすると、成果として残ります。
+          </Text>
+          {[...openActions, ...settledActions].map((item) => (
+            <Card key={item.id}>
+              <View style={s.briefLabelRow}>
+                <Text style={[s.body, s.flex]}>{item.action_text}</Text>
+                <View
+                  style={
+                    item.status === "completed"
+                      ? s.completedBadge
+                      : s.neutralBadge
+                  }
+                >
+                  <Text
+                    style={
+                      item.status === "completed"
+                        ? s.completedBadgeText
+                        : s.neutralBadgeText
+                    }
+                  >
+                    {nextActionStatusLabels[item.status]}
+                  </Text>
+                </View>
+              </View>
+              {item.timing_text ? (
+                <Text style={s.caption}>目安：{item.timing_text}</Text>
+              ) : null}
+              {onCompleteNextAction &&
+              (item.status === "accepted" || item.status === "suggested") ? (
+                <SecondaryButton
+                  disabled={completingId !== null}
+                  label={
+                    completingId === item.id ? "記録中…" : "実行した（完了）"
+                  }
+                  onPress={() => void complete(item.id)}
+                />
+              ) : null}
+            </Card>
+          ))}
+        </View>
+      ) : null}
       <View style={s.section}>
         <Text style={s.heading}>実行のタイミング</Text>
         <Field
@@ -690,6 +797,34 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     lineHeight: 29,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  completedBadge: {
+    backgroundColor: colors.successSoft,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  completedBadgeText: {
+    color: colors.success,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  encounterBadge: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  encounterBadgeText: {
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: "800",
   },
   neutralBadge: {
     backgroundColor: colors.surfaceMuted,
