@@ -1,3 +1,4 @@
+import { isReasoningEffort, type ReasoningEffort } from "@miraio/ai";
 import type { UserScopedSupabaseConfig } from "@miraio/db";
 
 type ServerEnvironment = Readonly<Record<string, string | undefined>>;
@@ -5,18 +6,21 @@ type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 export type OpenAIPersonalContextConfig = Readonly<{
   apiKey: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
 }>;
 
 export type OpenAICardExtractionConfig = Readonly<{
   apiKey: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
 }>;
 
 export type OpenAIFlashBriefConfig = Readonly<{
   apiKey: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
 }>;
 
@@ -102,6 +106,31 @@ export function readCompanyWebSearchEnabled(
   return true;
 }
 
+/**
+ * Per-stage reasoning depth. Absent leaves the parameter off the request, so a
+ * non-reasoning model or a self-hosted server keeps working unchanged.
+ *
+ * An unrecognized value is a configuration defect rather than a silent
+ * fallback: "minimal" and "standard" both look plausible and both make the
+ * provider answer 400, which the stages would report as an outage and retry.
+ */
+export function readReasoningEffort(
+  environment: ServerEnvironment,
+  variable: string,
+): ReasoningEffort | undefined {
+  const raw = environment[variable]?.trim().toLowerCase();
+
+  if (!raw) {
+    return undefined;
+  }
+
+  if (!isReasoningEffort(raw)) {
+    throw new ServerConfigurationError(variable);
+  }
+
+  return raw;
+}
+
 export function readServerSupabaseConfig(
   environment: ServerEnvironment,
 ): UserScopedSupabaseConfig {
@@ -140,6 +169,7 @@ export function readOpenAIPersonalContextConfig(
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
     baseUrl: readProviderBaseUrl(environment),
+    effort: readReasoningEffort(environment, "AI_PERSONAL_CONTEXT_EFFORT"),
     model: requireValue(environment, "AI_PERSONAL_CONTEXT_MODEL"),
   };
 }
@@ -150,6 +180,7 @@ export function readOpenAICardExtractionConfig(
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
     baseUrl: readProviderBaseUrl(environment),
+    effort: readReasoningEffort(environment, "AI_CARD_EXTRACTION_EFFORT"),
     model: requireValue(environment, "AI_CARD_EXTRACTION_MODEL"),
   };
 }
@@ -157,6 +188,7 @@ export function readOpenAICardExtractionConfig(
 export type OpenAICompanyContextConfig = Readonly<{
   apiKey: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
   webSearch: boolean;
 }>;
@@ -164,6 +196,7 @@ export type OpenAICompanyContextConfig = Readonly<{
 export type OpenAIMutualValueConfig = Readonly<{
   apiKey: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
 }>;
 
@@ -173,6 +206,7 @@ export function readOpenAICompanyContextConfig(
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
     baseUrl: readProviderBaseUrl(environment),
+    effort: readReasoningEffort(environment, "AI_COMPANY_CONTEXT_EFFORT"),
     model: requireValue(environment, "AI_COMPANY_CONTEXT_MODEL"),
     webSearch: readCompanyWebSearchEnabled(environment),
   };
@@ -184,6 +218,7 @@ export function readOpenAIFlashBriefConfig(
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
     baseUrl: readProviderBaseUrl(environment),
+    effort: readReasoningEffort(environment, "AI_FLASH_BRIEF_EFFORT"),
     model: requireValue(environment, "AI_FLASH_BRIEF_MODEL"),
   };
 }
@@ -194,6 +229,7 @@ export function readOpenAIMutualValueConfig(
   return {
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
     baseUrl: readProviderBaseUrl(environment),
+    effort: readReasoningEffort(environment, "AI_MUTUAL_VALUE_EFFORT"),
     model: requireValue(environment, "AI_MUTUAL_VALUE_MODEL"),
   };
 }

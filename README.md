@@ -349,6 +349,22 @@ failed three times (`429 retry_limit_reached`). The mobile client calls it when
 a scan holds `card_ready` or `brief_ready` for 15 seconds, from every "check
 again" action, and from **Flash Briefを作成** on a `card_ready` card.
 
+## Verify against the real provider
+
+Every AI test injects a fake request function, so the code path that actually
+calls OpenAI never runs in CI. `docs/live-provider-smoke.md` is the runbook for
+exercising it: the card-field eval (no Docker needed), then one real scan of a
+synthetic card through the whole pipeline, then the same scan with company web
+research on. It lists what to read afterwards — schema acceptance, per-stage
+`ai_runs` latency against the budgets in `packages/ai/src/provider-client.ts`,
+and the evidence rows.
+
+Reasoning depth is configured per stage (`AI_*_EFFORT`: none, low, medium,
+high, xhigh, max). Blank omits the parameter, which is what a non-reasoning
+model or a self-hosted server needs. `minimal` is rejected at startup because
+the GPT-5.6 models answer it with a 400, which the stages would otherwise
+report as a provider outage and retry.
+
 ## Run the mobile app
 
 ```bash

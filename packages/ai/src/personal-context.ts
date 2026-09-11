@@ -11,6 +11,8 @@ import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
   providerTimeoutMilliseconds,
+  toReasoningParameter,
+  type ReasoningEffort,
 } from "./provider-client";
 
 export type PersonalContextStructuringErrorCode =
@@ -41,6 +43,7 @@ type StructuredOutputRequest = (request: {
 export type OpenAIPersonalContextStructurerOptions = Readonly<{
   apiKey?: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -68,7 +71,8 @@ function toProviderError(error: unknown): PersonalContextStructuringError {
 
 function createOpenAIRequest(
   apiKey: string,
-  baseUrl?: string,
+  baseUrl: string | undefined,
+  effort: ReasoningEffort | undefined,
 ): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
@@ -91,6 +95,7 @@ function createOpenAIRequest(
         },
       ],
       store: false,
+      ...toReasoningParameter(effort),
       text: {
         format: zodTextFormat(
           personalContextStructuredOutputSchema,
@@ -128,6 +133,7 @@ export class OpenAIPersonalContextStructurer implements PersonalContextStructure
     this.request = createOpenAIRequest(
       apiKey,
       options.baseUrl?.trim() || undefined,
+      options.effort,
     );
   }
 
