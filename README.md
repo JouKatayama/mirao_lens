@@ -38,7 +38,8 @@ ML-001 through ML-017 currently provide:
 - 10 deterministic synthetic Card Intelligence fixtures covering Japanese,
   English, mixed, missing-field, limited-quality, and contact variants,
 - Flash Brief generation with grounded context matching and a mobile brief
-  viewing flow,
+  viewing flow, including a 1-5 POTENTIAL heuristic, connection keywords, and
+  a model-supplied fact/hypothesis label on WHY YOU,
 - deep enrichment via company-context, identity resolution, mutual-value, and
   evidence chain stages with per-stage AI-run latency tracking,
 - an Interaction layer with conversation notes, next-action capture,
@@ -214,6 +215,21 @@ ML-006 through ML-014 add Flash Brief generation, deep enrichment stages
 (company context, identity resolution, mutual value, evidence chains),
 interaction logging (notes and next actions), scan history listing, and
 evidence source opening.
+
+ML-018 also completes the Flash Brief contract against product spec 6.2.
+`potential_score` (integer 1-5), `connection_keywords` (up to four short
+overlap labels) and `why_you_claim_type` (`fact` or `hypothesis`) are now part
+of the AI's structured output. The screen used to hardcode a "hypothesis"
+badge and had no score at all, so the product's Fact / Hypothesis separation
+was cosmetic on the first screen the user reads.
+
+The score is an explainable heuristic about how much grounded common ground the
+POTENTIAL sentences rest on, not a rating of the person. The prompt ties each
+level to the evidence required for it, and the eval harness asserts the range.
+
+All three fields default for briefs stored before ML-018 (no score, no
+keywords, the hypothesis label the screen used to hardcode), so existing scans
+keep rendering.
 
 ML-018 closes the loop from a meeting back to the next one:
 

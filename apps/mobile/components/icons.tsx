@@ -31,22 +31,28 @@ const paths = {
   flash: "M13 2L5 14h6l-1 8 9-13h-6z",
   bell: "M4 17h16l-2-3V9a6 6 0 0 0-12 0v5zM10 21h4",
   trash: "M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7",
+  star: "M12 3.2l2.7 5.6 6.1.9-4.4 4.3 1.1 6.2L12 17.3 6.5 20.2l1.1-6.2L3.2 9.7l6.1-.9z",
 } as const;
 
 export type IconName = keyof typeof paths;
 export function Icon({
   name,
   color = colors.muted,
+  filled = false,
   size = 24,
 }: {
   name: IconName;
   color?: string;
+  // A rating needs the difference between an earned and an unearned mark to
+  // survive a glance, which an outline alone does not carry.
+  filled?: boolean;
   size?: number;
 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <Path
         d={paths[name]}
+        fill={filled ? color : "none"}
         stroke={color}
         strokeWidth={1.65}
         strokeLinecap="round"

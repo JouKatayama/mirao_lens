@@ -31,11 +31,14 @@ const validInput: FlashBriefInput = {
 };
 
 const validOutput = {
+  connection_keywords: ["UIデザイン", "プロダクト開発"],
   identity_status: "medium_confidence" as const,
   potential: "あなたのデザイン力が彼のプロダクトチームに貢献できます。",
+  potential_score: 4,
   say_this: ["最近のプロダクト開発でどんな課題がありますか？"],
   who: "山田太郎さんはXYZ株式会社のプロダクトマネージャーです。",
   why_you: "あなたのUIデザイン経験と彼のプロダクト課題が重なります。",
+  why_you_claim_type: "hypothesis" as const,
 };
 
 describe("OpenAIFlashBriefGenerator", () => {

@@ -28,11 +28,14 @@ const validBriefInput: FlashBriefInput = {
 };
 
 const validBrief: FlashBrief = {
+  connection_keywords: ["UIデザイン"],
   identity_status: "unresolved",
   potential: "あなたのデザイン力が彼のプロダクトチームに貢献できます。",
+  potential_score: 3,
   say_this: ["最近のプロダクト開発でどんな課題がありますか？"],
   who: "山田太郎さんはXYZ株式会社のプロダクトマネージャーです。",
   why_you: "あなたのUIデザイン経験と彼のプロダクト課題が重なります。",
+  why_you_claim_type: "hypothesis",
 };
 
 const validClaim: FlashBriefClaim = { runId: "run-001" };

@@ -17,15 +17,34 @@ export const identityStatusSchema = z.enum([
 
 export type IdentityStatus = z.infer<typeof identityStatusSchema>;
 
+// ─── Claim labelling ─────────────────────────────────────────────────────────
+//
+// Mutual Value already labels every claim. The Flash Brief showed a hardcoded
+// "hypothesis" badge instead, so the product's Fact / Hypothesis / Ask
+// separation was cosmetic on the one screen the user reads first.
+
+export const flashBriefClaimTypeSchema = z.enum(["fact", "hypothesis"]);
+
+export type FlashBriefClaimType = z.infer<typeof flashBriefClaimTypeSchema>;
+
+// POTENTIAL is an explainable product heuristic on a 1-5 scale, not an
+// objective compatibility score (product spec 6.2).
+export const potentialScoreSchema = z.number().int().min(1).max(5);
+
+export const connectionKeywordSchema = z.string().min(1).max(24);
+
 // ─── AI structured output (JSON-Schema-compatible for OpenAI strict mode) ────
 
 export const flashBriefStructuredOutputSchema = z
   .object({
+    connection_keywords: z.array(connectionKeywordSchema).min(1).max(4),
     identity_status: identityStatusSchema,
     potential: z.string().min(1).max(1000),
+    potential_score: potentialScoreSchema,
     say_this: z.array(z.string().min(1).max(400)).min(1).max(3),
     who: z.string().min(1).max(1000),
     why_you: z.string().min(1).max(1000),
+    why_you_claim_type: flashBriefClaimTypeSchema,
   })
   .strict();
 
@@ -35,11 +54,20 @@ export const flashBriefStructuredOutputSchema = z
 
 export const flashBriefSchema = z
   .object({
+    // The three fields below post-date ML-018 and default for briefs that were
+    // stored before it. A legacy row keeps rendering: no score, no keywords,
+    // and the hypothesis label the screen used to hardcode.
+    connection_keywords: z
+      .array(connectionKeywordSchema.trim())
+      .max(4)
+      .default([]),
     identity_status: identityStatusSchema.default("unresolved"),
     potential: z.string().trim().min(1).max(1000),
+    potential_score: potentialScoreSchema.nullable().default(null),
     say_this: z.array(z.string().trim().min(1).max(400)).min(1).max(3),
     who: z.string().trim().min(1).max(1000),
     why_you: z.string().trim().min(1).max(1000),
+    why_you_claim_type: flashBriefClaimTypeSchema.default("hypothesis"),
   })
   .strict();
 
@@ -216,11 +244,18 @@ export function normalizeFlashBrief(input: unknown): FlashBrief {
     );
   }
 
+  const keywords = structured.connection_keywords
+    .map((keyword) => keyword.trim())
+    .filter((keyword) => keyword.length > 0);
+
   return flashBriefSchema.parse({
+    connection_keywords: keywords,
     identity_status: structured.identity_status,
     potential: structured.potential.trim(),
+    potential_score: structured.potential_score,
     say_this: sayThis,
     who: structured.who.trim(),
     why_you: structured.why_you.trim(),
+    why_you_claim_type: structured.why_you_claim_type,
   });
 }

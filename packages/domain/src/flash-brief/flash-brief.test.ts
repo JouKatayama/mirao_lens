@@ -13,11 +13,14 @@ import {
 } from "./flash-brief";
 
 const validStructuredOutput = {
+  connection_keywords: ["SaaS", "プロダクト開発"],
   identity_status: "medium_confidence" as const,
   potential: "あなたのUI/UX知識が彼のチームに役立つ可能性があります。",
+  potential_score: 4,
   say_this: ["最近のプロダクト開発でどんな課題がありますか？"],
   who: "山田太郎さんはXYZ社のプロダクトマネージャーです。",
   why_you: "あなたのプロダクト経験と彼の会社が注力するSaaSが重なっています。",
+  why_you_claim_type: "hypothesis" as const,
 };
 
 const validFlashBrief: FlashBrief = validStructuredOutput;
@@ -96,6 +99,36 @@ describe("flashBriefSchema", () => {
     void _omit;
     const parsed = flashBriefSchema.parse(withoutStatus);
     expect(parsed.identity_status).toBe("unresolved");
+  });
+
+  it("defaults the fields a pre-ML-018 row does not carry", () => {
+    const parsed = flashBriefSchema.parse({
+      potential: "potential text",
+      say_this: ["starter"],
+      who: "who text",
+      why_you: "why text",
+    });
+    expect(parsed.potential_score).toBeNull();
+    expect(parsed.connection_keywords).toEqual([]);
+    expect(parsed.why_you_claim_type).toBe("hypothesis");
+  });
+
+  it("rejects a potential score outside the 1-5 heuristic", () => {
+    for (const potential_score of [0, 6, 3.5]) {
+      expect(
+        flashBriefSchema.safeParse({ ...validFlashBrief, potential_score })
+          .success,
+      ).toBe(false);
+    }
+  });
+
+  it("rejects more than four connection keywords", () => {
+    expect(
+      flashBriefSchema.safeParse({
+        ...validFlashBrief,
+        connection_keywords: ["a", "b", "c", "d", "e"],
+      }).success,
+    ).toBe(false);
   });
 
   it("trims whitespace from fields", () => {
@@ -187,6 +220,9 @@ describe("normalizeFlashBrief", () => {
     expect(result.why_you).toBe(validStructuredOutput.why_you);
     expect(result.say_this).toEqual(validStructuredOutput.say_this);
     expect(result.potential).toBe(validStructuredOutput.potential);
+    expect(result.potential_score).toBe(4);
+    expect(result.connection_keywords).toEqual(["SaaS", "プロダクト開発"]);
+    expect(result.why_you_claim_type).toBe("hypothesis");
     expect(result.identity_status).toBe("medium_confidence");
   });
 

@@ -73,6 +73,23 @@ function checkIdentityStatusFloor(
 
 // Runs all automated assertions for a Flash Brief output against its golden
 // case expectations. Returns one AssertionResult per check.
+// A brief generated now always carries a score; null only appears on rows
+// stored before the field existed, which an eval run never produces.
+export function checkPotentialScoreRange(
+  score: number | null,
+): AssertionResult {
+  const passed =
+    score !== null && Number.isInteger(score) && score >= 1 && score <= 5;
+
+  return {
+    name: "potential_score_in_range",
+    passed,
+    message: passed
+      ? undefined
+      : `potential_score must be an integer between 1 and 5, got ${String(score)}`,
+  };
+}
+
 export function runFlashBriefAssertions(
   output: FlashBriefPublic,
   cas: FlashBriefCase,
@@ -82,6 +99,9 @@ export function runFlashBriefAssertions(
     output.why_you,
     output.potential,
     ...output.say_this,
+    // A keyword is as visible as a sentence, so a hallucinated name has to be
+    // caught here too.
+    ...output.connection_keywords,
   ];
 
   const results: AssertionResult[] = [];
@@ -104,6 +124,8 @@ export function runFlashBriefAssertions(
       ),
     );
   }
+
+  results.push(checkPotentialScoreRange(output.potential_score));
 
   return results;
 }
