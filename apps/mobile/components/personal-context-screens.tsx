@@ -8,7 +8,14 @@ import {
 } from "@miraio/domain";
 import { colors, spacing } from "@miraio/ui-tokens";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import {
   createOnboardingInput,
@@ -471,18 +478,37 @@ export function MyContextScreen({
           danger
           label="アカウントを削除"
           onPress={() => {
-            Alert.alert(
-              "アカウントを削除",
-              "すべてのスキャン・Personal Context・アカウント情報が削除されます。この操作は取り消せません。",
-              [
-                { style: "cancel", text: "キャンセル" },
-                {
-                  onPress: () => void onDeleteAccount().catch(() => {}),
-                  style: "destructive",
-                  text: "削除する",
-                },
-              ],
-            );
+            const title = "アカウントを削除";
+            const message =
+              "すべてのスキャン・Personal Context・アカウント情報が削除されます。この操作は取り消せません。";
+            const confirmDeletion = () => {
+              setError(null);
+              // A failure used to be swallowed, leaving the user believing a
+              // deletion they asked for had happened.
+              void onDeleteAccount().catch(() =>
+                setError(
+                  "アカウントを削除できませんでした。通信状態を確認して再試行してください。",
+                ),
+              );
+            };
+
+            // react-native-web implements Alert.alert as a no-op, so on the
+            // web target the button did nothing at all.
+            if (Platform.OS === "web") {
+              if (globalThis.confirm?.(`${title}\n\n${message}`)) {
+                confirmDeletion();
+              }
+              return;
+            }
+
+            Alert.alert(title, message, [
+              { style: "cancel", text: "キャンセル" },
+              {
+                onPress: confirmDeletion,
+                style: "destructive",
+                text: "削除する",
+              },
+            ]);
           }}
         />
       ) : null}

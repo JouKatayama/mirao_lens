@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  cleanupSecretMatches,
   createPostCleanupHandler,
   type CleanupHandlerDependencies,
 } from "./cleanup-handlers";
@@ -86,5 +87,26 @@ describe("createPostCleanupHandler", () => {
     const res = await handler(makeRequest("correct"));
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toMatchObject({ error: "sweep_failed" });
+  });
+});
+
+describe("cleanupSecretMatches", () => {
+  it("accepts the configured secret, ignoring surrounding whitespace in config", () => {
+    expect(cleanupSecretMatches("s3cret", " s3cret\n")).toBe(true);
+  });
+
+  it("rejects a different secret, including one that only shares a prefix", () => {
+    expect(cleanupSecretMatches("s3cre", "s3cret")).toBe(false);
+    expect(cleanupSecretMatches("s3cretX", "s3cret")).toBe(false);
+  });
+
+  it("rejects everything while no secret is configured", () => {
+    expect(cleanupSecretMatches("", undefined)).toBe(false);
+    expect(cleanupSecretMatches("anything", undefined)).toBe(false);
+    expect(cleanupSecretMatches("", "   ")).toBe(false);
+  });
+
+  it("rejects an empty presented secret", () => {
+    expect(cleanupSecretMatches("", "s3cret")).toBe(false);
   });
 });

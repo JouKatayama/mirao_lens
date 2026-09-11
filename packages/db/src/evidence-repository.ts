@@ -11,6 +11,8 @@ import {
   type UserScopedSupabaseConfig,
 } from "./personal-context-repository";
 
+const companyContextEvidenceTitle = "AI会社・役職分析";
+
 export class EvidenceRepositoryError extends Error {
   constructor(readonly operation: string) {
     super(`Evidence read failed: ${operation}.`);
@@ -142,6 +144,19 @@ export class EvidenceRepository {
       ctx.role_scope && `役割: ${ctx.role_scope}`,
     ].filter((p): p is string => Boolean(p));
 
+    // A resumed scan regenerates company context, so replace the record of the
+    // earlier run rather than listing the same source twice.
+    const { error: deleteError } = await this.client
+      .from("evidence")
+      .delete()
+      .eq("scan_id", scanId)
+      .eq("source_type", "ai_inference")
+      .eq("source_title", companyContextEvidenceTitle);
+
+    if (deleteError) {
+      throw new EvidenceRepositoryError("replace_company_context_evidence");
+    }
+
     const { data } = await this.client
       .from("evidence")
       .insert({
@@ -149,7 +164,7 @@ export class EvidenceRepository {
         excerpt: excerptParts.join("\n") || null,
         retrieved_at: new Date().toISOString(),
         scan_id: scanId,
-        source_title: "AI会社・役職分析",
+        source_title: companyContextEvidenceTitle,
         source_type: "ai_inference",
         source_url: null,
         user_id: userId,

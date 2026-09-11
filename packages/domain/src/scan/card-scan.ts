@@ -69,7 +69,24 @@ export const scanCreateResponseSchema = z
   })
   .strict();
 
+/**
+ * Outcome of asking the server to continue a scan's pipeline:
+ * `scheduled` — remaining stages were queued; `running` — a stage is already
+ * in progress, so nothing new was queued; `complete` — nothing is left to run.
+ */
+export const scanResumeOutcomes = ["scheduled", "running", "complete"] as const;
+
+export const scanResumeResponseSchema = z
+  .object({
+    resume: z.enum(scanResumeOutcomes),
+    scan_id: z.string().uuid(),
+  })
+  .strict();
+
+export type ScanResumeResponse = z.infer<typeof scanResumeResponseSchema>;
+
 export type MeetingGoal = z.infer<typeof meetingGoalSchema>;
+export type ScanDatabaseStatus = z.infer<typeof scanDatabaseStatusSchema>;
 export type ScanCaptureMetadata = z.infer<typeof scanCaptureMetadataSchema>;
 export type ScanImageContentType = z.infer<typeof scanImageContentTypeSchema>;
 export type ScanImagePayload = z.infer<typeof scanImagePayloadSchema>;

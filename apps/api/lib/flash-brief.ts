@@ -158,8 +158,9 @@ export async function processProductionFlashBrief(input: {
   try {
     configuration = readOpenAIFlashBriefConfig(process.env);
   } catch {
-    // Config missing — skip silently; card_ready state remains accessible.
-    return { status: "skipped" };
+    // Still claim, so the run fails with a sanitized configuration code and
+    // the scan returns to card_ready. Skipping the claim left it parked in
+    // generating_brief, which every client reads as "still working".
   }
 
   return processFlashBrief(input, {
@@ -170,9 +171,13 @@ export async function processProductionFlashBrief(input: {
       );
     },
     createGenerator() {
-      return new OpenAIFlashBriefGenerator(configuration!);
+      if (!configuration) {
+        throw new FlashBriefGeneratorError("configuration");
+      }
+
+      return new OpenAIFlashBriefGenerator(configuration);
     },
-    modelAlias: configuration.model,
+    modelAlias: configuration?.model ?? "unconfigured",
     nowMilliseconds: () => performance.now(),
     provider: "openai",
   });

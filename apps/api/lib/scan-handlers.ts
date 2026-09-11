@@ -17,15 +17,8 @@ import {
   type ScanImageContentType,
   type ScanRecord,
 } from "@miraio/domain";
-import { after } from "next/server";
 
-import { processProductionCardEvidence } from "./card-evidence";
-import { processProductionCardIntelligence } from "./card-intelligence";
-import { processProductionCompanyContext } from "./company-context";
-import { processProductionCompanyEvidence } from "./company-evidence";
-import { processProductionFlashBrief } from "./flash-brief";
-import { processProductionIdentityResolution } from "./identity-resolution";
-import { processProductionMutualValue } from "./mutual-value";
+import { scheduleScanPipeline } from "./scan-pipeline";
 import {
   readServerSupabaseConfig,
   ServerConfigurationError,
@@ -497,41 +490,5 @@ export const productionScanDependencies: ScanHandlerDependencies = {
     );
   },
   now: () => new Date(),
-  scheduleExtraction(input) {
-    after(async () => {
-      // Every stage below already converts its own expected failures into a
-      // persisted, sanitized failure row. This guard exists for the ones that
-      // cannot: a missing server configuration read inside `authenticate`, or
-      // any unforeseen throw. Without it the rejection escapes the `after`
-      // callback, the remaining stages never run, and the scan is stranded in
-      // an intermediate status that only the next claim attempt would clear —
-      // and nothing schedules one.
-      //
-      // The whole chain still runs inside this route's `maxDuration`, so a
-      // platform-level cut mid-pipeline remains possible; see
-      // `providerTimeoutMilliseconds` in packages/ai for the per-stage budget
-      // that keeps the sequence inside it. A durable queue is the real fix.
-      try {
-        const cardResult = await processProductionCardIntelligence(input);
-        if (cardResult.status === "completed") {
-          // Card evidence records are created immediately so they are available
-          // for the full pipeline. Non-blocking on failure.
-          await processProductionCardEvidence(input);
-          // Company context: fail_company_context advances scan to
-          // generating_brief so Flash Brief still runs on failure.
-          await processProductionCompanyContext(input);
-          // Company evidence and identity resolution are both non-blocking.
-          await processProductionCompanyEvidence(input);
-          await processProductionIdentityResolution(input);
-          const briefResult = await processProductionFlashBrief(input);
-          if (briefResult.status === "completed") {
-            await processProductionMutualValue(input);
-          }
-        }
-      } catch {
-        // Never log provider output or card content. The scan keeps whatever
-        // status the last completed stage persisted.
-      }
-    });
-  },
+  scheduleExtraction: scheduleScanPipeline,
 };

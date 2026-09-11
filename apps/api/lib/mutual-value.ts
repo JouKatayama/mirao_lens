@@ -180,8 +180,8 @@ export async function processProductionMutualValue(input: {
   try {
     configuration = readOpenAIMutualValueConfig(process.env);
   } catch {
-    // Config missing — skip silently; brief_ready state remains accessible.
-    return { status: "skipped" };
+    // Still claim, so the run fails with a sanitized configuration code that
+    // operators can see in ai_runs; the scan returns to brief_ready.
   }
 
   return processMutualValue(input, {
@@ -192,9 +192,13 @@ export async function processProductionMutualValue(input: {
       );
     },
     createGenerator() {
-      return new OpenAIMutualValueGenerator(configuration!);
+      if (!configuration) {
+        throw new MutualValueGeneratorError("configuration");
+      }
+
+      return new OpenAIMutualValueGenerator(configuration);
     },
-    modelAlias: configuration.model,
+    modelAlias: configuration?.model ?? "unconfigured",
     nowMilliseconds: () => performance.now(),
     provider: "openai",
   });

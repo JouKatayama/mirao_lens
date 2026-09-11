@@ -18,6 +18,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database, Json } from "./database.types";
+import { removeOrphanedIdentityRecords } from "./identity-resolution-repository";
 import {
   createUserScopedSupabaseClient,
   type UserScopedSupabaseConfig,
@@ -448,6 +449,14 @@ export class CardIntelligenceRepository {
       await this.client.storage.from(rawImageBucket).remove(paths);
     }
 
+    // Read before the cascade removes the card: afterwards nothing records
+    // which person and organization this scan created.
+    const { data: links } = await this.client
+      .from("business_cards")
+      .select("person_id,organization_id")
+      .eq("scan_id", scanId)
+      .maybeSingle();
+
     const { data, error } = await this.client
       .from("scans")
       .delete()
@@ -457,6 +466,13 @@ export class CardIntelligenceRepository {
 
     if (error) {
       throw new CardIntelligenceRepositoryError("delete_scan");
+    }
+
+    if (data !== null && links) {
+      await removeOrphanedIdentityRecords(this.client, {
+        organizationId: links.organization_id,
+        personId: links.person_id,
+      });
     }
 
     return data !== null;

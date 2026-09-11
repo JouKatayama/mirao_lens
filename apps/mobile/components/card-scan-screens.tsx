@@ -324,6 +324,7 @@ export function CardIntelligenceScreen({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const [draft, setDraft] = useState<Record<CardFieldName, string> | null>(
     null,
   );
@@ -372,6 +373,21 @@ export function CardIntelligenceScreen({
       setLocalError("修正を保存できませんでした。再試行してください。");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function resumeBrief() {
+    if (resuming) {
+      return;
+    }
+
+    setResuming(true);
+    setLocalError(null);
+
+    try {
+      await onRefresh();
+    } finally {
+      setResuming(false);
     }
   }
 
@@ -535,6 +551,22 @@ export function CardIntelligenceScreen({
               setEditing(false);
               setLocalError(null);
             }}
+          />
+        </>
+      ) : status.status === "card_ready" ? (
+        // card_ready outlives the hand-off to the next stage only when the
+        // brief failed or never started, so offer the way forward — after
+        // any correction, which the brief will then use.
+        <>
+          <PrimaryButton
+            label="Flash Briefを作成"
+            loading={resuming}
+            onPress={() => void resumeBrief()}
+          />
+          <SecondaryButton
+            disabled={resuming}
+            label="内容を修正"
+            onPress={() => setEditing(true)}
           />
         </>
       ) : (

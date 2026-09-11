@@ -50,7 +50,11 @@ import {
   ReviewScreen,
 } from "./personal-context-screens";
 import { isScanPending, scanNavigationTarget } from "../lib/scan-navigation";
-import { nextScanPollDelay } from "../lib/scan-polling";
+import {
+  nextScanPollDelay,
+  watchForStall,
+  type StallWatch,
+} from "../lib/scan-polling";
 import { LoadingScreen, PrimaryButton } from "./ui";
 import { HomeScreen } from "./home-screen";
 import { WelcomeScreen } from "./welcome-screen";
@@ -140,6 +144,27 @@ export function PersonalContextApp() {
   // Scan-funnel milestones are reported on the transition this client watched,
   // so the last observed shape of the scan has to outlive each poll.
   const observedMilestones = useRef<ScanMilestoneSnapshot | null>(null);
+  // How long the scan has sat between pipeline stages, so a stopped pipeline
+  // is resumed once instead of polled until the budget runs out.
+  const stallWatch = useRef<StallWatch>(null);
+  // Set when the server refuses to resume a scan at its retry limit. Kept
+  // apart from scanStatusError, which every successful poll clears.
+  const [resumeRefusedScanId, setResumeRefusedScanId] = useState<string | null>(
+    null,
+  );
+  const scanError =
+    scanResult && resumeRefusedScanId === scanResult.scan_id
+      ? "この名刺は分析に繰り返し失敗したため、これ以上再試行できません。撮り直すと新しく分析できます。"
+      : scanStatusError;
+
+  const noteResumeRefusal = useCallback(
+    (error: unknown, refusedScanId: string) => {
+      if (error instanceof ScanApiError && error.status === 429) {
+        setResumeRefusedScanId(refusedScanId);
+      }
+    },
+    [],
+  );
 
   const loadApprovedContext = useCallback(
     async (
@@ -327,6 +352,24 @@ export function PersonalContextApp() {
         setScanStatus(nextStatus);
         setScanStatusError(null);
 
+        const stall = watchForStall(
+          stallWatch.current,
+          nextStatus.status === "card_ready" ||
+            nextStatus.status === "brief_ready"
+            ? `${pollKey}:${nextStatus.status}`
+            : null,
+          Date.now(),
+        );
+        stallWatch.current = stall.next;
+        if (stall.resume) {
+          // Best effort. The polls that follow show whether the scan moved; a
+          // refusal at the retry limit is explained on screen.
+          const resumedScanId = scanResult.scan_id;
+          void services.scanApi
+            .resumeScan(session.access_token, resumedScanId)
+            .catch((error: unknown) => noteResumeRefusal(error, resumedScanId));
+        }
+
         const nextMilestones = toScanMilestoneSnapshot(nextStatus);
         for (const name of scanMilestoneEvents(
           observedMilestones.current,
@@ -375,7 +418,15 @@ export function PersonalContextApp() {
         clearTimeout(timeout);
       }
     };
-  }, [pollEpoch, scanResult, scanStatusValue, services, session, view]);
+  }, [
+    noteResumeRefusal,
+    pollEpoch,
+    scanResult,
+    scanStatusValue,
+    services,
+    session,
+    view,
+  ]);
 
   if (welcome) {
     return (
@@ -579,6 +630,22 @@ export function PersonalContextApp() {
 
   async function refreshScanStatus(): Promise<void> {
     if (!services.ok || !session || !scanResult) return;
+    // Re-reading the status alone cannot move a scan whose pipeline stopped,
+    // so every "check again" also asks the server to continue it. Resuming is
+    // idempotent: a scan that is running or finished is left alone.
+    try {
+      await services.scanApi.resumeScan(
+        session.access_token,
+        scanResult.scan_id,
+      );
+    } catch (error) {
+      if (error instanceof ScanApiError && error.status === 401) {
+        await services.supabase.auth.signOut();
+        return;
+      }
+      noteResumeRefusal(error, scanResult.scan_id);
+      // Anything else: the status read below still shows where the scan is.
+    }
     try {
       const nextStatus = await services.scanApi.getStatus(
         session.access_token,
@@ -846,7 +913,7 @@ export function PersonalContextApp() {
       ) : null}
       {(view === "scan-accepted" || view === "card-details") && scanResult ? (
         <CardIntelligenceScreen
-          error={scanStatusError}
+          error={scanError}
           onCorrect={correctCard}
           onDone={() => {
             if (view === "card-details" && scanStatus?.flash_brief) {
@@ -889,7 +956,7 @@ export function PersonalContextApp() {
             title: scanStatus.card.title,
           }}
           deepEnriching={scanStatus.status === "deep_enrichment"}
-          error={scanStatusError}
+          error={scanError}
           onDone={() => {
             setScanId(null);
             setScanResult(null);
@@ -953,7 +1020,7 @@ export function PersonalContextApp() {
             name: scanStatus.card.name,
             title: scanStatus.card.title,
           }}
-          error={scanStatusError}
+          error={scanError}
           mutualValue={
             scanStatus.status === "deep_ready" ? scanStatus.mutual_value : null
           }
@@ -986,10 +1053,17 @@ export function PersonalContextApp() {
             name: scanStatus.card.name,
             title: scanStatus.card.title,
           }}
-          error={scanStatusError}
+          error={scanError}
           mutualValue={scanStatus.mutual_value}
           onAcceptNextAction={async (actionText, timingText) => {
-            await saveNextAction(actionText, timingText, "ai", "accepted");
+            // An action the user rewrote is theirs; recording it as the AI's
+            // suggestion would inflate the measured suggestion acceptance.
+            const source =
+              actionText.trim() ===
+              scanStatus.mutual_value.next_action.action.trim()
+                ? "ai"
+                : "user";
+            await saveNextAction(actionText, timingText, source, "accepted");
           }}
           onDismissNextAction={async (actionText) => {
             await saveNextAction(actionText, null, "ai", "dismissed");
