@@ -586,11 +586,7 @@ export type Database = {
         Returns: boolean
       }
       match_personal_context_items: {
-        Args: {
-          p_embedding: string
-          p_limit?: number
-          p_offer_limit?: number
-        }
+        Args: { p_embedding: string; p_limit?: number; p_offer_limit?: number }
         Returns: {
           item_tags: string[]
           item_text: string
