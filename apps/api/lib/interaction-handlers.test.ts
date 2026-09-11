@@ -421,7 +421,52 @@ describe("createPostNextActionHandler", () => {
       validAction.timing_text,
       "ai",
       "accepted",
+      null,
     );
+  });
+
+  it("passes a due moment through and echoes it", async () => {
+    repository.createNextAction.mockResolvedValue({ id: "action-1" });
+    const handler = createPostNextActionHandler(dependencies);
+
+    const res = await handler(
+      makeRequest(`http://api/v1/scans/${scanId}/next-action`, {
+        method: "POST",
+        body: JSON.stringify({
+          ...validAction,
+          due_at: "2026-09-14T00:00:00.000Z",
+        }),
+      }),
+      makeContext(),
+    );
+
+    expect(res.status).toBe(201);
+    await expect(res.json()).resolves.toMatchObject({
+      due_at: "2026-09-14T00:00:00.000Z",
+    });
+    expect(repository.createNextAction).toHaveBeenCalledWith(
+      scanId,
+      validAction.action_text,
+      validAction.timing_text,
+      "ai",
+      "accepted",
+      "2026-09-14T00:00:00.000Z",
+    );
+  });
+
+  it("rejects a due moment that is not a timestamp", async () => {
+    const handler = createPostNextActionHandler(dependencies);
+
+    const res = await handler(
+      makeRequest(`http://api/v1/scans/${scanId}/next-action`, {
+        method: "POST",
+        body: JSON.stringify({ ...validAction, due_at: "3日以内" }),
+      }),
+      makeContext(),
+    );
+
+    expect(res.status).toBe(400);
+    expect(repository.createNextAction).not.toHaveBeenCalled();
   });
 
   it("returns 500 when createNextAction throws", async () => {

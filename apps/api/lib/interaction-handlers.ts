@@ -30,6 +30,7 @@ type InteractionRepositoryPort = Readonly<{
     timingText: string | null,
     source: "ai" | "user",
     status: "accepted" | "dismissed",
+    dueAt: string | null,
   ): Promise<{ id: string } | null>;
   getNote(scanId: string): Promise<{ note_text: string | null } | null>;
   listNextActions(scanId: string): Promise<NextActionResponse[]>;
@@ -289,6 +290,7 @@ export function createPostNextActionHandler(
         actionRequest.data.timing_text ?? null,
         actionRequest.data.source,
         actionRequest.data.status,
+        actionRequest.data.due_at ?? null,
       );
 
       if (!row) {
@@ -298,6 +300,7 @@ export function createPostNextActionHandler(
       return jsonResponse(
         {
           action_text: actionRequest.data.action_text,
+          due_at: actionRequest.data.due_at ?? null,
           id: row.id,
           scan_id: scanId,
           source: actionRequest.data.source,
