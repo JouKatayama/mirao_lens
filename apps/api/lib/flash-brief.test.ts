@@ -46,6 +46,9 @@ function makeRepository(
     completeBrief: () => Promise<void>;
     failBrief: () => Promise<void>;
     getFlashBriefInput: () => Promise<FlashBriefInput | null>;
+    matchPersonalContext: () => Promise<
+      FlashBriefInput["personal_context"]["items"] | null
+    >;
   }> = {},
 ) {
   return {
@@ -53,6 +56,7 @@ function makeRepository(
     completeBrief: vi.fn().mockResolvedValue(undefined),
     failBrief: vi.fn().mockResolvedValue(undefined),
     getFlashBriefInput: vi.fn().mockResolvedValue(validBriefInput),
+    matchPersonalContext: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }
@@ -63,6 +67,7 @@ function makeDependencies(
 ): FlashBriefProcessorDependencies {
   return {
     authenticate: vi.fn().mockResolvedValue({ repository, userId: "user-1" }),
+    createEmbeddingGenerator: vi.fn().mockReturnValue(null),
     createGenerator: vi.fn().mockReturnValue({
       generate: vi.fn().mockResolvedValue(validBrief),
     }),

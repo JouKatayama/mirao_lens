@@ -53,6 +53,35 @@ export async function authenticateFlashBriefSession(
 }
 
 export class FlashBriefRepository {
+  /**
+   * The Personal Context worth sending for one specific person, rather than
+   * the whole profile (product spec 5.4). Returns null when retrieval is not
+   * possible — no vector stored yet, or a vector of a different size because
+   * the embedding model changed — so the caller can fall back to sending
+   * everything rather than sending nothing.
+   */
+  async matchPersonalContext(
+    embedding: string,
+    limit: number,
+  ): Promise<FlashBriefInput["personal_context"]["items"] | null> {
+    const { data, error } = await this.client.rpc(
+      "match_personal_context_items",
+      { p_embedding: embedding, p_limit: limit },
+    );
+
+    if (error || !data || data.length === 0) {
+      return null;
+    }
+
+    return data.map(
+      (row: { item_tags: string[]; item_text: string; item_type: string }) => ({
+        tags: row.item_tags,
+        text: row.item_text,
+        type: row.item_type as FlashBriefInput["personal_context"]["items"][number]["type"],
+      }),
+    );
+  }
+
   constructor(private readonly client: SupabaseClient<Database>) {}
 
   async claimBrief(

@@ -7,6 +7,7 @@ import { processProductionCompanyEvidence } from "./company-evidence";
 import { processProductionFlashBrief } from "./flash-brief";
 import { processProductionIdentityResolution } from "./identity-resolution";
 import { processProductionMutualValue } from "./mutual-value";
+import { processProductionPersonalContextEmbedding } from "./personal-context-embedding";
 
 export type ScanPipelineInput = Readonly<{
   accessToken: string;
@@ -23,6 +24,7 @@ export type ScanPipelineStages = Readonly<{
   flashBrief(input: ScanPipelineInput): Promise<StageResult>;
   identityResolution(input: ScanPipelineInput): Promise<unknown>;
   mutualValue(input: ScanPipelineInput): Promise<unknown>;
+  personalContextEmbedding(input: ScanPipelineInput): Promise<unknown>;
 }>;
 
 /**
@@ -66,6 +68,12 @@ export async function runScanPipeline(
   await stages.identityResolution(input);
   await stages.flashBrief(input);
   await stages.mutualValue(input);
+
+  // Last, and deliberately: this embeds the user's approved context so a later
+  // scan can retrieve the relevant part of it instead of sending all of it.
+  // It is a provider call, and nothing already shown depends on it, so it must
+  // not sit between the user and the brief.
+  await stages.personalContextEmbedding(input);
 }
 
 export const productionScanPipelineStages: ScanPipelineStages = {
@@ -76,6 +84,7 @@ export const productionScanPipelineStages: ScanPipelineStages = {
   flashBrief: processProductionFlashBrief,
   identityResolution: processProductionIdentityResolution,
   mutualValue: processProductionMutualValue,
+  personalContextEmbedding: processProductionPersonalContextEmbedding,
 };
 
 export function scheduleScanPipeline(input: ScanPipelineInput): void {

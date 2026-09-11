@@ -1,6 +1,8 @@
 import {
   FlashBriefGeneratorError,
+  OpenAIEmbeddingGenerator,
   OpenAIFlashBriefGenerator,
+  type EmbeddingGenerator,
   type FlashBriefGenerator,
 } from "@miraio/ai";
 import {
@@ -11,7 +13,9 @@ import {
 } from "@miraio/db";
 import type { FlashBrief, FlashBriefInput } from "@miraio/domain";
 
+import { withRetrievedPersonalContext } from "./personal-context-retrieval";
 import {
+  readOpenAIEmbeddingConfig,
   readOpenAIFlashBriefConfig,
   readServerSupabaseConfig,
 } from "./server-config";
@@ -30,6 +34,10 @@ type FlashBriefRepositoryPort = Readonly<{
   ): Promise<void>;
   failBrief(scanId: string, runId: string, errorCode: string): Promise<void>;
   getFlashBriefInput(scanId: string): Promise<FlashBriefInput | null>;
+  matchPersonalContext(
+    embedding: string,
+    limit: number,
+  ): Promise<FlashBriefInput["personal_context"]["items"] | null>;
 }>;
 
 type FlashBriefSession = Readonly<{
@@ -39,6 +47,8 @@ type FlashBriefSession = Readonly<{
 
 export type FlashBriefProcessorDependencies = Readonly<{
   authenticate(accessToken: string): Promise<FlashBriefSession | null>;
+  /** Null when semantic retrieval is not configured; see server-config. */
+  createEmbeddingGenerator(): EmbeddingGenerator | null;
   createGenerator(): FlashBriefGenerator;
   modelAlias: string;
   nowMilliseconds(): number;
@@ -115,9 +125,17 @@ export async function processFlashBrief(
   const startedAt = dependencies.nowMilliseconds();
 
   try {
-    const briefInput = await session.repository.getFlashBriefInput(
+    const storedInput = await session.repository.getFlashBriefInput(
       input.scanId,
     );
+
+    const briefInput = storedInput
+      ? await withRetrievedPersonalContext(storedInput, {
+          createGenerator: dependencies.createEmbeddingGenerator,
+          matchPersonalContext: (embedding, limit) =>
+            session.repository.matchPersonalContext(embedding, limit),
+        })
+      : null;
 
     if (!briefInput) {
       await safelyFail(session.repository, input.scanId, claim.runId, {
@@ -169,6 +187,16 @@ export async function processProductionFlashBrief(input: {
         readServerSupabaseConfig(process.env),
         accessToken,
       );
+    },
+    createEmbeddingGenerator() {
+      // Retrieval is optional, and a misconfigured embedding must not stop a
+      // brief the model can still write from the whole profile.
+      try {
+        const embedding = readOpenAIEmbeddingConfig(process.env);
+        return embedding ? new OpenAIEmbeddingGenerator(embedding) : null;
+      } catch {
+        return null;
+      }
     },
     createGenerator() {
       if (!configuration) {
