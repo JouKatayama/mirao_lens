@@ -39,13 +39,15 @@ begin
     raise exception 'meeting_goal is not a known value.' using errcode = '22023';
   end if;
 
-  update public.scans
+  -- Aliased because RETURNS TABLE declares `status` as an OUT parameter, which
+  -- a bare column reference in the WHERE clause resolves against first.
+  update public.scans as s
   set meeting_goal = p_meeting_goal,
       status       = 'card_ready'
-  where id = p_scan_id
-    and user_id = v_user_id
-    and status in ('brief_ready', 'deep_ready')
-  returning scans.status into v_status;
+  where s.id = p_scan_id
+    and s.user_id = v_user_id
+    and s.status in ('brief_ready', 'deep_ready')
+  returning s.status into v_status;
 
   if v_status is null then
     return;
