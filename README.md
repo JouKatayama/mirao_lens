@@ -49,7 +49,8 @@ ML-001 through ML-017 currently provide:
   acceptance tracking, and completion recorded as outcome data,
 - relationship history: earlier scans of the same resolved person, surfaced as
   an "Nth meeting" badge and a list of past encounters with their notes,
-- scan history listing with status badges and a mobile history screen,
+- scan history listing with status badges, a mobile history screen, and a
+  star that keeps the meeting worth returning to out of chronological order,
 - evidence-view source opening, restricted to `http`/`https` links,
 - event analytics via the PostHog HTTP Capture API with 20 named events
   covering activation, scan funnel, value, and trust categories, including

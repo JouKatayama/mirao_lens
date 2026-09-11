@@ -118,6 +118,7 @@ const demoHistory: ScanHistoryItem[] = [
   "テスト 健一",
 ].map((name, i) => ({
   scan_id: `00000000-0000-4000-8000-${String(i + 30).padStart(12, "0")}`,
+  is_favorite: i === 0,
   card_name: name,
   card_company: "株式会社サンプル",
   card_title:
@@ -261,7 +262,9 @@ function DemoScreen({ initial }: { initial: string }) {
         onFlagIdentity={() => undefined}
         onMarkHypothesisUnhelpful={() => undefined}
         onRateUsefulness={() => undefined}
+        isFavorite
         onRefresh={noOp}
+        onToggleFavorite={noOp}
         onViewCard={() => setScreen("detail")}
         onViewEncounters={() => setScreen("encounters")}
         onViewEvidence={() => setScreen("detail")}

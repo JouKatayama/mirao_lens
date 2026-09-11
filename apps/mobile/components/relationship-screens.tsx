@@ -43,11 +43,13 @@ export function FlashBriefScreen({
   card,
   deepEnriching,
   error,
+  isFavorite = false,
   onDone,
   onFlagIdentity,
   onMarkHypothesisUnhelpful,
   onRateUsefulness,
   onRefresh,
+  onToggleFavorite,
   onViewCard,
   onViewEncounters,
   onViewEvidence,
@@ -59,11 +61,13 @@ export function FlashBriefScreen({
   card: Person;
   deepEnriching: boolean;
   error: string | null;
+  isFavorite?: boolean;
   onDone: () => void;
   onFlagIdentity?: () => void;
   onMarkHypothesisUnhelpful?: () => void;
   onRateUsefulness?: (rating: number) => void;
   onRefresh: () => Promise<void>;
+  onToggleFavorite?: (next: boolean) => Promise<void>;
   onViewCard: () => void;
   onViewEncounters?: () => void;
   onViewEvidence: () => void;
@@ -77,6 +81,24 @@ export function FlashBriefScreen({
   const [identityFlagged, setIdentityFlagged] = useState(false);
   const [hypothesisFlagged, setHypothesisFlagged] = useState(false);
   const [usefulness, setUsefulness] = useState<number | null>(null);
+  // The star is answered by the server, but a tap has to look immediate, so
+  // the screen shows the intended state and rolls back if the write fails.
+  const [favorite, setFavorite] = useState(isFavorite);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+
+  async function toggleFavorite() {
+    if (!onToggleFavorite || favoriteBusy) return;
+    const next = !favorite;
+    setFavorite(next);
+    setFavoriteBusy(true);
+    try {
+      await onToggleFavorite(next);
+    } catch {
+      setFavorite(!next);
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
   const identityLabels = {
     verified: "本人確認済み",
     high_confidence: "本人の可能性が高い",
@@ -105,6 +127,27 @@ export function FlashBriefScreen({
     <ScreenFrame
       title="Flash Brief"
       onBack={onDone}
+      action={
+        onToggleFavorite ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              favorite ? "お気に入りから外す" : "お気に入りに追加"
+            }
+            accessibilityState={{ selected: favorite }}
+            disabled={favoriteBusy}
+            onPress={() => void toggleFavorite()}
+            style={({ pressed }) => [s.favoriteButton, pressed && s.pressed]}
+          >
+            <Icon
+              name="star"
+              color={favorite ? colors.accentStrong : colors.muted}
+              filled={favorite}
+              size={22}
+            />
+          </Pressable>
+        ) : undefined
+      }
       footer={
         <PrimaryButton
           label="Win-Winを詳しく見る"
@@ -1003,6 +1046,12 @@ const s = StyleSheet.create({
     paddingVertical: 5,
   },
   neutralBadgeText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
+  favoriteButton: {
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   factBadge: {
     backgroundColor: colors.successSoft,
     borderRadius: 999,

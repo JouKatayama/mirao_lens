@@ -10,6 +10,8 @@ import {
   maximumScanImageBytes,
   scanCaptureMetadataSchema,
   scanImagePayloadSchema,
+  scanFavoriteRequestSchema,
+  scanFavoriteResponseSchema,
   scanListResponseSchema,
   scanRecordSchema,
   type ScanCaptureMetadata,
@@ -398,6 +400,111 @@ export function createGetScansHandler(
 }
 
 export const productionGetScansHandlerDependencies: GetScansHandlerDependencies =
+  {
+    async authenticate(accessToken) {
+      return authenticateCardIntelligenceSession(
+        readServerSupabaseConfig(process.env),
+        accessToken,
+      );
+    },
+  };
+
+// ─── PATCH /v1/scans/:scanId/favorite ─────────────────────────────────────────
+
+type FavoriteRouteContext = Readonly<{
+  params: Promise<{ scanId: string }>;
+}>;
+
+type FavoriteRepositoryPort = Readonly<{
+  setScanFavorite(scanId: string, isFavorite: boolean): Promise<boolean | null>;
+}>;
+
+type FavoriteSession = Readonly<{
+  repository: FavoriteRepositoryPort;
+}>;
+
+export type ScanFavoriteHandlerDependencies = Readonly<{
+  authenticate(accessToken: string): Promise<FavoriteSession | null>;
+}>;
+
+export function createPatchScanFavoriteHandler(
+  dependencies: ScanFavoriteHandlerDependencies,
+): (request: Request, context: FavoriteRouteContext) => Promise<Response> {
+  return async (request, context) => {
+    const accessToken = readBearerToken(request);
+
+    if (!accessToken) {
+      return errorResponse(401, "unauthorized", "Authentication is required.");
+    }
+
+    let session: FavoriteSession | null;
+
+    try {
+      session = await dependencies.authenticate(accessToken);
+    } catch (error) {
+      return error instanceof ServerConfigurationError
+        ? internalError("service_unconfigured")
+        : internalError("authentication_unavailable");
+    }
+
+    if (!session) {
+      return errorResponse(401, "unauthorized", "Authentication is required.");
+    }
+
+    const { scanId } = await context.params;
+    const parsedScanId = scanRecordSchema.shape.id.safeParse(scanId);
+
+    if (!parsedScanId.success) {
+      return errorResponse(404, "not_found", "Scan not found.");
+    }
+
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return errorResponse(
+        400,
+        "invalid_json",
+        "A valid JSON body is required.",
+      );
+    }
+
+    const parsedBody = scanFavoriteRequestSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      return errorResponse(
+        400,
+        "invalid_favorite",
+        "Check the is_favorite field.",
+      );
+    }
+
+    try {
+      const isFavorite = await session.repository.setScanFavorite(
+        parsedScanId.data,
+        parsedBody.data.is_favorite,
+      );
+
+      // RLS scopes the update to the caller, so no row means the scan is
+      // unknown or someone else's. Both are not found to this caller.
+      if (isFavorite === null) {
+        return errorResponse(404, "not_found", "Scan not found.");
+      }
+
+      return jsonResponse(
+        scanFavoriteResponseSchema.parse({
+          is_favorite: isFavorite,
+          scan_id: parsedScanId.data,
+        }),
+      );
+    } catch {
+      return internalError("scan_favorite_failed");
+    }
+  };
+}
+
+export const productionScanFavoriteHandlerDependencies: ScanFavoriteHandlerDependencies =
   {
     async authenticate(accessToken) {
       return authenticateCardIntelligenceSession(

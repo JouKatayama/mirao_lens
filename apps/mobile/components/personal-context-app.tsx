@@ -148,6 +148,10 @@ export function PersonalContextApp() {
   const [interactionReturn, setInteractionReturn] = useState<
     "flash-brief" | "mutual-value"
   >("flash-brief");
+  // A freshly captured scan is not a favourite yet, and one opened from history
+  // carries the value the list already loaded, so the star needs no request of
+  // its own to render.
+  const [scanFavorite, setScanFavorite] = useState(false);
   const [historyItems, setHistoryItems] = useState<ScanHistoryItem[] | null>(
     null,
   );
@@ -927,6 +931,30 @@ export function PersonalContextApp() {
     }
   }
 
+  async function toggleScanFavorite(next: boolean): Promise<void> {
+    if (!session || !services.ok || !scanResult) {
+      throw new Error("An authenticated scan is required.");
+    }
+
+    const response = await services.scanApi.setFavorite(
+      session.access_token,
+      scanResult.scan_id,
+      next,
+    );
+
+    setScanFavorite(response.is_favorite);
+    // The history list is already loaded behind this screen; leaving it stale
+    // would show the star gone the moment the user goes back.
+    setHistoryItems(
+      (items) =>
+        items?.map((item) =>
+          item.scan_id === scanResult.scan_id
+            ? { ...item, is_favorite: response.is_favorite }
+            : item,
+        ) ?? null,
+    );
+  }
+
   async function loadEvidence(): Promise<void> {
     if (!session || !services.ok || !scanResult) {
       return;
@@ -1013,6 +1041,10 @@ export function PersonalContextApp() {
           onOpenScan={(id) => {
             // Opening an old scan used to overwrite the meeting goal, so the
             // next capture silently inherited that scan's goal.
+            setScanFavorite(
+              historyItems?.find((item) => item.scan_id === id)?.is_favorite ??
+                false,
+            );
             setScanResult({ scan_id: id, status: "extracting" });
             setScanStatus(null);
             observedMilestones.current = null;
@@ -1061,6 +1093,7 @@ export function PersonalContextApp() {
               hasCard: false,
               scanId: result.scan_id,
             };
+            setScanFavorite(false);
             setScanStatusError(null);
             setView("scan-accepted");
           }}
@@ -1142,7 +1175,9 @@ export function PersonalContextApp() {
           onRateUsefulness={(rating) =>
             trackScanEvent("brief_usefulness_rated", { rating })
           }
+          isFavorite={scanFavorite}
           onRefresh={refreshScanStatus}
+          onToggleFavorite={toggleScanFavorite}
           onViewCard={() => setView("card-details")}
           // The note is the user's own record and never waited on the AI.
           // Gating it on Mutual Value meant a scan whose analysis failed

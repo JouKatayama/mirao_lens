@@ -242,6 +242,11 @@ export function TabBar<T extends string>({
   selected: T;
   onSelect: (value: T) => void;
 }) {
+  // Five equal columns leave a five-character Japanese label too little room on
+  // a 375pt screen, where it used to wrap mid-word. Tighter type keeps every
+  // label on one line, and numberOfLines stops a longer one from wrapping.
+  const compact = items.length > 4;
+
   return (
     <View accessibilityRole="tablist" style={styles.tabs}>
       {items.map((item) => (
@@ -254,8 +259,10 @@ export function TabBar<T extends string>({
           style={[styles.tab, selected === item.value && styles.tabActive]}
         >
           <Text
+            numberOfLines={1}
             style={[
               styles.tabText,
+              compact && styles.tabTextCompact,
               selected === item.value && styles.tabTextActive,
             ]}
           >
@@ -410,6 +417,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.background,
   },
+  tabTextCompact: { fontSize: 12 },
   tab: {
     flex: 1,
     minHeight: 48,

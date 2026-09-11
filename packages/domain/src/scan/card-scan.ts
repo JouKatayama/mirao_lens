@@ -112,12 +112,26 @@ export const scanHistoryItemSchema = z
     card_name: z.string().nullable(),
     card_title: z.string().nullable(),
     created_at: z.string().min(1),
+    // History is ordered by time alone, so the one meeting that mattered sinks
+    // under every routine one. Marking it is the way back.
+    is_favorite: z.boolean().default(false),
     meeting_goal: meetingGoalSchema,
     scan_id: z.string().uuid(),
     status: scanHistoryStatusSchema,
   })
   .strict();
 export type ScanHistoryItem = z.infer<typeof scanHistoryItemSchema>;
+
+export const scanFavoriteRequestSchema = z
+  .object({ is_favorite: z.boolean() })
+  .strict();
+
+export const scanFavoriteResponseSchema = z
+  .object({ is_favorite: z.boolean(), scan_id: z.string().uuid() })
+  .strict();
+
+export type ScanFavoriteRequest = z.infer<typeof scanFavoriteRequestSchema>;
+export type ScanFavoriteResponse = z.infer<typeof scanFavoriteResponseSchema>;
 
 export const scanListResponseSchema = z
   .object({ items: z.array(scanHistoryItemSchema) })

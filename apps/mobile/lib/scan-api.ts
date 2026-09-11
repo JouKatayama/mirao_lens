@@ -1,5 +1,6 @@
 import {
   encounterHistoryResponseSchema,
+  scanFavoriteResponseSchema,
   evidenceListResponseSchema,
   interactionNoteReadResponseSchema,
   interactionNoteResponseSchema,
@@ -20,6 +21,7 @@ import {
   type NextActionResponse,
   type NextActionStatusUpdateRequest,
   type ScanCreateResponse,
+  type ScanFavoriteResponse,
   type ScanImageContentType,
   type ScanListResponse,
   type ScanResumeResponse,
@@ -205,6 +207,30 @@ export class ScanApiClient {
     if (!response.ok) {
       throw await toApiError(response);
     }
+  }
+
+  async setFavorite(
+    accessToken: string,
+    scanId: string,
+    isFavorite: boolean,
+  ): Promise<ScanFavoriteResponse> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/favorite`,
+      {
+        body: JSON.stringify({ is_favorite: isFavorite }),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+
+    return scanFavoriteResponseSchema.parse(await response.json());
   }
 
   async getEncounters(
