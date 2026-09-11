@@ -170,4 +170,53 @@ describe("ScanApiClient", () => {
       }),
     );
   });
+
+  it("asks the server to resume a stopped scan", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json(
+          { resume: "scheduled", scan_id: scanId },
+          { status: 202 },
+        ),
+      );
+    const client = new ScanApiClient("https://api.example.invalid", fetchMock);
+
+    await expect(client.resumeScan("access-token", scanId)).resolves.toEqual({
+      resume: "scheduled",
+      scan_id: scanId,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `https://api.example.invalid/v1/scans/${scanId}/resume`,
+      {
+        headers: { Authorization: "Bearer access-token" },
+        method: "POST",
+      },
+    );
+  });
+
+  it("surfaces a resume refused at the retry limit as a typed error", async () => {
+    const client = new ScanApiClient(
+      "https://api.example.invalid",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              code: "retry_limit_reached",
+              message: "This scan has failed too many times to retry.",
+            },
+          },
+          { status: 429 },
+        ),
+      ),
+    );
+
+    await expect(
+      client.resumeScan("access-token", scanId),
+    ).rejects.toMatchObject({
+      code: "retry_limit_reached",
+      name: "ScanApiError",
+      status: 429,
+    });
+  });
 });

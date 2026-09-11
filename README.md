@@ -244,7 +244,8 @@ DELETE /v1/account
 ```
 
 `DELETE /v1/scans/:scanId` removes the scan, its storage files, and all child
-DB rows (via cascade) and returns 204. `DELETE /v1/account` deletes all user
+DB rows (via cascade) and returns 204. The person and organization records the
+scan's card created are removed too once no other card refers to them. `DELETE /v1/account` deletes all user
 storage, then calls a `SECURITY DEFINER` Postgres function that removes the
 row from `auth.users`, cascading all user-owned tables. Both routes require a
 Bearer token.
@@ -266,6 +267,25 @@ Suitable for invocation from Vercel Cron or an external scheduler. Returns
 skipped until the repository variable `CLEANUP_ENDPOINT_URL` (the deployed
 endpoint) and the repository secret `CLEANUP_SECRET` are set, and fails loudly
 on a non-2xx response.
+
+Scans whose pipeline stopped can be continued:
+
+```text
+POST /v1/scans/:scanId/resume
+```
+
+The pipeline runs inside the upload request, so a failed Flash Brief (the scan
+rolls back to `card_ready`), a failed Mutual Value (back to `brief_ready`) or a
+worker cut off mid-stage used to leave the scan with nothing to advance it.
+This route re-runs whatever stages are left, under the caller's session. It is
+idempotent: `202 {resume: "running"}` when a stage is still live, `200
+{resume: "complete"}` when nothing is left, `202 {resume: "scheduled"}`
+otherwise. A dead company-context or Mutual Value run is released first,
+because their claims cannot recover one. It refuses a scan whose extraction
+failed (`409`; re-upload instead) and a scan whose awaited stage has already
+failed three times (`429 retry_limit_reached`). The mobile client calls it when
+a scan holds `card_ready` or `brief_ready` for 15 seconds, from every "check
+again" action, and from **Flash Briefを作成** on a `card_ready` card.
 
 ## Run the mobile app
 

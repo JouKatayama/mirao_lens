@@ -159,9 +159,10 @@ export async function processProductionCompanyContext(input: {
   try {
     configuration = readOpenAICompanyContextConfig(process.env);
   } catch {
-    // Config missing — skip gracefully; scan advances to generating_brief via
-    // the pipeline caller's fallback path.
-    return { status: "skipped" };
+    // Still claim, so the run fails with a sanitized configuration code and
+    // fail_company_context advances the scan to generating_brief. Returning
+    // without a claim used to leave the scan in card_ready, where the Flash
+    // Brief stage can never claim it.
   }
 
   return processCompanyContext(input, {
@@ -172,9 +173,13 @@ export async function processProductionCompanyContext(input: {
       );
     },
     createGenerator() {
-      return new OpenAICompanyContextGenerator(configuration!);
+      if (!configuration) {
+        throw new CompanyContextGeneratorError("configuration");
+      }
+
+      return new OpenAICompanyContextGenerator(configuration);
     },
-    modelAlias: configuration.model,
+    modelAlias: configuration?.model ?? "unconfigured",
     nowMilliseconds: () => performance.now(),
     provider: "openai",
   });

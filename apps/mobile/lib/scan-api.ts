@@ -4,6 +4,7 @@ import {
   nextActionResponseSchema,
   scanCreateResponseSchema,
   scanListResponseSchema,
+  scanResumeResponseSchema,
   scanStatusResponseSchema,
   type CardCorrection,
   type EvidenceListResponse,
@@ -14,6 +15,7 @@ import {
   type ScanCreateResponse,
   type ScanImageContentType,
   type ScanListResponse,
+  type ScanResumeResponse,
   type ScanStatusResponse,
 } from "@miraio/domain";
 
@@ -114,6 +116,26 @@ export class ScanApiClient {
     }
 
     return scanStatusResponseSchema.parse(await response.json());
+  }
+
+  /** Ask the server to continue a scan whose pipeline stopped; idempotent. */
+  async resumeScan(
+    accessToken: string,
+    scanId: string,
+  ): Promise<ScanResumeResponse> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/resume`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        method: "POST",
+      },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+
+    return scanResumeResponseSchema.parse(await response.json());
   }
 
   async correctCard(

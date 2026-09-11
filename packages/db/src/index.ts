@@ -9,3 +9,4 @@ export * from "./interaction-repository";
 export * from "./mutual-value-repository";
 export * from "./personal-context-repository";
 export * from "./scan-repository";
+export * from "./scan-resume-repository";
