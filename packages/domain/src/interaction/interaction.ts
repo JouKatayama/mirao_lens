@@ -9,6 +9,9 @@ export const noteRequestSchema = z
 export const nextActionRequestSchema = z
   .object({
     action_text: z.string().min(1).max(2000),
+    // The moment a reminder can be set for. `timing_text` keeps the wording
+    // the user read ("3日以内"), which schedules nothing on its own.
+    due_at: z.string().datetime({ offset: true }).nullable().optional(),
     source: z.enum(["ai", "user"]),
     status: z.enum(["accepted", "dismissed"]).default("accepted"),
     timing_text: z.string().max(200).nullable().optional(),
@@ -53,6 +56,7 @@ export const interactionNoteReadResponseSchema = z
 export const nextActionResponseSchema = z
   .object({
     action_text: z.string(),
+    due_at: z.string().nullable().default(null),
     id: z.string().uuid(),
     scan_id: z.string().uuid(),
     source: z.enum(["ai", "user"]),

@@ -233,6 +233,7 @@ export type Database = {
         Row: {
           action_text: string
           created_at: string
+          due_at: string | null
           id: string
           scan_id: string
           source: string
@@ -244,6 +245,7 @@ export type Database = {
         Insert: {
           action_text: string
           created_at?: string
+          due_at?: string | null
           id?: string
           scan_id: string
           source: string
@@ -255,6 +257,7 @@ export type Database = {
         Update: {
           action_text?: string
           created_at?: string
+          due_at?: string | null
           id?: string
           scan_id?: string
           source?: string
@@ -554,6 +557,7 @@ export type Database = {
       create_next_action: {
         Args: {
           p_action_text: string
+          p_due_at?: string
           p_scan_id: string
           p_source: string
           p_status: string

@@ -23,7 +23,8 @@
           "cameraPermission": "名刺を撮影するためにカメラを使用します。",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

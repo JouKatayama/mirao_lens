@@ -175,6 +175,7 @@ const demoEvidence: EvidenceItem[] = [
 const demoRecordedActions: NextActionResponse[] = [
   {
     action_text: "生成AI導入の事例資料を共有する",
+    due_at: "2026-09-14T00:00:00.000Z",
     id: "00000000-0000-4013-8000-0000000009b1",
     scan_id: "00000000-0000-4013-8000-0000000009b0",
     source: "ai",
@@ -183,6 +184,7 @@ const demoRecordedActions: NextActionResponse[] = [
   },
   {
     action_text: "前回話した勉強会に招待する",
+    due_at: null,
     id: "00000000-0000-4013-8000-0000000009b2",
     scan_id: "00000000-0000-4013-8000-0000000009b0",
     source: "user",

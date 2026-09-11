@@ -59,6 +59,7 @@ import {
 } from "../lib/scan-polling";
 import type { InteractionRecord } from "./relationship-screens";
 import { LoadingScreen, PrimaryButton } from "./ui";
+import { cancelReminder, scheduleReminder } from "../lib/reminders";
 import { EncounterHistoryScreen } from "./encounter-history-screen";
 import { ReanalysisScreen } from "./reanalysis-screen";
 import { HomeScreen } from "./home-screen";
@@ -866,20 +867,38 @@ export function PersonalContextApp() {
     timingText: string | null,
     source: "ai" | "user",
     status: "accepted" | "dismissed",
+    dueAt: string | null = null,
   ): Promise<void> {
     if (!session || !services.ok || !scanResult) {
       throw new Error("An authenticated scan is required.");
     }
 
     try {
-      await services.scanApi.saveNextAction(
+      const saved = await services.scanApi.saveNextAction(
         session.access_token,
         scanResult.scan_id,
-        { action_text: actionText, source, status, timing_text: timingText },
+        {
+          action_text: actionText,
+          due_at: dueAt,
+          source,
+          status,
+          timing_text: timingText,
+        },
       );
       trackScanEvent("next_action_created", { source, status });
       if (status === "accepted") {
         trackScanEvent("next_action_accepted", { source });
+      }
+
+      // Scheduled after the action is stored, so a reminder never outlives a
+      // save that failed. A refused permission leaves the action saved.
+      if (dueAt) {
+        await scheduleReminder(
+          saved.id,
+          actionText,
+          new Date(dueAt),
+          scanStatus?.card?.name ?? null,
+        );
       }
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
@@ -933,6 +952,8 @@ export function PersonalContextApp() {
     }
 
     try {
+      // The action is settled, so its reminder has nothing left to remind of.
+      await cancelReminder(actionId);
       await services.scanApi.updateNextActionStatus(
         session.access_token,
         scanResult.scan_id,
@@ -1344,7 +1365,7 @@ export function PersonalContextApp() {
           mutualValue={
             scanStatus.status === "deep_ready" ? scanStatus.mutual_value : null
           }
-          onAcceptNextAction={async (actionText, timingText) => {
+          onAcceptNextAction={async (actionText, timingText, dueAt) => {
             // An action the user rewrote (or wrote without a suggestion) is
             // theirs; recording it as the AI's would inflate the measured
             // suggestion acceptance.
@@ -1353,7 +1374,13 @@ export function PersonalContextApp() {
                 ? scanStatus.mutual_value.next_action.action.trim()
                 : null;
             const source = actionText.trim() === suggested ? "ai" : "user";
-            await saveNextAction(actionText, timingText, source, "accepted");
+            await saveNextAction(
+              actionText,
+              timingText,
+              source,
+              "accepted",
+              dueAt,
+            );
           }}
           onBack={() => setView(interactionReturn)}
           onCompleteNextAction={completeNextAction}

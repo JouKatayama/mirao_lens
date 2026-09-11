@@ -95,9 +95,13 @@ export class InteractionRepository {
     timingText: string | null,
     source: "ai" | "user",
     status: "accepted" | "dismissed",
+    dueAt: string | null = null,
   ): Promise<{ id: string } | null> {
     const { data, error } = await this.client.rpc("create_next_action", {
       p_action_text: actionText,
+      // Generated RPC arguments are always non-null, but p_due_at is plain
+      // nullable timestamptz and null is the value meaning "no reminder".
+      p_due_at: dueAt as string,
       p_scan_id: scanId,
       p_source: source,
       p_status: status,
@@ -119,7 +123,7 @@ export class InteractionRepository {
   async listNextActions(scanId: string): Promise<NextActionResponse[]> {
     const { data, error } = await this.client
       .from("next_actions")
-      .select("id,scan_id,action_text,timing_text,source,status")
+      .select("id,scan_id,action_text,timing_text,due_at,source,status")
       .eq("scan_id", scanId)
       .order("created_at", { ascending: false });
 

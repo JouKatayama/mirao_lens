@@ -12,6 +12,11 @@ import {
   Text,
   View,
 } from "react-native";
+import {
+  reminderChoices,
+  toReminderDueDate,
+  type ReminderChoice,
+} from "../lib/reminder-schedule";
 import { Icon } from "./icons";
 import {
   Avatar,
@@ -598,6 +603,7 @@ type InteractionScreenProps = {
   onAcceptNextAction: (
     actionText: string,
     timingText: string | null,
+    dueAt: string | null,
   ) => Promise<void>;
   onBack: () => void;
   onCompleteNextAction?: (actionId: string) => Promise<void>;
@@ -673,6 +679,7 @@ function InteractionForm({
   const [sayThisUsed, setSayThisUsed] = useState<boolean | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [reminder, setReminder] = useState<ReminderChoice>("none");
   const settledActions = record.actions.filter(
     (item) => item.status === "completed" || item.status === "dismissed",
   );
@@ -714,7 +721,12 @@ function InteractionForm({
           (suggestion ? decision === "accepted" : true) &&
           action.trim()
         ) {
-          await onAcceptNextAction(action.trim(), timing.trim() || null);
+          const due = toReminderDueDate(reminder, new Date());
+          await onAcceptNextAction(
+            action.trim(),
+            timing.trim() || null,
+            due ? due.toISOString() : null,
+          );
         }
         setActionSaved(true);
       }
@@ -729,14 +741,59 @@ function InteractionForm({
   }
 
   const timingField = (
-    <Field
-      label="いつまでに"
-      value={timing}
-      onChangeText={setTiming}
-      placeholder="例：今日中・3日以内"
-      maxLength={200}
-      editable={!saving}
-    />
+    <>
+      <Field
+        label="いつまでに"
+        value={timing}
+        onChangeText={setTiming}
+        placeholder="例：今日中・3日以内"
+        maxLength={200}
+        editable={!saving}
+      />
+      <Text style={s.heading}>リマインド</Text>
+      <Text style={s.caption}>
+        選ぶとこの端末に通知が届きます。ほかの端末には届きません。
+      </Text>
+      <View style={s.reminderRow}>
+        {reminderChoices.map((choice) => (
+          <Pressable
+            accessibilityRole="radio"
+            accessibilityLabel={choice.label}
+            accessibilityState={{ checked: reminder === choice.value }}
+            aria-checked={reminder === choice.value}
+            disabled={saving}
+            key={choice.value}
+            onPress={() => {
+              setReminder(choice.value);
+              // The saved wording should agree with the reminder just chosen.
+              // Anything the user typed themselves is left alone; a blank
+              // field or one of these canned phrases (the AI suggests them
+              // too) would otherwise contradict the notification.
+              const canned = reminderChoices.some(
+                (candidate) => candidate.label === timing.trim(),
+              );
+              if (choice.hoursFromNow && (!timing.trim() || canned)) {
+                setTiming(choice.label);
+              }
+            }}
+            style={({ pressed }) => [
+              s.reminderChoice,
+              reminder === choice.value && s.reminderChoiceActive,
+              pressed && s.pressed,
+            ]}
+          >
+            <Text
+              style={[
+                s.reminderChoiceText,
+                reminder === choice.value && s.reminderChoiceTextActive,
+              ]}
+            >
+              {choice.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </>
   );
 
   return (
@@ -1205,6 +1262,22 @@ const s = StyleSheet.create({
   choiceText: { color: colors.text, fontSize: 15, fontWeight: "700" },
   choiceTextActive: { color: "#FFFFFF" },
   adoptionRow: { flexDirection: "row", gap: 10, marginTop: 4 },
+  reminderRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
+  reminderChoice: {
+    minHeight: 40,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  reminderChoiceActive: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accentStrong,
+  },
+  reminderChoiceText: { color: colors.muted, fontSize: 13, fontWeight: "600" },
+  reminderChoiceTextActive: { color: colors.accentStrong },
   ratingRow: { flexDirection: "row", gap: 8, marginTop: 4 },
   ratingButton: {
     flex: 1,

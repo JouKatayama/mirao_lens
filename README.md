@@ -255,6 +255,19 @@ All three fields default for briefs stored before ML-018 (no score, no
 keywords, the hypothesis label the screen used to hardcode), so existing scans
 keep rendering.
 
+ML-024 gives a next action a moment and a reminder. `timing_text` holds what
+the model wrote ("3日以内"), which reads well and schedules nothing, so the
+loop the product describes ended at "next action" and the user was left to
+remember it. The note screen now offers the same phrases as choices; the
+choice carries a concrete instant, stored as `next_actions.due_at`, and
+schedules a local notification on the device that set it.
+
+Local, not push: a follow-up reminder needs no server, no device token and no
+third party. The cost is that a reminder lives on one device — a reinstall
+loses it, and it does not follow the user to another phone. A reminder due
+tomorrow or later fires at 9am local rather than at the minute the note was
+written. Completing or dismissing the action cancels it.
+
 ML-023 implements the Personal Context retrieval product spec 5.4 asks for:
 "do not send the full profile to every call". Set `AI_EMBEDDING_MODEL` and the
 Flash Brief receives the items that relate to the person on the card — the
