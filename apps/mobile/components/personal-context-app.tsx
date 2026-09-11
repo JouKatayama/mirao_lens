@@ -60,6 +60,7 @@ import {
 import type { InteractionRecord } from "./relationship-screens";
 import { LoadingScreen, PrimaryButton } from "./ui";
 import { EncounterHistoryScreen } from "./encounter-history-screen";
+import { ReanalysisScreen } from "./reanalysis-screen";
 import { HomeScreen } from "./home-screen";
 import { WelcomeScreen } from "./welcome-screen";
 import { AnalysisPreparationScreen } from "./analysis-preparation-screen";
@@ -78,6 +79,7 @@ type ViewName =
   | "loading"
   | "mutual-value"
   | "onboarding"
+  | "reanalysis"
   | "review"
   | "scan-accepted"
   | "unavailable";
@@ -152,6 +154,10 @@ export function PersonalContextApp() {
   // carries the value the list already loaded, so the star needs no request of
   // its own to render.
   const [scanFavorite, setScanFavorite] = useState(false);
+  // The goal the open scan was analysed under, which is not the goal state
+  // above: that one belongs to the next capture.
+  const [scanMeetingGoal, setScanMeetingGoal] =
+    useState<MeetingGoal>("networking");
   const [historyItems, setHistoryItems] = useState<ScanHistoryItem[] | null>(
     null,
   );
@@ -968,6 +974,29 @@ export function PersonalContextApp() {
     }
   }
 
+  async function reanalyzeScan(goal: MeetingGoal): Promise<void> {
+    if (!session || !services.ok || !scanResult) {
+      throw new Error("An authenticated scan is required.");
+    }
+
+    await services.scanApi.reanalyze(
+      session.access_token,
+      scanResult.scan_id,
+      goal,
+    );
+
+    setScanMeetingGoal(goal);
+
+    // The stored brief is gone, so showing the old one while the new one is
+    // generated would read as if nothing happened. Dropping the status sends
+    // the screen back to the processing view the poll already drives.
+    setScanStatus(null);
+    observedMilestones.current = null;
+    setScanStatusError(null);
+    setPollEpoch((epoch) => epoch + 1);
+    setView("scan-accepted");
+  }
+
   async function toggleScanFavorite(next: boolean): Promise<void> {
     if (!session || !services.ok || !scanResult) {
       throw new Error("An authenticated scan is required.");
@@ -1081,10 +1110,9 @@ export function PersonalContextApp() {
           onOpenScan={(id) => {
             // Opening an old scan used to overwrite the meeting goal, so the
             // next capture silently inherited that scan's goal.
-            setScanFavorite(
-              historyItems?.find((item) => item.scan_id === id)?.is_favorite ??
-                false,
-            );
+            const opened = historyItems?.find((item) => item.scan_id === id);
+            setScanFavorite(opened?.is_favorite ?? false);
+            setScanMeetingGoal(opened?.meeting_goal ?? "networking");
             setScanResult({ scan_id: id, status: "extracting" });
             setScanStatus(null);
             observedMilestones.current = null;
@@ -1134,6 +1162,7 @@ export function PersonalContextApp() {
               scanId: result.scan_id,
             };
             setScanFavorite(false);
+            setScanMeetingGoal(meetingGoal);
             setScanStatusError(null);
             setView("scan-accepted");
           }}
@@ -1216,6 +1245,7 @@ export function PersonalContextApp() {
             trackScanEvent("brief_usefulness_rated", { rating })
           }
           isFavorite={scanFavorite}
+          onChangeMeetingGoal={() => setView("reanalysis")}
           onRefresh={refreshScanStatus}
           onToggleFavorite={toggleScanFavorite}
           onViewCard={() => setView("card-details")}
@@ -1233,6 +1263,15 @@ export function PersonalContextApp() {
             setView("mutual-value");
           }}
           previousEncounters={encounters.length}
+        />
+      ) : null}
+      {view === "reanalysis" && scanStatus?.card ? (
+        <ReanalysisScreen
+          card={{ name: scanStatus.card.name }}
+          currentGoal={scanMeetingGoal}
+          error={null}
+          onBack={() => setView("flash-brief")}
+          onReanalyze={reanalyzeScan}
         />
       ) : null}
       {view === "encounters" && scanStatus?.card ? (

@@ -1,7 +1,8 @@
 import type { ScanPipelineRun, ScanResumeState } from "@miraio/db";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createPatchScanReanalysisHandler,
   createPostScanResumeHandler,
   maximumFailedRunsPerStage,
   planScanResume,
@@ -400,5 +401,92 @@ describe("POST /v1/scans/:scanId/resume", () => {
     expect(response.headers.get("Access-Control-Allow-Methods")).toContain(
       "POST",
     );
+  });
+});
+
+describe("createPatchScanReanalysisHandler", () => {
+  const repository = {
+    getResumeState: vi.fn(),
+    releaseStaleRun: vi.fn(),
+    restartAnalysis: vi.fn(),
+  };
+  const schedule = vi.fn();
+  let dependencies: ScanResumeHandlerDependencies;
+
+  function patch(body: unknown, authenticated = true, id = scanId) {
+    return createPatchScanReanalysisHandler(dependencies)(
+      new Request(`http://api/v1/scans/${id}/reanalysis`, {
+        body: JSON.stringify(body),
+        headers: {
+          ...(authenticated ? { Authorization: "Bearer valid-token" } : {}),
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      }),
+      { params: Promise.resolve({ scanId: id }) },
+    );
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dependencies = {
+      authenticate: vi.fn().mockResolvedValue({ repository, userId }),
+      now: () => new Date("2026-09-11T00:00:00.000Z"),
+      schedule,
+    };
+  });
+
+  it("restarts the analysis and schedules the pipeline", async () => {
+    repository.restartAnalysis.mockResolvedValue("card_ready");
+
+    const res = await patch({ meeting_goal: "sales" });
+
+    expect(res.status).toBe(202);
+    await expect(res.json()).resolves.toEqual({
+      meeting_goal: "sales",
+      scan_id: scanId,
+      status: "card_ready",
+    });
+    expect(repository.restartAnalysis).toHaveBeenCalledWith(scanId, "sales");
+    expect(schedule).toHaveBeenCalledWith({
+      accessToken: "valid-token",
+      scanId,
+    });
+  });
+
+  it("reports a scan that is not settled as a conflict", async () => {
+    repository.restartAnalysis.mockResolvedValue(null);
+
+    const res = await patch({ meeting_goal: "sales" });
+
+    expect(res.status).toBe(409);
+    expect(schedule).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown goal and a malformed body", async () => {
+    expect((await patch({ meeting_goal: "gossip" })).status).toBe(400);
+    expect((await patch({})).status).toBe(400);
+    expect(repository.restartAnalysis).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for a scan id that is not a UUID", async () => {
+    const res = await patch({ meeting_goal: "sales" }, true, "nope");
+
+    expect(res.status).toBe(404);
+    expect(repository.restartAnalysis).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 without an Authorization header", async () => {
+    const res = await patch({ meeting_goal: "sales" }, false);
+
+    expect(res.status).toBe(401);
+    expect(repository.restartAnalysis).not.toHaveBeenCalled();
+  });
+
+  it("does not schedule when the restart fails", async () => {
+    repository.restartAnalysis.mockRejectedValue(new Error("db"));
+
+    expect((await patch({ meeting_goal: "sales" })).status).toBe(500);
+    expect(schedule).not.toHaveBeenCalled();
   });
 });

@@ -255,6 +255,16 @@ All three fields default for briefs stored before ML-018 (no score, no
 keywords, the hypothesis label the screen used to hardcode), so existing scans
 keep rendering.
 
+ML-022 lets a finished scan be analysed again under a different meeting goal
+(`PATCH /v1/scans/:scanId/reanalysis`). The goal feeds the Flash Brief and
+Mutual Value prompts, so a scan captured as networking that turned into a
+sales conversation carried a brief written for the wrong situation with no way
+to correct it. `restart_scan_analysis` clears only those two analyses and puts
+the scan back at `card_ready`; the card, the company context (derived from the
+card, not the goal), the note and the next actions are kept, and the pipeline
+is scheduled the same way a resume schedules it. A scan that is mid-pipeline
+is refused rather than raced.
+
 ML-018 closes the loop from a meeting back to the next one:
 
 ```text

@@ -44,6 +44,7 @@ export function FlashBriefScreen({
   deepEnriching,
   error,
   isFavorite = false,
+  onChangeMeetingGoal,
   onDone,
   onFlagIdentity,
   onMarkHypothesisUnhelpful,
@@ -62,6 +63,7 @@ export function FlashBriefScreen({
   deepEnriching: boolean;
   error: string | null;
   isFavorite?: boolean;
+  onChangeMeetingGoal?: () => void;
   onDone: () => void;
   onFlagIdentity?: () => void;
   onMarkHypothesisUnhelpful?: () => void;
@@ -305,6 +307,12 @@ export function FlashBriefScreen({
           </View>
         ) : null}
       </View>
+      {onChangeMeetingGoal ? (
+        <TextButton
+          label="面談ゴールを変えて分析し直す"
+          onPress={onChangeMeetingGoal}
+        />
+      ) : null}
       <Text style={s.disclaimer}>
         AIによる仮説は、相手への質問を通じて確かめてください。
       </Text>
