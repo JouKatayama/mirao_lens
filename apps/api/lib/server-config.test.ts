@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  readCompanyWebSearchEnabled,
   readOpenAICardExtractionConfig,
+  readOpenAICompanyContextConfig,
   readOpenAIPersonalContextConfig,
   readServerSupabaseConfig,
   ServerConfigurationError,
@@ -86,5 +88,58 @@ describe("server configuration", () => {
         OPENAI_API_KEY: "unused-locally",
       }),
     ).toThrow(ServerConfigurationError);
+  });
+});
+
+describe("company web research configuration", () => {
+  it("is off when unset or explicitly off", () => {
+    expect(readCompanyWebSearchEnabled({})).toBe(false);
+    expect(readCompanyWebSearchEnabled({ AI_COMPANY_WEB_SEARCH: "" })).toBe(
+      false,
+    );
+    expect(readCompanyWebSearchEnabled({ AI_COMPANY_WEB_SEARCH: "OFF" })).toBe(
+      false,
+    );
+  });
+
+  it("is on only for the exact opt-in value", () => {
+    expect(readCompanyWebSearchEnabled({ AI_COMPANY_WEB_SEARCH: "on" })).toBe(
+      true,
+    );
+    expect(readCompanyWebSearchEnabled({ AI_COMPANY_WEB_SEARCH: " On " })).toBe(
+      true,
+    );
+  });
+
+  it("treats an ambiguous value as a configuration defect", () => {
+    for (const value of ["true", "1", "yes", "enabled"]) {
+      expect(() =>
+        readCompanyWebSearchEnabled({ AI_COMPANY_WEB_SEARCH: value }),
+      ).toThrow(ServerConfigurationError);
+    }
+  });
+
+  it("refuses to combine research with a self-hosted provider", () => {
+    expect(() =>
+      readCompanyWebSearchEnabled({
+        AI_COMPANY_WEB_SEARCH: "on",
+        AI_PROVIDER_BASE_URL: "http://127.0.0.1:11434/v1",
+      }),
+    ).toThrow(ServerConfigurationError);
+  });
+
+  it("still reads a self-hosted provider while research is off", () => {
+    expect(
+      readOpenAICompanyContextConfig({
+        AI_COMPANY_CONTEXT_MODEL: "gemma4:12b",
+        AI_PROVIDER_BASE_URL: "http://127.0.0.1:11434/v1",
+        OPENAI_API_KEY: "unused-locally",
+      }),
+    ).toEqual({
+      apiKey: "unused-locally",
+      baseUrl: "http://127.0.0.1:11434/v1",
+      model: "gemma4:12b",
+      webSearch: false,
+    });
   });
 });

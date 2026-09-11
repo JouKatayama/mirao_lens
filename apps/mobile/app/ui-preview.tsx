@@ -1,6 +1,7 @@
 // Opt-in development gallery. Uses synthetic content and never calls an API.
 import type {
   EncounterHistoryItem,
+  EvidenceItem,
   FlashBriefPublic,
   MeetingGoal,
   MutualValuePublic,
@@ -16,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AnalysisPreparationScreen } from "../components/analysis-preparation-screen";
 import { CameraFrame } from "../components/camera-frame";
 import { EncounterHistoryScreen } from "../components/encounter-history-screen";
+import { EvidenceScreen } from "../components/card-scan-screens";
 import { HomeScreen } from "../components/home-screen";
 import {
   FlashBriefScreen,
@@ -139,6 +141,35 @@ const demoEncounters: EncounterHistoryItem[] = [
     scan_id: "00000000-0000-4013-8000-0000000009a2",
   },
 ];
+const demoEvidence: EvidenceItem[] = [
+  {
+    confidence: 0.92,
+    excerpt: "名前: デモ 太郎 / 会社: 株式会社サンプル / 役職: 営業部 部長",
+    id: "00000000-0000-4013-8000-0000000009c1",
+    retrieved_at: "2026-09-11T01:00:00.000Z",
+    source_title: "card.name",
+    source_type: "business_card",
+    source_url: null,
+  },
+  {
+    confidence: 0.7,
+    excerpt: "会社概要 | 株式会社サンプル",
+    id: "00000000-0000-4013-8000-0000000009c2",
+    retrieved_at: "2026-09-11T01:00:00.000Z",
+    source_title: "example.invalid",
+    source_type: "official_company",
+    source_url: "https://example.invalid/company",
+  },
+  {
+    confidence: 0.55,
+    excerpt: "サンプル社、法人向けSaaSの新機能を発表",
+    id: "00000000-0000-4013-8000-0000000009c3",
+    retrieved_at: "2026-09-11T01:00:00.000Z",
+    source_title: "news.invalid",
+    source_type: "public_web",
+    source_url: "https://news.invalid/articles/1",
+  },
+];
 const demoRecordedActions: NextActionResponse[] = [
   {
     action_text: "生成AI導入の事例資料を共有する",
@@ -167,6 +198,7 @@ const screens = [
   "conversation",
   "note",
   "encounters",
+  "evidence",
   "home",
 ] as const;
 const titles = [
@@ -179,6 +211,7 @@ const titles = [
   "会話提案",
   "会話を記録",
   "これまでの接点",
+  "根拠・ソース",
   "ホーム",
 ];
 
@@ -276,6 +309,16 @@ function DemoScreen({ initial }: { initial: string }) {
         onDone={home}
         onViewMutualValue={() => setScreen("give-get")}
         recordedActions={demoRecordedActions}
+      />
+    );
+  if (screen === "evidence")
+    return (
+      <EvidenceScreen
+        card={person}
+        error={notice || null}
+        items={demoEvidence}
+        onBack={summary}
+        onOpenSource={(url) => setNotice(`ソースを開く: ${url}`)}
       />
     );
   if (screen === "encounters")

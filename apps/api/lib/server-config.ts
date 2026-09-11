@@ -72,6 +72,36 @@ function readProviderBaseUrl(
   return url.toString().replace(/\/$/, "");
 }
 
+/**
+ * Opt-in company web research. Off unless the value is exactly "on", because
+ * it is the one stage that sends a query outside the configured provider and
+ * bills per scan.
+ *
+ * Combining it with AI_PROVIDER_BASE_URL is a configuration defect rather than
+ * a silent downgrade: a deployment that pointed the stages at its own server
+ * to keep data in-house has not agreed to a hosted search tool, and a server
+ * that lacks the tool would fail every scan as a provider outage instead.
+ */
+export function readCompanyWebSearchEnabled(
+  environment: ServerEnvironment,
+): boolean {
+  const raw = environment["AI_COMPANY_WEB_SEARCH"]?.trim().toLowerCase();
+
+  if (!raw || raw === "off") {
+    return false;
+  }
+
+  if (raw !== "on") {
+    throw new ServerConfigurationError("AI_COMPANY_WEB_SEARCH");
+  }
+
+  if (readProviderBaseUrl(environment)) {
+    throw new ServerConfigurationError("AI_COMPANY_WEB_SEARCH");
+  }
+
+  return true;
+}
+
 export function readServerSupabaseConfig(
   environment: ServerEnvironment,
 ): UserScopedSupabaseConfig {
@@ -128,6 +158,7 @@ export type OpenAICompanyContextConfig = Readonly<{
   apiKey: string;
   baseUrl?: string;
   model: string;
+  webSearch: boolean;
 }>;
 
 export type OpenAIMutualValueConfig = Readonly<{
@@ -143,6 +174,7 @@ export function readOpenAICompanyContextConfig(
     apiKey: requireValue(environment, "OPENAI_API_KEY"),
     baseUrl: readProviderBaseUrl(environment),
     model: requireValue(environment, "AI_COMPANY_CONTEXT_MODEL"),
+    webSearch: readCompanyWebSearchEnabled(environment),
   };
 }
 

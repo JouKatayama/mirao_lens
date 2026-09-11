@@ -42,6 +42,9 @@ ML-001 through ML-017 currently provide:
   a model-supplied fact/hypothesis label on WHY YOU,
 - deep enrichment via company-context, identity resolution, mutual-value, and
   evidence chain stages with per-stage AI-run latency tracking,
+- opt-in company web research (`AI_COMPANY_WEB_SEARCH=on`) that grounds company
+  context in public pages and records them as `official_company` /
+  `public_web` Evidence with openable source URLs,
 - an Interaction layer with conversation notes, next-action capture,
   acceptance tracking, and completion recorded as outcome data,
 - relationship history: earlier scans of the same resolved person, surfaced as
@@ -215,6 +218,26 @@ ML-006 through ML-014 add Flash Brief generation, deep enrichment stages
 (company context, identity resolution, mutual value, evidence chains),
 interaction logging (notes and next actions), scan history listing, and
 evidence source opening.
+
+ML-019 gives the "fact" side of the brief a source outside the card. With
+`AI_COMPANY_WEB_SEARCH=on`, the Company Context stage reads public pages about
+the company through the provider's search tool and returns them in `sources`;
+the evidence sweep turns each into an Evidence row whose `source_url` the app
+can open. Until then `official_company` and `public_web` were declared source
+types that nothing ever wrote, so every claim traced back to the card or to an
+inference.
+
+The stage researches the **company only**. Its input carries the company name,
+department and title and deliberately not the person's name, so a page about a
+same-named individual cannot be read and presented as fact — the hard rule in
+product spec 5.5. Sources that are not `http`/`https` are dropped rather than
+stored, and a page whose host matches the card's website or email domain is
+filed as `official_company` while everything else is `public_web`.
+
+Research is off by default: it bills per scan and is the only stage that
+reaches outside the configured provider. Setting it together with
+`AI_PROVIDER_BASE_URL` is a startup error — a deployment that pointed the
+stages at its own server has not agreed to a hosted search tool.
 
 ML-018 also completes the Flash Brief contract against product spec 6.2.
 `potential_score` (integer 1-5), `connection_keywords` (up to four short

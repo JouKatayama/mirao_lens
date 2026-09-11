@@ -5,6 +5,8 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  buildCompanyContextRequestBody,
+  companyWebSearchInstructions,
   CompanyContextGeneratorError,
   OpenAICompanyContextGenerator,
 } from "./company-context";
@@ -22,6 +24,7 @@ const validOutput = {
   company_scale: "sme",
   role_scope: "プロダクトの方向性と優先順位に責任を持つ役割です。",
   role_level: "manager",
+  sources: [],
 };
 
 function generatorFor(request: () => Promise<unknown>) {
@@ -53,6 +56,7 @@ describe("OpenAI Company Context generator", () => {
       company_scale: "unknown",
       role_scope: null,
       role_level: "unknown",
+      sources: [],
     }));
 
     await expect(generator.generate(input)).resolves.toEqual({
@@ -61,6 +65,7 @@ describe("OpenAI Company Context generator", () => {
       company_scale: "unknown",
       role_scope: null,
       role_level: "unknown",
+      sources: [],
     });
   });
 
@@ -188,5 +193,99 @@ describe("OpenAI Company Context generator", () => {
     expect(() => new OpenAICompanyContextGenerator({ model: "model" })).toThrow(
       CompanyContextGeneratorError,
     );
+  });
+});
+
+describe("buildCompanyContextRequestBody", () => {
+  it("sends no tool and no research instructions by default", () => {
+    const body = buildCompanyContextRequestBody({
+      input,
+      model: "configured-model-alias",
+      webSearch: false,
+    });
+
+    expect(body).not.toHaveProperty("tools");
+    expect(String(body.input[0]?.content)).not.toContain(
+      companyWebSearchInstructions,
+    );
+  });
+
+  it("enables the provider's search tool when research is on", () => {
+    const body = buildCompanyContextRequestBody({
+      input,
+      model: "configured-model-alias",
+      webSearch: true,
+    });
+
+    expect(body.tools).toEqual([{ type: "web_search" }]);
+    expect(String(body.input[0]?.content)).toContain(
+      companyWebSearchInstructions,
+    );
+  });
+
+  it("never puts the person in the request, so the person cannot be searched", () => {
+    const body = buildCompanyContextRequestBody({
+      input,
+      model: "configured-model-alias",
+      webSearch: true,
+    });
+
+    const userMessage = String(body.input[1]?.content);
+    expect(Object.keys(JSON.parse(userMessage)).sort()).toEqual([
+      "company",
+      "department",
+      "locale",
+      "title",
+    ]);
+  });
+
+  it("keeps the structured output contract and stores nothing provider-side", () => {
+    const body = buildCompanyContextRequestBody({
+      input,
+      model: "configured-model-alias",
+      webSearch: true,
+    });
+
+    expect(body.store).toBe(false);
+    expect(body.text.format.name).toBe("company_context");
+  });
+});
+
+describe("company context sources", () => {
+  it("keeps the sources a provider reported", async () => {
+    const sources = [
+      { title: "会社概要", url: "https://example.invalid/company" },
+    ];
+    const generator = generatorFor(() =>
+      Promise.resolve({ ...validOutput, sources }),
+    );
+
+    await expect(generator.generate(input)).resolves.toMatchObject({ sources });
+  });
+
+  it("rejects output that omits the field entirely", async () => {
+    const { sources: _omitted, ...withoutSources } = validOutput;
+    void _omitted;
+    const generator = generatorFor(() => Promise.resolve(withoutSources));
+
+    await expect(generator.generate(input)).rejects.toMatchObject({
+      code: "invalid_output",
+    });
+  });
+
+  it("rejects more sources than the contract allows", async () => {
+    const generator = generatorFor(() =>
+      Promise.resolve({
+        ...validOutput,
+        sources: Array.from({ length: 5 }, (_, index) => ({
+          title: `page ${index}`,
+          url: `https://example.invalid/${index}`,
+        })),
+      }),
+    );
+
+    await expect(generator.generate(input)).rejects.toMatchObject({
+      code: "invalid_output",
+    });
   });
 });

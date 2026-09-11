@@ -1,6 +1,9 @@
 import {
+  classifyCompanySourceType,
   companyContextSchema,
   evidenceItemSchema,
+  toPublicHttpUrl,
+  toUrlHost,
   type EvidenceItem,
 } from "@miraio/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -12,6 +15,13 @@ import {
 } from "./personal-context-repository";
 
 const companyContextEvidenceTitle = "AI会社・役職分析";
+
+// A page the model read is worth more than its own inference, and the
+// company's own site is worth more than a third party writing about it.
+const researchedSourceConfidence = {
+  official_company: 0.7,
+  public_web: 0.55,
+} as const;
 
 export class EvidenceRepositoryError extends Error {
   constructor(readonly operation: string) {
@@ -111,6 +121,97 @@ export class EvidenceRepository {
       .single();
 
     return data?.id ?? null;
+  }
+
+  /**
+   * Turns the pages the Company Context stage read into Evidence rows with
+   * real source URLs. Until web research existed, `official_company` and
+   * `public_web` were declared source types that nothing ever wrote, so every
+   * claim in the product traced back to the card or to an inference.
+   *
+   * Returns the number of rows written.
+   */
+  async createCompanyWebEvidence(
+    scanId: string,
+    userId: string,
+  ): Promise<number> {
+    const [analysis, card] = await Promise.all([
+      this.client
+        .from("relationship_analyses")
+        .select("company_context_json")
+        .eq("scan_id", scanId)
+        .maybeSingle(),
+      this.client
+        .from("business_cards")
+        .select("website,email")
+        .eq("scan_id", scanId)
+        .maybeSingle(),
+    ]);
+
+    if (!analysis.data?.company_context_json) {
+      return 0;
+    }
+
+    const parsed = companyContextSchema.safeParse(
+      analysis.data.company_context_json,
+    );
+
+    if (!parsed.success) {
+      return 0;
+    }
+
+    // A resumed scan researches again, so the rows of the earlier run are
+    // replaced rather than listed twice beside the new ones.
+    const { error: deleteError } = await this.client
+      .from("evidence")
+      .delete()
+      .eq("scan_id", scanId)
+      .in("source_type", ["official_company", "public_web"]);
+
+    if (deleteError) {
+      throw new EvidenceRepositoryError("replace_company_web_evidence");
+    }
+
+    const retrievedAt = new Date().toISOString();
+    const rows = parsed.data.sources.flatMap((source) => {
+      const url = toPublicHttpUrl(source.url);
+
+      // A citation that is not a web link cannot be opened or checked, which
+      // is the entire value of recording it.
+      if (url === null) {
+        return [];
+      }
+
+      const sourceType = classifyCompanySourceType(url, card.data ?? {});
+      const title = source.title?.trim();
+
+      return [
+        {
+          confidence: researchedSourceConfidence[sourceType],
+          excerpt: title || url,
+          retrieved_at: retrievedAt,
+          scan_id: scanId,
+          source_title: toUrlHost(url) ?? "web",
+          source_type: sourceType,
+          source_url: url,
+          user_id: userId,
+        },
+      ];
+    });
+
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    const { error: insertError } = await this.client
+      .from("evidence")
+      .insert(rows);
+
+    if (insertError) {
+      throw new EvidenceRepositoryError("create_company_web_evidence");
+    }
+
+    return rows.length;
   }
 
   // Creates one ai_inference evidence record for company context.

@@ -26,6 +26,21 @@ export type RoleLevel = z.infer<typeof roleLevelSchema>;
 // rejects. With it, the conversion emits the JSON Schema union form
 // `{"anyOf":[{"type":"string","maxLength":N},{"type":"null"}]}`.
 // See packages/ai/src/structured-output-schema.test.ts.
+// A page the stage actually read while researching the company. `url` stays a
+// plain bounded string rather than z.string().url(): the Zod-to-JSON-Schema
+// conversion would emit `"format":"uri"`, which strict structured output
+// rejects. The scheme is enforced by toPublicHttpUrl where the value is used.
+export const companySourceSchema = z
+  .object({
+    title: z.string().max(200).nullable(),
+    url: z.string().max(2000),
+  })
+  .strict();
+
+export type CompanySource = z.infer<typeof companySourceSchema>;
+
+export const maximumCompanySources = 4;
+
 export const companyContextSchema = z
   .object({
     company_description: z.string().max(1000).nullable(),
@@ -33,6 +48,12 @@ export const companyContextSchema = z
     company_scale: companyScaleSchema,
     role_scope: z.string().max(1000).nullable(),
     role_level: roleLevelSchema,
+    // Web research is opt-in, and context stored before it existed carries no
+    // sources at all, so the canonical form defaults the field.
+    sources: z
+      .array(companySourceSchema)
+      .max(maximumCompanySources)
+      .default([]),
   })
   .strict();
 
@@ -49,4 +70,10 @@ export const companyContextInputSchema = z
 
 export type CompanyContextInput = z.infer<typeof companyContextInputSchema>;
 
-export const companyContextStructuredOutputSchema = companyContextSchema;
+// The provider always states the field, empty when it read nothing.
+export const companyContextStructuredOutputSchema = companyContextSchema
+  .omit({ sources: true })
+  .extend({
+    sources: z.array(companySourceSchema).max(maximumCompanySources),
+  })
+  .strict();
