@@ -182,6 +182,9 @@ function DemoScreen({ initial }: { initial: string }) {
         deepEnriching={false}
         error={null}
         onDone={home}
+        onFlagIdentity={() => undefined}
+        onMarkHypothesisUnhelpful={() => undefined}
+        onRateUsefulness={() => undefined}
         onRefresh={noOp}
         onViewCard={() => setScreen("detail")}
         onViewEvidence={() => setScreen("detail")}
@@ -211,6 +214,7 @@ function DemoScreen({ initial }: { initial: string }) {
         themes={["生成AI", "SaaS", "業務改善", "データ分析"]}
         onDone={home}
         onRefresh={noOp}
+        onSayThisUsed={() => undefined}
         onViewBrief={summary}
         onViewInteraction={() => setScreen("note")}
         initialTab={screen}

@@ -40,6 +40,9 @@ export function FlashBriefScreen({
   deepEnriching,
   error,
   onDone,
+  onFlagIdentity,
+  onMarkHypothesisUnhelpful,
+  onRateUsefulness,
   onRefresh,
   onViewCard,
   onViewEvidence,
@@ -51,12 +54,21 @@ export function FlashBriefScreen({
   deepEnriching: boolean;
   error: string | null;
   onDone: () => void;
+  onFlagIdentity?: () => void;
+  onMarkHypothesisUnhelpful?: () => void;
+  onRateUsefulness?: (rating: number) => void;
   onRefresh: () => Promise<void>;
   onViewCard: () => void;
   onViewEvidence: () => void;
   onViewMutualValue: () => void;
   onViewInteraction?: () => void;
 }) {
+  // Trust and usefulness feedback is reported once per visit. The screen keeps
+  // the acknowledgement locally: there is no server record of a report yet, so
+  // hiding the control is the only confirmation the user gets.
+  const [identityFlagged, setIdentityFlagged] = useState(false);
+  const [hypothesisFlagged, setHypothesisFlagged] = useState(false);
+  const [usefulness, setUsefulness] = useState<number | null>(null);
   const identityLabels = {
     verified: "本人確認済み",
     high_confidence: "本人の可能性が高い",
@@ -102,6 +114,21 @@ export function FlashBriefScreen({
           </View>
         </View>
         <Text style={s.briefBody}>{brief.who}</Text>
+        {onFlagIdentity ? (
+          identityFlagged ? (
+            <Text style={s.caption}>
+              別人の可能性として報告しました。ありがとうございます。
+            </Text>
+          ) : (
+            <TextButton
+              label="この人物ではないかもしれない"
+              onPress={() => {
+                setIdentityFlagged(true);
+                onFlagIdentity();
+              }}
+            />
+          )
+        ) : null}
       </Card>
       <View style={[s.briefPanel, s.whyPanel]}>
         <View style={s.briefLabelRow}>
@@ -111,6 +138,19 @@ export function FlashBriefScreen({
           </View>
         </View>
         <Text style={s.briefBody}>{brief.why_you}</Text>
+        {onMarkHypothesisUnhelpful ? (
+          hypothesisFlagged ? (
+            <Text style={s.caption}>役に立たない仮説として記録しました。</Text>
+          ) : (
+            <TextButton
+              label="この仮説は役に立たない"
+              onPress={() => {
+                setHypothesisFlagged(true);
+                onMarkHypothesisUnhelpful();
+              }}
+            />
+          )
+        ) : null}
       </View>
       <View style={s.sayPanel}>
         <View style={s.briefLabelRow}>
@@ -144,6 +184,42 @@ export function FlashBriefScreen({
       <Text style={s.disclaimer}>
         AIによる仮説は、相手への質問を通じて確かめてください。
       </Text>
+      {onRateUsefulness ? (
+        <Card>
+          <Text style={s.heading}>このBriefは役に立ちましたか？</Text>
+          {usefulness === null ? (
+            <>
+              <View style={s.ratingRow}>
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="button"
+                    accessibilityLabel={`5段階中${value}`}
+                    onPress={() => {
+                      setUsefulness(value);
+                      onRateUsefulness(value);
+                    }}
+                    style={({ pressed }) => [
+                      s.ratingButton,
+                      pressed && s.pressed,
+                    ]}
+                  >
+                    <Text style={s.ratingButtonText}>{value}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={s.ratingLegend}>
+                <Text style={s.meta}>1 = 役に立たない</Text>
+                <Text style={s.meta}>5 = とても役に立った</Text>
+              </View>
+            </>
+          ) : (
+            <Text style={s.caption}>
+              {`${usefulness} / 5 として記録しました。ありがとうございます。`}
+            </Text>
+          )}
+        </Card>
+      ) : null}
       <View style={s.shortcuts}>
         {shortcuts.map((shortcut) =>
           shortcut.action ? (
@@ -222,6 +298,7 @@ export function MutualValueScreen({
   mutualValue,
   onDone,
   onRefresh,
+  onSayThisUsed,
   onViewBrief,
   onViewInteraction,
   potential,
@@ -233,6 +310,7 @@ export function MutualValueScreen({
   mutualValue: MutualValuePublic | null;
   onDone: () => void;
   onRefresh: () => Promise<void>;
+  onSayThisUsed?: (used: boolean) => void;
   onViewBrief: () => void;
   onViewInteraction: () => void;
   potential?: string;
@@ -240,6 +318,9 @@ export function MutualValueScreen({
   initialTab?: AnalysisTab;
 }) {
   const [tab, setTab] = useState<AnalysisTab>(initialTab);
+  // Conversation Adoption Rate is the pilot North Star, and it can only be
+  // measured by asking whether the suggested question was actually used.
+  const [sayThisUsed, setSayThisUsed] = useState<boolean | null>(null);
   if (!mutualValue)
     return (
       <ScreenFrame title="分析結果" onBack={onViewBrief}>
@@ -343,6 +424,39 @@ export function MutualValueScreen({
               </View>
             ))}
           </Card>
+          {onSayThisUsed ? (
+            <Card>
+              <Text style={s.heading}>この質問を実際に使いましたか？</Text>
+              {sayThisUsed === null ? (
+                <View style={s.adoptionRow}>
+                  <View style={s.flex}>
+                    <SecondaryButton
+                      label="使った"
+                      onPress={() => {
+                        setSayThisUsed(true);
+                        onSayThisUsed(true);
+                      }}
+                    />
+                  </View>
+                  <View style={s.flex}>
+                    <SecondaryButton
+                      label="使わなかった"
+                      onPress={() => {
+                        setSayThisUsed(false);
+                        onSayThisUsed(false);
+                      }}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <Text style={s.caption}>
+                  {sayThisUsed
+                    ? "「使った」として記録しました。"
+                    : "「使わなかった」として記録しました。"}
+                </Text>
+              )}
+            </Card>
+          ) : null}
           <View style={s.tip}>
             <Text style={s.heading}>話し方のコツ</Text>
             <Text style={s.small}>
@@ -714,6 +828,29 @@ const s = StyleSheet.create({
   checkboxActive: {
     backgroundColor: colors.accentStrong,
     borderColor: colors.accentStrong,
+  },
+  adoptionRow: { flexDirection: "row", gap: 10, marginTop: 4 },
+  ratingRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+  ratingButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.accentSoft,
+    backgroundColor: colors.accentFaint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ratingButtonText: {
+    color: colors.accentStrong,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  ratingLegend: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 6,
   },
   pressed: { opacity: 0.7 },
   disabled: { opacity: 0.45 },

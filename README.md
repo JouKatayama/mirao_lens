@@ -44,9 +44,11 @@ ML-001 through ML-017 currently provide:
 - an Interaction layer with conversation notes, next-action capture, and
   acceptance tracking,
 - scan history listing with status badges and a mobile history screen,
-- source URL opening from the brief and mutual-value views,
-- event analytics via the PostHog HTTP Capture API with 17 named events
-  covering activation, scan funnel, value, and trust categories,
+- evidence-view source opening, restricted to `http`/`https` links,
+- event analytics via the PostHog HTTP Capture API with 20 named events
+  covering activation, scan funnel, value, and trust categories, including
+  Flash Brief usefulness rating, `SAY THIS` adoption, wrong-person reporting,
+  and unhelpful-hypothesis reporting,
 - individual scan deletion (`DELETE /v1/scans/:scanId`) and full account
   deletion (`DELETE /v1/account`) with storage cleanup and cascading DB removal,
 - an authenticated `POST /api/internal/cleanup-expired-scans` sweep that
@@ -208,12 +210,31 @@ preserved while user-correction provenance is added separately.
 
 ML-006 through ML-014 add Flash Brief generation, deep enrichment stages
 (company context, identity resolution, mutual value, evidence chains),
-interaction logging (notes and next actions), scan history listing, and source
-URL opening.
+interaction logging (notes and next actions), scan history listing, and
+evidence source opening.
 
 ML-015 adds event analytics via the PostHog HTTP Capture API. Set
 `EXPO_PUBLIC_POSTHOG_API_KEY` and `EXPO_PUBLIC_POSTHOG_HOST` in the mobile
 environment to enable tracking; the client is a no-op when the key is absent.
+
+Every name in `analyticsEventNames` is emitted by the app. Three groups need
+more than a single call site:
+
+| Group                | Events                                                                                                                     | Where                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Activation, per user | `signup_completed`, `first_scan_started`, `first_brief_viewed`                                                             | `lib/funnel-events.ts`, deduplicated by an AsyncStorage marker per user    |
+| Funnel, per scan     | `card_extraction_success`, `brief_ready`                                                                                   | the status poll, on the transition this client observed                    |
+| Value and trust      | `brief_usefulness_rated`, `say_this_used_yes/no`, `identity_flagged_wrong`, `hypothesis_marked_unhelpful`, `source_opened` | Flash Brief feedback controls, the conversation tab, and the evidence view |
+
+`signup_completed` has no dedicated client signal, because email OTP sign-up
+and sign-in are the same flow. It fires on the first session an install sees
+for a user whose account was created within the last 24 hours, so an existing
+user signing in on a new device is not counted as a sign-up. A reinstall can
+re-emit an activation event; count unique users, not raw events.
+
+`brief_usefulness_rated` carries a `rating` property of 1–5, and
+`say_this_used_yes` / `say_this_used_no` supply the pilot North Star
+(Conversation Adoption Rate).
 
 ML-016 adds:
 
@@ -240,6 +261,11 @@ cases where `after()` deletion failed. Protect with `X-Cleanup-Secret` header
 and a matching `CLEANUP_SECRET` env var. Requires `SUPABASE_SERVICE_ROLE_KEY`.
 Suitable for invocation from Vercel Cron or an external scheduler. Returns
 `{ deleted_count, failed_count, status }`.
+
+`.github/workflows/cleanup-expired-scans.yml` calls it hourly. The job is
+skipped until the repository variable `CLEANUP_ENDPOINT_URL` (the deployed
+endpoint) and the repository secret `CLEANUP_SECRET` are set, and fails loudly
+on a non-2xx response.
 
 ## Run the mobile app
 

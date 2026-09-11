@@ -1,0 +1,56 @@
+name: Cleanup expired scans
+
+# Raw card images are deleted immediately after a successful extraction, but a
+# failed or abandoned scan keeps its image until something sweeps it. Nothing
+# was calling the sweep endpoint, so the one-hour expiry in the product spec
+# only held for the happy path. This calls it hourly.
+#
+# Inert until the deployment is configured:
+#   - repository variable CLEANUP_ENDPOINT_URL — full URL of
+#     POST /api/internal/cleanup-expired-scans
+#   - repository secret CLEANUP_SECRET — must equal the API's CLEANUP_SECRET
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cleanup-expired-scans
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: vars.CLEANUP_ENDPOINT_URL != ''
+
+    steps:
+      - name: Sweep expired raw card images
+        env:
+          CLEANUP_ENDPOINT_URL: ${{ vars.CLEANUP_ENDPOINT_URL }}
+          CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
+        run: |
+          if [ -z "${CLEANUP_SECRET}" ]; then
+            echo "CLEANUP_SECRET is not configured." >&2
+            exit 1
+          fi
+
+          # The response body carries the deleted/failed counts. A non-2xx
+          # status has to fail the run: a silently unswept queue is exactly the
+          # state this workflow exists to prevent.
+          status=$(curl --silent --show-error --fail-with-body \
+            --max-time 120 \
+            --output response.json \
+            --write-out '%{http_code}' \
+            --request POST "${CLEANUP_ENDPOINT_URL}" \
+            --header "x-cleanup-secret: ${CLEANUP_SECRET}" \
+            --header 'content-length: 0') || {
+            echo "Sweep request failed with status ${status:-unknown}." >&2
+            cat response.json >&2 || true
+            exit 1
+          }
+
+          cat response.json

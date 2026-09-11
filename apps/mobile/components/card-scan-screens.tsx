@@ -17,12 +17,14 @@ import {
   ActivityIndicator,
   Image,
   Linking,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
 import { type CapturedCardImage } from "../lib/scan-capture";
+import { toOpenableSourceUrl } from "../lib/source-url";
 import {
   Card,
   ErrorNotice,
@@ -574,11 +576,13 @@ export function EvidenceScreen({
   error,
   items,
   onBack,
+  onOpenSource,
 }: {
   card: { name: string | null; company: string | null; title: string | null };
   error: string | null;
   items: EvidenceItem[] | null;
   onBack: () => void;
+  onOpenSource?: (url: string) => void;
 }) {
   const groups =
     items !== null
@@ -620,26 +624,54 @@ export function EvidenceScreen({
               {evidenceSourceLabels[sourceType as EvidenceSourceType] ??
                 sourceType}
             </Text>
-            {groupItems.map((item) => (
-              <View key={item.id} style={styles.evidenceRow}>
-                <Text style={styles.evidenceFieldName}>
-                  {item.source_title !== null
-                    ? (evidenceFieldLabels[item.source_title] ??
-                      item.source_title)
-                    : "—"}
-                </Text>
-                <Text
-                  style={styles.evidenceExcerpt}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
+            {groupItems.map((item) => {
+              const sourceUrl = toOpenableSourceUrl(item.source_url);
+              const row = (
+                <>
+                  <Text style={styles.evidenceFieldName}>
+                    {item.source_title !== null
+                      ? (evidenceFieldLabels[item.source_title] ??
+                        item.source_title)
+                      : "—"}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.evidenceExcerpt,
+                      sourceUrl !== null && styles.evidenceExcerptLink,
+                    ]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.excerpt ?? sourceUrl ?? "—"}
+                  </Text>
+                  <Text style={styles.evidenceConfidence}>
+                    {Math.round(item.confidence * 100)}%
+                  </Text>
+                </>
+              );
+
+              // Only a claim that carries a usable web source is openable. The
+              // rest stay plain text so a tap never promises a source that the
+              // pipeline did not record.
+              return sourceUrl !== null && onOpenSource ? (
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel={`ソースを開く: ${item.source_title ?? sourceUrl}`}
+                  key={item.id}
+                  onPress={() => onOpenSource(sourceUrl)}
+                  style={({ pressed }) => [
+                    styles.evidenceRow,
+                    pressed && styles.pressed,
+                  ]}
                 >
-                  {item.excerpt ?? "—"}
-                </Text>
-                <Text style={styles.evidenceConfidence}>
-                  {Math.round(item.confidence * 100)}%
-                </Text>
-              </View>
-            ))}
+                  {row}
+                </Pressable>
+              ) : (
+                <View key={item.id} style={styles.evidenceRow}>
+                  {row}
+                </View>
+              );
+            })}
           </Card>
         ))
       )}
@@ -706,6 +738,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     minWidth: 36,
     textAlign: "right",
+  },
+  pressed: { opacity: 0.7 },
+  evidenceExcerptLink: {
+    color: colors.accentStrong,
+    textDecorationLine: "underline",
   },
   evidenceExcerpt: {
     color: colors.text,

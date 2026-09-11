@@ -14,10 +14,18 @@ import { colors } from "@miraio/ui-tokens";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { createAnalyticsClient, type AnalyticsClient } from "../lib/analytics";
+import {
+  createActivationTracker,
+  scanMilestoneEvents,
+  toScanMilestoneSnapshot,
+  type ActivationTracker,
+  type ScanMilestoneSnapshot,
+} from "../lib/funnel-events";
 import {
   ContextApiError,
   createPersonalContextApiClient,
@@ -66,6 +74,7 @@ type ViewName =
   | "unavailable";
 type Services =
   | Readonly<{
+      activation: ActivationTracker;
       analytics: AnalyticsClient;
       api: ReturnType<typeof createPersonalContextApiClient>;
       ok: true;
@@ -77,8 +86,13 @@ type Services =
 export function PersonalContextApp() {
   const services = useMemo<Services>(() => {
     try {
+      const analytics = createAnalyticsClient(process.env);
       return {
-        analytics: createAnalyticsClient(process.env),
+        activation: createActivationTracker({
+          storage: AsyncStorage,
+          track: (event) => analytics.track(event),
+        }),
+        analytics,
         api: createPersonalContextApiClient(),
         ok: true,
         scanApi: createScanApiClient(),
@@ -123,6 +137,9 @@ export function PersonalContextApp() {
   // The polling effect re-runs on every status transition, so the budget has to
   // survive those re-runs. The key resets it for a new scan or a new epoch.
   const pollStart = useRef<{ key: string; startedAt: number } | null>(null);
+  // Scan-funnel milestones are reported on the transition this client watched,
+  // so the last observed shape of the scan has to outlive each poll.
+  const observedMilestones = useRef<ScanMilestoneSnapshot | null>(null);
 
   const loadApprovedContext = useCallback(
     async (
@@ -223,6 +240,7 @@ export function PersonalContextApp() {
       setScanId(null);
       setScanResult(null);
       setScanStatus(null);
+      observedMilestones.current = null;
       setScanStatusError(null);
       setRetryCapture(null);
       setEvidence(null);
@@ -241,6 +259,7 @@ export function PersonalContextApp() {
     if (!services.ok) return;
     if (session?.user.id) {
       services.analytics.identify(session.user.id);
+      void services.activation.trackSignup(session.user);
     } else if (session === null) {
       services.analytics.reset();
     }
@@ -308,10 +327,24 @@ export function PersonalContextApp() {
         setScanStatus(nextStatus);
         setScanStatusError(null);
 
+        const nextMilestones = toScanMilestoneSnapshot(nextStatus);
+        for (const name of scanMilestoneEvents(
+          observedMilestones.current,
+          nextMilestones,
+        )) {
+          services.analytics.track({ name });
+        }
+        observedMilestones.current = nextMilestones;
+
         const destination = scanNavigationTarget(view, nextStatus.status);
         if (destination) {
-          if (destination === "flash-brief")
+          if (destination === "flash-brief") {
             services.analytics.track({ name: "brief_viewed" });
+            void services.activation.trackOnce(
+              session.user.id,
+              "first_brief_viewed",
+            );
+          }
           setView(destination);
         }
         if (isScanPending(nextStatus.status)) {
@@ -739,6 +772,7 @@ export function PersonalContextApp() {
           onCapture={() => {
             setScanResult(null);
             setScanStatus(null);
+            observedMilestones.current = null;
             setView("preparation");
           }}
           onDeleteScan={deleteScan}
@@ -747,6 +781,7 @@ export function PersonalContextApp() {
             if (item) setMeetingGoal(item.meeting_goal);
             setScanResult({ scan_id: id, status: "extracting" });
             setScanStatus(null);
+            observedMilestones.current = null;
             setScanStatusError(null);
             setView("scan-accepted");
           }}
@@ -769,6 +804,10 @@ export function PersonalContextApp() {
               setView("mutual-value");
             } else {
               services.analytics.track({ name: "scan_capture" });
+              void services.activation.trackOnce(
+                session.user.id,
+                "first_scan_started",
+              );
               setScanId(createScanId());
               setScanStatusError(null);
               setRetryCapture(null);
@@ -789,6 +828,11 @@ export function PersonalContextApp() {
               scan_id: result.scan_id,
               status: "extracting",
             });
+            observedMilestones.current = {
+              hasBrief: false,
+              hasCard: false,
+              scanId: result.scan_id,
+            };
             setScanStatusError(null);
             setView("scan-accepted");
           }}
@@ -812,6 +856,7 @@ export function PersonalContextApp() {
             setScanId(null);
             setScanResult(null);
             setScanStatus(null);
+            observedMilestones.current = null;
             setScanStatusError(null);
             setRetryCapture(null);
             setView("home");
@@ -820,6 +865,7 @@ export function PersonalContextApp() {
             setScanId(createScanId());
             setScanResult(null);
             setScanStatus(null);
+            observedMilestones.current = null;
             setScanStatusError(null);
             setRetryCapture(null);
             setView("camera");
@@ -848,12 +894,33 @@ export function PersonalContextApp() {
             setScanId(null);
             setScanResult(null);
             setScanStatus(null);
+            observedMilestones.current = null;
             setScanStatusError(null);
             setRetryCapture(null);
             setEvidence(null);
             setEvidenceError(null);
             setView("home");
           }}
+          onFlagIdentity={() =>
+            services.analytics.track({
+              name: "identity_flagged_wrong",
+              properties: {
+                identity_status: scanStatus.flash_brief.identity_status,
+              },
+            })
+          }
+          onMarkHypothesisUnhelpful={() =>
+            services.analytics.track({
+              name: "hypothesis_marked_unhelpful",
+              properties: { section: "why_you" },
+            })
+          }
+          onRateUsefulness={(rating) =>
+            services.analytics.track({
+              name: "brief_usefulness_rated",
+              properties: { rating },
+            })
+          }
           onRefresh={refreshScanStatus}
           onViewCard={() => setView("card-details")}
           onViewInteraction={
@@ -894,11 +961,17 @@ export function PersonalContextApp() {
             setScanId(null);
             setScanResult(null);
             setScanStatus(null);
+            observedMilestones.current = null;
             setScanStatusError(null);
             setRetryCapture(null);
             setView("home");
           }}
           onRefresh={refreshScanStatus}
+          onSayThisUsed={(used) =>
+            services.analytics.track({
+              name: used ? "say_this_used_yes" : "say_this_used_no",
+            })
+          }
           onViewBrief={() => setView("flash-brief")}
           onViewInteraction={() => setView("interaction")}
         />
@@ -925,6 +998,7 @@ export function PersonalContextApp() {
             setScanId(null);
             setScanResult(null);
             setScanStatus(null);
+            observedMilestones.current = null;
             setScanStatusError(null);
             setRetryCapture(null);
             setView("home");
@@ -943,6 +1017,13 @@ export function PersonalContextApp() {
           error={evidenceError}
           items={evidence}
           onBack={() => setView("flash-brief")}
+          onOpenSource={(url) => {
+            services.analytics.track({ name: "source_opened" });
+            // A missing browser or a rejected link must not break the screen.
+            void Linking.openURL(url).catch(() => {
+              setEvidenceError("ソースを開けませんでした。");
+            });
+          }}
         />
       ) : null}
       {view === "onboarding" ? (

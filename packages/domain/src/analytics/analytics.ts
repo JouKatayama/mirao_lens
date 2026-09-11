@@ -12,6 +12,9 @@ export const analyticsEventNames = [
   "brief_viewed",
   "mutual_value_viewed",
   // Value
+  "say_this_used_yes",
+  "say_this_used_no",
+  "brief_usefulness_rated",
   "conversation_note_saved",
   "next_action_created",
   "next_action_accepted",
