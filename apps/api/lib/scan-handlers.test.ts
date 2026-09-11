@@ -1,14 +1,17 @@
 import { maximumScanImageBytes, type ScanRecord } from "@miraio/domain";
 import { ScanRepositoryError } from "@miraio/db";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createPatchScanFavoriteHandler,
   createPostScanHandler,
   OPTIONS,
+  type ScanFavoriteHandlerDependencies,
   type ScanHandlerDependencies,
 } from "./scan-handlers";
 
 const scanId = "00000000-0000-4000-8000-000000000404";
+const favoriteScanId = "00000000-0000-4000-8000-000000000405";
 const userId = "00000000-0000-4000-8000-000000000044";
 const image = new Uint8Array([255, 216, 255]).buffer;
 
@@ -192,5 +195,87 @@ describe("OPTIONS /v1/scans", () => {
     // DELETE belongs to /v1/scans/:scanId, which re-exports this same handler.
     // Browsers preflight it, so leaving it out blocks the request entirely.
     expect(allowed).toEqual(new Set(["GET", "POST", "DELETE", "OPTIONS"]));
+  });
+});
+
+describe("createPatchScanFavoriteHandler", () => {
+  const repository = { setScanFavorite: vi.fn() };
+  let dependencies: ScanFavoriteHandlerDependencies;
+
+  function patch(body: unknown, authenticated = true, id = favoriteScanId) {
+    return createPatchScanFavoriteHandler(dependencies)(
+      new Request(`http://api/v1/scans/${id}/favorite`, {
+        body: JSON.stringify(body),
+        headers: {
+          ...(authenticated ? { Authorization: "Bearer valid-token" } : {}),
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      }),
+      { params: Promise.resolve({ scanId: id }) },
+    );
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dependencies = {
+      authenticate: vi.fn().mockResolvedValue({ repository }),
+    };
+  });
+
+  it("marks a scan and echoes the stored value", async () => {
+    repository.setScanFavorite.mockResolvedValue(true);
+
+    const res = await patch({ is_favorite: true });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      is_favorite: true,
+      scan_id: favoriteScanId,
+    });
+    expect(repository.setScanFavorite).toHaveBeenCalledWith(
+      favoriteScanId,
+      true,
+    );
+  });
+
+  it("unmarks a scan", async () => {
+    repository.setScanFavorite.mockResolvedValue(false);
+
+    const res = await patch({ is_favorite: false });
+
+    expect((await res.json()).is_favorite).toBe(false);
+  });
+
+  it("returns 404 when the scan is unknown or another user's", async () => {
+    repository.setScanFavorite.mockResolvedValue(null);
+
+    expect((await patch({ is_favorite: true })).status).toBe(404);
+  });
+
+  it("returns 404 for a scan id that is not a UUID", async () => {
+    const res = await patch({ is_favorite: true }, true, "nope");
+
+    expect(res.status).toBe(404);
+    expect(repository.setScanFavorite).not.toHaveBeenCalled();
+  });
+
+  it("rejects a body without the flag", async () => {
+    expect((await patch({})).status).toBe(400);
+    expect((await patch({ is_favorite: "yes" })).status).toBe(400);
+    expect(repository.setScanFavorite).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 without an Authorization header", async () => {
+    const res = await patch({ is_favorite: true }, false);
+
+    expect(res.status).toBe(401);
+    expect(repository.setScanFavorite).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when the write fails", async () => {
+    repository.setScanFavorite.mockRejectedValue(new Error("db"));
+
+    expect((await patch({ is_favorite: true })).status).toBe(500);
   });
 });

@@ -24,6 +24,9 @@ import {
 
 const tabs = [
   { value: "all", label: "すべて" },
+  // Five tabs share a 375pt row, so the label has to be short enough to read
+  // whole; the star on each row carries the meaning.
+  { value: "favorite", label: "スター" },
   { value: "ready", label: "分析済み" },
   { value: "processing", label: "分析中" },
   { value: "failed", label: "エラー" },
@@ -70,6 +73,7 @@ export function HomeScreen({
       .includes(query.trim().toLocaleLowerCase());
     const statusMatch =
       filter === "all" ||
+      (filter === "favorite" && item.is_favorite) ||
       (filter === "ready" &&
         ["deep_ready", "brief_ready"].includes(item.status)) ||
       (filter === "processing" &&
@@ -111,7 +115,17 @@ export function HomeScreen({
               >
                 <Avatar name={item.card_name} />
                 <View style={s.details}>
-                  <Text style={s.name}>{item.card_name || "名前未登録"}</Text>
+                  <View style={s.nameRow}>
+                    {item.is_favorite ? (
+                      <Icon
+                        name="star"
+                        color={colors.accentStrong}
+                        filled
+                        size={16}
+                      />
+                    ) : null}
+                    <Text style={s.name}>{item.card_name || "名前未登録"}</Text>
+                  </View>
                   {item.card_company ? (
                     <Text style={s.meta}>{item.card_company}</Text>
                   ) : null}
@@ -286,6 +300,7 @@ const s = StyleSheet.create({
   },
   details: { flex: 1, minWidth: 0, gap: 4 },
   name: { color: colors.text, fontSize: 16, fontWeight: "700" },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   meta: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   badge: {
     alignSelf: "flex-start",

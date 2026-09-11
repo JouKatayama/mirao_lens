@@ -505,11 +505,34 @@ export class CardIntelligenceRepository {
     }
   }
 
+  /**
+   * Marks or unmarks a scan. RLS scopes the update to the caller's own scans,
+   * so a missing row means the scan is unknown or another user's; the caller
+   * reports that as not found rather than a write that silently did nothing.
+   */
+  async setScanFavorite(
+    scanId: string,
+    isFavorite: boolean,
+  ): Promise<boolean | null> {
+    const { data, error } = await this.client
+      .from("scans")
+      .update({ is_favorite: isFavorite })
+      .eq("id", scanId)
+      .select("is_favorite")
+      .maybeSingle();
+
+    if (error) {
+      throw new CardIntelligenceRepositoryError("set_scan_favorite");
+    }
+
+    return data ? data.is_favorite : null;
+  }
+
   async listScans(limit = 20): Promise<ScanHistoryItem[]> {
     const { data, error } = await this.client
       .from("scans")
       .select(
-        "id,status,meeting_goal,created_at,business_cards(name,company,title)",
+        "id,status,meeting_goal,created_at,is_favorite,business_cards(name,company,title)",
       )
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -533,6 +556,7 @@ export class CardIntelligenceRepository {
         card_company: card?.company ?? null,
         card_name: card?.name ?? null,
         card_title: card?.title ?? null,
+        is_favorite: row.is_favorite,
         created_at: row.created_at,
         meeting_goal: row.meeting_goal,
         scan_id: row.id,

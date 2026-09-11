@@ -459,6 +459,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_favorite: boolean
           meeting_goal: string
           raw_image_expires_at: string | null
           raw_image_path: string | null
@@ -469,6 +470,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_favorite?: boolean
           meeting_goal?: string
           raw_image_expires_at?: string | null
           raw_image_path?: string | null
@@ -479,6 +481,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_favorite?: boolean
           meeting_goal?: string
           raw_image_expires_at?: string | null
           raw_image_path?: string | null
