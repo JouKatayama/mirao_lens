@@ -1,8 +1,8 @@
 import type {
+  AnalyticsEventName,
   CardCorrection,
   EncounterHistoryItem,
   EvidenceItem,
-  NextActionResponse,
   MeetingGoal,
   PersonalContextItem,
   PersonalContextItemUpdate,
@@ -57,6 +57,7 @@ import {
   watchForStall,
   type StallWatch,
 } from "../lib/scan-polling";
+import type { InteractionRecord } from "./relationship-screens";
 import { LoadingScreen, PrimaryButton } from "./ui";
 import { EncounterHistoryScreen } from "./encounter-history-screen";
 import { HomeScreen } from "./home-screen";
@@ -117,6 +118,9 @@ export function PersonalContextApp() {
   const [contextReturn, setContextReturn] = useState<"home" | "preparation">(
     "home",
   );
+  // Set while onboarding was opened from My Context, so it can go back there
+  // and approval returns there instead of dropping the user on Home.
+  const [editingContext, setEditingContext] = useState(false);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [view, setView] = useState<ViewName>("loading");
   const [context, setContext] = useState<PersonalContextResponse | null>(null);
@@ -136,9 +140,14 @@ export function PersonalContextApp() {
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<EncounterHistoryItem[]>([]);
   const [encountersError, setEncountersError] = useState<string | null>(null);
-  const [recordedActions, setRecordedActions] = useState<NextActionResponse[]>(
-    [],
+  // The stored note and actions for the scan being recorded; null while read.
+  const [interaction, setInteraction] = useState<InteractionRecord | null>(
+    null,
   );
+  const [interactionError, setInteractionError] = useState<string | null>(null);
+  const [interactionReturn, setInteractionReturn] = useState<
+    "flash-brief" | "mutual-value"
+  >("flash-brief");
   const [historyItems, setHistoryItems] = useState<ScanHistoryItem[] | null>(
     null,
   );
@@ -165,6 +174,26 @@ export function PersonalContextApp() {
     scanResult && resumeRefusedScanId === scanResult.scan_id
       ? "この名刺は分析に繰り返し失敗したため、これ以上再試行できません。撮り直すと新しく分析できます。"
       : scanStatusError;
+
+  const activeScanId = scanResult?.scan_id ?? null;
+
+  // Per-scan value and trust events carry the scan, so a rate can be counted
+  // once per scan even when a user answers again on a later visit.
+  const trackScanEvent = useCallback(
+    (
+      name: AnalyticsEventName,
+      properties: Readonly<
+        Record<string, string | number | boolean | null>
+      > = {},
+    ) => {
+      if (!services.ok) return;
+      services.analytics.track({
+        name,
+        properties: { ...properties, scan_id: activeScanId },
+      });
+    },
+    [activeScanId, services],
+  );
 
   const noteResumeRefusal = useCallback(
     (error: unknown, refusedScanId: string) => {
@@ -279,8 +308,11 @@ export function PersonalContextApp() {
       setRetryCapture(null);
       setEvidence(null);
       setEvidenceError(null);
+      setInteraction(null);
+      setInteractionError(null);
       setHistoryItems(null);
       setHistoryError(null);
+      setEditingContext(false);
       setWelcome(true);
       setView("auth");
       return;
@@ -600,7 +632,11 @@ export function PersonalContextApp() {
       return;
     }
 
-    await loadApprovedContext(session, contextReturn);
+    await loadApprovedContext(
+      session,
+      editingContext ? "context" : contextReturn,
+    );
+    setEditingContext(false);
     services.analytics.track({ name: "personal_context_completed" });
     setBusy(false);
   }
@@ -768,7 +804,7 @@ export function PersonalContextApp() {
         scanResult.scan_id,
         noteText,
       );
-      services.analytics.track({ name: "conversation_note_saved" });
+      trackScanEvent("conversation_note_saved");
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
         await services.supabase.auth.signOut();
@@ -794,9 +830,9 @@ export function PersonalContextApp() {
         scanResult.scan_id,
         { action_text: actionText, source, status, timing_text: timingText },
       );
-      services.analytics.track({ name: "next_action_created" });
+      trackScanEvent("next_action_created", { source, status });
       if (status === "accepted") {
-        services.analytics.track({ name: "next_action_accepted" });
+        trackScanEvent("next_action_accepted", { source });
       }
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
@@ -807,22 +843,41 @@ export function PersonalContextApp() {
     }
   }
 
-  async function loadRecordedActions(): Promise<void> {
+  async function loadInteraction(): Promise<void> {
     if (!session || !services.ok || !scanResult) {
       return;
     }
 
+    setInteraction(null);
+    setInteractionError(null);
+
     try {
-      const response = await services.scanApi.listNextActions(
-        session.access_token,
-        scanResult.scan_id,
+      const [note, actions] = await Promise.all([
+        services.scanApi.getNote(session.access_token, scanResult.scan_id),
+        services.scanApi.listNextActions(
+          session.access_token,
+          scanResult.scan_id,
+        ),
+      ]);
+      setInteraction({ actions: actions.items, note: note.note_text });
+    } catch (error) {
+      if (error instanceof ScanApiError && error.status === 401) {
+        await services.supabase.auth.signOut();
+        return;
+      }
+
+      // Not an empty form: saving over a note that could not be read would
+      // replace it, and re-offering the suggestion would record it twice.
+      setInteractionError(
+        "これまでの記録を読み込めませんでした。通信状態を確認して再読み込みしてください。",
       );
-      setRecordedActions(response.items);
-    } catch {
-      // The note screen still works without the earlier actions; showing an
-      // empty list is better than blocking the note the user came to write.
-      setRecordedActions([]);
     }
+  }
+
+  function openInteraction(from: "flash-brief" | "mutual-value") {
+    setInteractionReturn(from);
+    setView("interaction");
+    void loadInteraction();
   }
 
   async function completeNextAction(actionId: string): Promise<void> {
@@ -836,13 +891,39 @@ export function PersonalContextApp() {
         scanResult.scan_id,
         { action_id: actionId, status: "completed" },
       );
-      await loadRecordedActions();
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
         await services.supabase.auth.signOut();
       }
 
       throw error;
+    }
+
+    // Only the list is refreshed: reloading the whole record would remount
+    // the form and discard a note the user is still typing.
+    try {
+      const response = await services.scanApi.listNextActions(
+        session.access_token,
+        scanResult.scan_id,
+      );
+      setInteraction((current) =>
+        current ? { ...current, actions: response.items } : current,
+      );
+    } catch {
+      // The completion itself was recorded; reflect it locally rather than
+      // report a failure that did not happen.
+      setInteraction((current) =>
+        current
+          ? {
+              ...current,
+              actions: current.actions.map((item) =>
+                item.id === actionId
+                  ? { ...item, status: "completed" as const }
+                  : item,
+              ),
+            }
+          : current,
+      );
     }
   }
 
@@ -930,8 +1011,8 @@ export function PersonalContextApp() {
           }}
           onDeleteScan={deleteScan}
           onOpenScan={(id) => {
-            const item = historyItems?.find((entry) => entry.scan_id === id);
-            if (item) setMeetingGoal(item.meeting_goal);
+            // Opening an old scan used to overwrite the meeting goal, so the
+            // next capture silently inherited that scan's goal.
             setScanResult({ scan_id: id, status: "extracting" });
             setScanStatus(null);
             observedMilestones.current = null;
@@ -945,27 +1026,21 @@ export function PersonalContextApp() {
           context={context}
           meetingGoal={meetingGoal}
           onMeetingGoalChange={setMeetingGoal}
-          captured={Boolean(scanResult)}
           onEdit={() => {
             setContextReturn("preparation");
             setView("context");
           }}
-          onBack={() => setView(scanResult ? "flash-brief" : "home")}
+          onBack={() => setView("home")}
           onContinue={() => {
-            if (scanResult) {
-              services.analytics.track({ name: "mutual_value_viewed" });
-              setView("mutual-value");
-            } else {
-              services.analytics.track({ name: "scan_capture" });
-              void services.activation.trackOnce(
-                session.user.id,
-                "first_scan_started",
-              );
-              setScanId(createScanId());
-              setScanStatusError(null);
-              setRetryCapture(null);
-              setView("camera");
-            }
+            services.analytics.track({ name: "scan_capture" });
+            void services.activation.trackOnce(
+              session.user.id,
+              "first_scan_started",
+            );
+            setScanId(createScanId());
+            setScanStatusError(null);
+            setRetryCapture(null);
+            setView("camera");
           }}
         />
       ) : null}
@@ -999,6 +1074,7 @@ export function PersonalContextApp() {
       ) : null}
       {(view === "scan-accepted" || view === "card-details") && scanResult ? (
         <CardIntelligenceScreen
+          canRetry={retryCapture !== null}
           error={scanError}
           onCorrect={correctCard}
           onDone={() => {
@@ -1025,7 +1101,6 @@ export function PersonalContextApp() {
           }}
           onRefresh={refreshScanStatus}
           onRetry={retryCardExtraction}
-          result={scanResult}
           status={scanStatus}
         />
       ) : null}
@@ -1055,41 +1130,33 @@ export function PersonalContextApp() {
             setView("home");
           }}
           onFlagIdentity={() =>
-            services.analytics.track({
-              name: "identity_flagged_wrong",
-              properties: {
-                identity_status: scanStatus.flash_brief.identity_status,
-              },
+            trackScanEvent("identity_flagged_wrong", {
+              identity_status: scanStatus.flash_brief.identity_status,
             })
           }
           onMarkHypothesisUnhelpful={() =>
-            services.analytics.track({
-              name: "hypothesis_marked_unhelpful",
-              properties: { section: "why_you" },
+            trackScanEvent("hypothesis_marked_unhelpful", {
+              section: "why_you",
             })
           }
           onRateUsefulness={(rating) =>
-            services.analytics.track({
-              name: "brief_usefulness_rated",
-              properties: { rating },
-            })
+            trackScanEvent("brief_usefulness_rated", { rating })
           }
           onRefresh={refreshScanStatus}
           onViewCard={() => setView("card-details")}
-          onViewInteraction={
-            scanStatus.status === "deep_ready"
-              ? () => {
-                  setView("interaction");
-                  void loadRecordedActions();
-                }
-              : undefined
-          }
+          // The note is the user's own record and never waited on the AI.
+          // Gating it on Mutual Value meant a scan whose analysis failed
+          // could never have its conversation written down.
+          onViewInteraction={() => openInteraction("flash-brief")}
           onViewEncounters={() => setView("encounters")}
           onViewEvidence={() => {
             setView("evidence");
             void loadEvidence();
           }}
-          onViewMutualValue={() => setView("preparation")}
+          onViewMutualValue={() => {
+            services.analytics.track({ name: "mutual_value_viewed" });
+            setView("mutual-value");
+          }}
           previousEncounters={encounters.length}
         />
       ) : null}
@@ -1143,22 +1210,15 @@ export function PersonalContextApp() {
             setView("home");
           }}
           onRefresh={refreshScanStatus}
-          onSayThisUsed={(used) =>
-            services.analytics.track({
-              name: used ? "say_this_used_yes" : "say_this_used_no",
-            })
-          }
           onViewBrief={() => setView("flash-brief")}
-          onViewInteraction={() => {
-            setView("interaction");
-            void loadRecordedActions();
-          }}
+          onViewInteraction={() => openInteraction("mutual-value")}
         />
       ) : null}
       {view === "interaction" &&
-      scanStatus?.status === "deep_ready" &&
-      scanStatus.mutual_value &&
-      scanStatus.card ? (
+      scanStatus &&
+      (scanStatus.status === "brief_ready" ||
+        scanStatus.status === "deep_enrichment" ||
+        scanStatus.status === "deep_ready") ? (
         <InteractionScreen
           card={{
             company: scanStatus.card.company,
@@ -1166,17 +1226,22 @@ export function PersonalContextApp() {
             title: scanStatus.card.title,
           }}
           error={scanError}
-          mutualValue={scanStatus.mutual_value}
+          loadError={interactionError}
+          mutualValue={
+            scanStatus.status === "deep_ready" ? scanStatus.mutual_value : null
+          }
           onAcceptNextAction={async (actionText, timingText) => {
-            // An action the user rewrote is theirs; recording it as the AI's
-            // suggestion would inflate the measured suggestion acceptance.
-            const source =
-              actionText.trim() ===
-              scanStatus.mutual_value.next_action.action.trim()
-                ? "ai"
-                : "user";
+            // An action the user rewrote (or wrote without a suggestion) is
+            // theirs; recording it as the AI's would inflate the measured
+            // suggestion acceptance.
+            const suggested =
+              scanStatus.status === "deep_ready"
+                ? scanStatus.mutual_value.next_action.action.trim()
+                : null;
+            const source = actionText.trim() === suggested ? "ai" : "user";
             await saveNextAction(actionText, timingText, source, "accepted");
           }}
+          onBack={() => setView(interactionReturn)}
           onCompleteNextAction={completeNextAction}
           onDismissNextAction={async (actionText) => {
             await saveNextAction(actionText, null, "ai", "dismissed");
@@ -1188,11 +1253,16 @@ export function PersonalContextApp() {
             observedMilestones.current = null;
             setScanStatusError(null);
             setRetryCapture(null);
+            setInteraction(null);
             setView("home");
           }}
+          onReload={() => void loadInteraction()}
           onSaveNote={saveNote}
-          onViewMutualValue={() => setView("mutual-value")}
-          recordedActions={recordedActions}
+          onSayThisUsed={(used) =>
+            trackScanEvent(used ? "say_this_used_yes" : "say_this_used_no")
+          }
+          record={interaction}
+          sayThis={scanStatus.flash_brief.say_this}
         />
       ) : null}
       {view === "evidence" && scanStatus?.card ? (
@@ -1218,6 +1288,14 @@ export function PersonalContextApp() {
         <OnboardingScreen
           initialProfile={context?.profile}
           loading={busy}
+          onBack={
+            editingContext
+              ? () => {
+                  setEditingContext(false);
+                  setView("context");
+                }
+              : undefined
+          }
           onSubmit={submitOnboarding}
         />
       ) : null}
@@ -1238,7 +1316,10 @@ export function PersonalContextApp() {
           onBack={() => setView(contextReturn)}
           onDelete={deleteApprovedItem}
           onDeleteAccount={deleteAccount}
-          onEditProfile={() => setView("onboarding")}
+          onEditProfile={() => {
+            setEditingContext(true);
+            setView("onboarding");
+          }}
           onSave={saveItem}
           onSignOut={async () => {
             await services.supabase.auth.signOut();

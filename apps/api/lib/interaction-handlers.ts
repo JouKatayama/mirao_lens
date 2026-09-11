@@ -31,6 +31,7 @@ type InteractionRepositoryPort = Readonly<{
     source: "ai" | "user",
     status: "accepted" | "dismissed",
   ): Promise<{ id: string } | null>;
+  getNote(scanId: string): Promise<{ note_text: string | null } | null>;
   listNextActions(scanId: string): Promise<NextActionResponse[]>;
   updateNextActionStatus(
     actionId: string,
@@ -201,6 +202,36 @@ export function createPostNoteHandler(
         note_text: noteRequest.data.note_text,
         scan_id: scanId,
       });
+    } catch (error) {
+      return persistenceError(error);
+    }
+  };
+}
+
+export function createGetNoteHandler(
+  dependencies: InteractionHandlerDependencies,
+): (request: Request, context: ScanRouteContext) => Promise<Response> {
+  return async (request, context) => {
+    const session = await authenticateRequest(request, dependencies);
+
+    if (session instanceof Response) {
+      return session;
+    }
+
+    const scanId = await readOwnedScanId(context);
+
+    if (!scanId) {
+      return errorResponse(404, "not_found", "Scan not found.");
+    }
+
+    try {
+      const row = await session.repository.getNote(scanId);
+
+      if (!row) {
+        return errorResponse(404, "not_found", "Scan not found.");
+      }
+
+      return jsonResponse({ note_text: row.note_text, scan_id: scanId });
     } catch (error) {
       return persistenceError(error);
     }

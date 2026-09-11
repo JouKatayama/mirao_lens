@@ -40,6 +40,16 @@ export const interactionNoteResponseSchema = z
   })
   .strict();
 
+// The note the user already saved for a scan, or null when there is none.
+// Saving upserts, so a client that cannot read the stored note back would
+// overwrite it with whatever it sends next.
+export const interactionNoteReadResponseSchema = z
+  .object({
+    note_text: z.string().nullable(),
+    scan_id: z.string().uuid(),
+  })
+  .strict();
+
 export const nextActionResponseSchema = z
   .object({
     action_text: z.string(),
@@ -71,5 +81,8 @@ export type NoteRequest = z.infer<typeof noteRequestSchema>;
 export type NextActionRequest = z.infer<typeof nextActionRequestSchema>;
 export type InteractionNoteResponse = z.infer<
   typeof interactionNoteResponseSchema
+>;
+export type InteractionNoteReadResponse = z.infer<
+  typeof interactionNoteReadResponseSchema
 >;
 export type NextActionResponse = z.infer<typeof nextActionResponseSchema>;

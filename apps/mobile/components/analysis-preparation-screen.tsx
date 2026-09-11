@@ -8,6 +8,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { meetingGoalLabels, meetingGoalOptions } from "../lib/scan-capture";
 import { Card, Chips, PrimaryButton, ScreenFrame, TextButton } from "./ui";
 
+/**
+ * Shown between Home and the camera. The meeting goal is the one decision
+ * here, so it leads; the context below is a reminder of what the brief will
+ * draw on, not a form.
+ *
+ * This screen used to reappear after the Flash Brief with a "分析する" button
+ * that re-ran nothing and only led to results that already existed.
+ */
 export function AnalysisPreparationScreen({
   context,
   meetingGoal,
@@ -15,7 +23,6 @@ export function AnalysisPreparationScreen({
   onEdit,
   onBack,
   onContinue,
-  captured = false,
 }: {
   context: PersonalContextResponse;
   meetingGoal: MeetingGoal;
@@ -23,7 +30,6 @@ export function AnalysisPreparationScreen({
   onEdit: () => void;
   onBack: () => void;
   onContinue: () => void;
-  captured?: boolean;
 }) {
   const groups: { label: string; types: PersonalContextType[] }[] = [
     { label: "スキル", types: ["strong_skill", "expertise"] },
@@ -35,16 +41,44 @@ export function AnalysisPreparationScreen({
     <ScreenFrame
       title="分析の準備"
       onBack={onBack}
-      footer={
-        <PrimaryButton
-          label={captured ? "分析する" : "名刺を撮影する"}
-          onPress={onContinue}
-        />
-      }
+      footer={<PrimaryButton label="名刺を撮影する" onPress={onContinue} />}
     >
       <Card>
+        <Text style={styles.label}>今回の目的</Text>
+        <Text style={styles.muted}>
+          目的に合わせて、話題と次の一手を提案します。
+        </Text>
+        <View accessibilityRole="radiogroup" style={styles.options}>
+          {meetingGoalOptions.map((option) => (
+            <Pressable
+              key={option.value}
+              onPress={() => onMeetingGoalChange(option.value)}
+              accessibilityRole="radio"
+              accessibilityLabel={meetingGoalLabels[option.value]}
+              accessibilityState={{
+                checked: option.value === meetingGoal,
+              }}
+              style={({ pressed }) => [
+                styles.option,
+                option.value === meetingGoal && styles.optionSelected,
+                pressed && styles.optionPressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.optionText,
+                  option.value === meetingGoal && styles.optionTextSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </Card>
+      <Card>
         <View style={styles.heading}>
-          <Text style={styles.label}>あなたについて</Text>
+          <Text style={styles.label}>分析に使うあなたの情報</Text>
           <TextButton label="編集" onPress={onEdit} />
         </View>
         <View style={styles.group}>
@@ -76,39 +110,6 @@ export function AnalysisPreparationScreen({
             </View>
           );
         })}
-      </Card>
-      <Card>
-        <Text style={styles.label}>状況（Situation）・目的</Text>
-        {captured ? (
-          <Text style={styles.body}>{meetingGoalLabels[meetingGoal]}</Text>
-        ) : (
-          <View accessibilityRole="radiogroup" style={styles.options}>
-            {meetingGoalOptions.map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => onMeetingGoalChange(option.value)}
-                accessibilityRole="radio"
-                accessibilityState={{
-                  checked: option.value === meetingGoal,
-                }}
-                style={({ pressed }) => [
-                  styles.option,
-                  option.value === meetingGoal && styles.optionSelected,
-                  pressed && styles.optionPressed,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    option.value === meetingGoal && styles.optionTextSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
       </Card>
     </ScreenFrame>
   );

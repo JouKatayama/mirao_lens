@@ -68,7 +68,7 @@ export function FlashBriefScreen({
   onViewEncounters?: () => void;
   onViewEvidence: () => void;
   onViewMutualValue: () => void;
-  onViewInteraction?: () => void;
+  onViewInteraction: () => void;
   previousEncounters?: number;
 }) {
   // Trust and usefulness feedback is reported once per visit. The screen keeps
@@ -90,7 +90,7 @@ export function FlashBriefScreen({
   }[] = [
     { label: "名刺情報", icon: "person", action: onViewCard },
     { label: "根拠", icon: "company", action: onViewEvidence },
-    { label: "メモ", icon: "note", action: onViewInteraction },
+    { label: "会話メモ", icon: "note", action: onViewInteraction },
     ...(previousEncounters > 0
       ? [
           {
@@ -105,7 +105,6 @@ export function FlashBriefScreen({
     <ScreenFrame
       title="Flash Brief"
       onBack={onDone}
-      action={<TextButton label="編集" onPress={onViewCard} />}
       footer={
         <PrimaryButton
           label="Win-Winを詳しく見る"
@@ -113,12 +112,14 @@ export function FlashBriefScreen({
         />
       }
     >
+      {/* The avatar is a placeholder icon, never a photo. At full size it
+          pushed SAY THIS, the part read mid-conversation, below the fold. */}
       <View style={s.person}>
-        <Avatar name={card.name} large />
+        <Avatar name={card.name} />
         <View style={s.personText}>
           <Text style={s.name}>{card.name || "名前未登録"}</Text>
-          <Text style={s.body}>{card.company}</Text>
-          <Text style={s.body}>{card.title}</Text>
+          {card.company ? <Text style={s.body}>{card.company}</Text> : null}
+          {card.title ? <Text style={s.body}>{card.title}</Text> : null}
         </View>
       </View>
       <View style={s.briefHeader}>
@@ -378,7 +379,6 @@ export function MutualValueScreen({
   mutualValue,
   onDone,
   onRefresh,
-  onSayThisUsed,
   onViewBrief,
   onViewInteraction,
   potential,
@@ -390,7 +390,6 @@ export function MutualValueScreen({
   mutualValue: MutualValuePublic | null;
   onDone: () => void;
   onRefresh: () => Promise<void>;
-  onSayThisUsed?: (used: boolean) => void;
   onViewBrief: () => void;
   onViewInteraction: () => void;
   potential?: string;
@@ -398,9 +397,6 @@ export function MutualValueScreen({
   initialTab?: AnalysisTab;
 }) {
   const [tab, setTab] = useState<AnalysisTab>(initialTab);
-  // Conversation Adoption Rate is the pilot North Star, and it can only be
-  // measured by asking whether the suggested question was actually used.
-  const [sayThisUsed, setSayThisUsed] = useState<boolean | null>(null);
   if (!mutualValue)
     return (
       <ScreenFrame title="分析結果" onBack={onViewBrief}>
@@ -415,6 +411,12 @@ export function MutualValueScreen({
         <SecondaryButton
           label="状態を再確認"
           onPress={() => void onRefresh()}
+        />
+        {/* The note does not depend on this analysis, so waiting for it (or
+            its failing) must not keep the user from recording the meeting. */}
+        <SecondaryButton
+          label="先に会話を記録する"
+          onPress={onViewInteraction}
         />
         <TextButton label="ホームへ戻る" onPress={onDone} />
       </ScreenFrame>
@@ -486,8 +488,12 @@ export function MutualValueScreen({
       {tab === "conversation" ? (
         <>
           <Card>
-            <Text style={s.heading}>今、話すならこれ！</Text>
-            <Text style={s.caption}>おすすめの会話トピック</Text>
+            {/* SAY THIS on the brief is the opener. These are follow-ups that
+                test a hypothesis, so they must not read as a second opener. */}
+            <Text style={s.heading}>深掘りの質問（ASK）</Text>
+            <Text style={s.caption}>
+              会話が始まったら、仮説を確かめるために聞いてみましょう
+            </Text>
             {mutualValue.ask.map((item, index) => (
               <View style={s.questionRow} key={index}>
                 <View style={s.number}>
@@ -504,39 +510,6 @@ export function MutualValueScreen({
               </View>
             ))}
           </Card>
-          {onSayThisUsed ? (
-            <Card>
-              <Text style={s.heading}>この質問を実際に使いましたか？</Text>
-              {sayThisUsed === null ? (
-                <View style={s.adoptionRow}>
-                  <View style={s.flex}>
-                    <SecondaryButton
-                      label="使った"
-                      onPress={() => {
-                        setSayThisUsed(true);
-                        onSayThisUsed(true);
-                      }}
-                    />
-                  </View>
-                  <View style={s.flex}>
-                    <SecondaryButton
-                      label="使わなかった"
-                      onPress={() => {
-                        setSayThisUsed(false);
-                        onSayThisUsed(false);
-                      }}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <Text style={s.caption}>
-                  {sayThisUsed
-                    ? "「使った」として記録しました。"
-                    : "「使わなかった」として記録しました。"}
-                </Text>
-              )}
-            </Card>
-          ) : null}
           <View style={s.tip}>
             <Text style={s.heading}>話し方のコツ</Text>
             <Text style={s.small}>
@@ -558,47 +531,101 @@ const nextActionStatusLabels: Record<NextActionResponse["status"], string> = {
   suggested: "提案中",
 };
 
-export function InteractionScreen({
-  card,
-  error,
-  mutualValue,
-  onAcceptNextAction,
-  onCompleteNextAction,
-  onDismissNextAction,
-  onDone,
-  onSaveNote,
-  onViewMutualValue,
-  recordedActions = [],
-}: {
+/** What this scan already has on record; null while it is being read. */
+export type InteractionRecord = Readonly<{
+  actions: NextActionResponse[];
+  note: string | null;
+}>;
+
+type InteractionScreenProps = {
   card: Person;
   error: string | null;
-  mutualValue: MutualValuePublic;
+  /** Set when the saved note or actions could not be read. */
+  loadError?: string | null;
+  /** Null until Mutual Value is ready; the note never waits for it. */
+  mutualValue: MutualValuePublic | null;
   onAcceptNextAction: (
     actionText: string,
     timingText: string | null,
   ) => Promise<void>;
+  onBack: () => void;
   onCompleteNextAction?: (actionId: string) => Promise<void>;
   onDismissNextAction: (actionText: string) => Promise<void>;
   onDone: () => void;
+  onReload?: () => void;
   onSaveNote: (noteText: string) => Promise<void>;
-  onViewMutualValue: () => void;
-  recordedActions?: NextActionResponse[];
-}) {
-  const [note, setNote] = useState("");
-  const [action, setAction] = useState(mutualValue.next_action.action);
-  const [timing, setTiming] = useState(mutualValue.next_action.timing || "");
-  const [accepted, setAccepted] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [savedNote, setSavedNote] = useState<string | null>(null);
-  const [savedAction, setSavedAction] = useState<string | null>(null);
-  const [localError, setLocalError] = useState<string | null>(null);
+  onSayThisUsed?: (used: boolean) => void;
+  record: InteractionRecord | null;
+  sayThis?: string[];
+};
+
+export function InteractionScreen(props: InteractionScreenProps) {
+  const { card, loadError, onBack, onReload, record } = props;
+
+  // Saving a note replaces the stored one, so the form must not open until the
+  // stored note is known. An empty field over an unread note would silently
+  // erase it on the next save.
+  if (!record) {
+    return (
+      <ScreenFrame title="会話を記録" onBack={onBack}>
+        {loadError ? (
+          <>
+            <ErrorNotice message={loadError} />
+            {onReload ? (
+              <SecondaryButton label="再読み込み" onPress={onReload} />
+            ) : null}
+          </>
+        ) : (
+          <Card>
+            <ActivityIndicator color={colors.accent} size="large" />
+            <Text style={s.meta}>
+              {card.name || "相手"}さんとの記録を読み込んでいます…
+            </Text>
+          </Card>
+        )}
+      </ScreenFrame>
+    );
+  }
+
+  return <InteractionForm {...props} record={record} />;
+}
+
+function InteractionForm({
+  card,
+  error,
+  mutualValue,
+  onAcceptNextAction,
+  onBack,
+  onCompleteNextAction,
+  onDismissNextAction,
+  onDone,
+  onSaveNote,
+  onSayThisUsed,
+  record,
+  sayThis = [],
+}: InteractionScreenProps & { record: InteractionRecord }) {
+  const suggestion = mutualValue?.next_action ?? null;
+  // One decision per scan. Offering the suggestion again on a later visit
+  // recorded it a second time, and the old pre-ticked box counted every note
+  // saved as an accepted AI suggestion.
+  const decided = record.actions.length > 0;
+  const [note, setNote] = useState(record.note ?? "");
+  const [savedNote, setSavedNote] = useState(record.note?.trim() ?? "");
+  const [decision, setDecision] = useState<"accepted" | "dismissed" | null>(
+    null,
+  );
+  const [action, setAction] = useState(suggestion?.action ?? "");
+  const [timing, setTiming] = useState(suggestion?.timing ?? "");
+  const [actionSaved, setActionSaved] = useState(false);
   const [editing, setEditing] = useState(false);
-  const actionKey = JSON.stringify([accepted, action.trim(), timing.trim()]);
+  const [saving, setSaving] = useState(false);
+  const [sayThisUsed, setSayThisUsed] = useState<boolean | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
-  const settledActions = recordedActions.filter(
+  const settledActions = record.actions.filter(
     (item) => item.status === "completed" || item.status === "dismissed",
   );
-  const openActions = recordedActions.filter(
+  const openActions = record.actions.filter(
     (item) => item.status === "accepted" || item.status === "suggested",
   );
 
@@ -617,22 +644,28 @@ export function InteractionScreen({
 
   async function save() {
     if (saving) return;
-    if (accepted && !action.trim()) {
+    if (decision === "accepted" && !action.trim()) {
       setLocalError("次にやることを入力してください。");
       return;
     }
     setSaving(true);
     setLocalError(null);
     try {
-      if (note.trim() && note.trim() !== savedNote) {
-        await onSaveNote(note.trim());
-        setSavedNote(note.trim());
+      const trimmedNote = note.trim();
+      if (trimmedNote && trimmedNote !== savedNote) {
+        await onSaveNote(trimmedNote);
+        setSavedNote(trimmedNote);
       }
-      if (savedAction !== actionKey) {
-        if (accepted)
+      if (!decided && !actionSaved) {
+        if (suggestion && decision === "dismissed") {
+          await onDismissNextAction(suggestion.action);
+        } else if (
+          (suggestion ? decision === "accepted" : true) &&
+          action.trim()
+        ) {
           await onAcceptNextAction(action.trim(), timing.trim() || null);
-        else await onDismissNextAction(mutualValue.next_action.action);
-        setSavedAction(actionKey);
+        }
+        setActionSaved(true);
       }
       onDone();
     } catch {
@@ -643,17 +676,22 @@ export function InteractionScreen({
       setSaving(false);
     }
   }
+
+  const timingField = (
+    <Field
+      label="いつまでに"
+      value={timing}
+      onChangeText={setTiming}
+      placeholder="例：今日中・3日以内"
+      maxLength={200}
+      editable={!saving}
+    />
+  );
+
   return (
     <ScreenFrame
       title="会話を記録"
-      onBack={onViewMutualValue}
-      action={
-        <TextButton
-          label="保存"
-          disabled={saving}
-          onPress={() => void save()}
-        />
-      }
+      onBack={onBack}
       footer={
         <PrimaryButton
           label="保存する"
@@ -674,44 +712,138 @@ export function InteractionScreen({
           placeholder="会話で気づいたことや、相手の関心を記録…"
           style={s.noteInput}
         />
+        {record.note ? (
+          <Text style={s.caption}>保存済みのメモを編集しています。</Text>
+        ) : null}
       </View>
-      <View style={s.section}>
-        <Text style={s.heading}>次にやること（Next Action）</Text>
+      {onSayThisUsed && sayThis.length > 0 ? (
+        // Asked here, after the conversation, about the questions the user
+        // actually saw first. It used to sit on the pre-conversation tab and
+        // ask about a different list, which is not what the North Star counts.
         <Card>
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: accepted, disabled: saving }}
-            aria-checked={accepted}
-            aria-disabled={saving}
-            disabled={saving}
-            onPress={() => setAccepted(!accepted)}
-            style={s.checkboxRow}
-          >
-            <View style={[s.checkbox, accepted && s.checkboxActive]}>
-              {accepted ? (
-                <Icon name="check" size={15} color="#FFFFFF" />
-              ) : null}
+          <Text style={s.heading}>Flash Briefの質問を会話で使いましたか？</Text>
+          {sayThis.map((question, index) => (
+            <Text key={`${question}-${index}`} style={s.caption}>
+              {`・${question}`}
+            </Text>
+          ))}
+          {sayThisUsed === null ? (
+            <View style={s.adoptionRow}>
+              <View style={s.flex}>
+                <SecondaryButton
+                  label="使った"
+                  onPress={() => {
+                    setSayThisUsed(true);
+                    onSayThisUsed(true);
+                  }}
+                />
+              </View>
+              <View style={s.flex}>
+                <SecondaryButton
+                  label="使わなかった"
+                  onPress={() => {
+                    setSayThisUsed(false);
+                    onSayThisUsed(false);
+                  }}
+                />
+              </View>
             </View>
-            <Text style={[s.body, s.flex]}>{action}</Text>
-          </Pressable>
-          <Text style={s.caption}>{mutualValue.next_action.reason}</Text>
-          <TextButton
-            label={editing ? "編集を閉じる" : "内容を編集"}
-            onPress={() => setEditing(!editing)}
-          />
-          {editing ? (
-            <Field
-              label="次にやること"
-              maxLength={2000}
-              value={action}
-              onChangeText={setAction}
-              multiline
-              editable={!saving}
-            />
-          ) : null}
+          ) : (
+            <Text style={s.caption}>
+              {sayThisUsed
+                ? "「使った」として記録しました。"
+                : "「使わなかった」として記録しました。"}
+            </Text>
+          )}
         </Card>
-      </View>
-      {recordedActions.length > 0 ? (
+      ) : null}
+      {!decided ? (
+        <View style={s.section}>
+          <Text style={s.heading}>次にやること（Next Action）</Text>
+          {suggestion ? (
+            <Card>
+              <Text style={s.meta}>AIの提案</Text>
+              <Text style={s.body}>{action}</Text>
+              <Text style={s.caption}>{suggestion.reason}</Text>
+              <View accessibilityRole="radiogroup" style={s.adoptionRow}>
+                {(
+                  [
+                    ["accepted", "実行する"],
+                    ["dismissed", "今回は見送る"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      checked: decision === value,
+                      disabled: saving,
+                    }}
+                    disabled={saving}
+                    onPress={() =>
+                      setDecision((current) =>
+                        current === value ? null : value,
+                      )
+                    }
+                    style={({ pressed }) => [
+                      s.choice,
+                      decision === value && s.choiceActive,
+                      pressed && s.pressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        s.choiceText,
+                        decision === value && s.choiceTextActive,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {decision === "accepted" ? (
+                <>
+                  <TextButton
+                    label={editing ? "編集を閉じる" : "内容を編集"}
+                    onPress={() => setEditing(!editing)}
+                  />
+                  {editing ? (
+                    <Field
+                      label="次にやること"
+                      maxLength={2000}
+                      value={action}
+                      onChangeText={setAction}
+                      multiline
+                      editable={!saving}
+                    />
+                  ) : null}
+                  {timingField}
+                </>
+              ) : null}
+              {decision === null ? (
+                <Text style={s.caption}>
+                  選ばずに保存すると、メモだけが保存されます。
+                </Text>
+              ) : null}
+            </Card>
+          ) : (
+            <Card>
+              <Field
+                label="次にやること（任意）"
+                maxLength={2000}
+                value={action}
+                onChangeText={setAction}
+                placeholder="例：事例資料を送る"
+                multiline
+                editable={!saving}
+              />
+              {action.trim() ? timingField : null}
+            </Card>
+          )}
+        </View>
+      ) : null}
+      {record.actions.length > 0 ? (
         <View style={s.section}>
           <Text style={s.heading}>記録済みのNext Action</Text>
           <Text style={s.caption}>
@@ -756,17 +888,6 @@ export function InteractionScreen({
           ))}
         </View>
       ) : null}
-      <View style={s.section}>
-        <Text style={s.heading}>実行のタイミング</Text>
-        <Field
-          label="予定・目安"
-          value={timing}
-          onChangeText={setTiming}
-          placeholder="例：今日中・3日以内"
-          maxLength={200}
-          editable={!saving}
-        />
-      </View>
       <ErrorNotice message={localError || error} />
     </ScreenFrame>
   );
@@ -793,12 +914,11 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
   },
-  personText: { flex: 1, gap: 4 },
+  personText: { flex: 1, gap: 2 },
   name: {
     color: colors.text,
     fontSize: 22,
     fontWeight: "800",
-    marginBottom: 5,
   },
   briefHeader: { gap: 2, marginTop: 2 },
   eyebrow: {
@@ -1010,25 +1130,23 @@ const s = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     textAlignVertical: "top",
   },
-  checkboxRow: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-    minHeight: 44,
-  },
-  checkbox: {
-    width: 19,
-    height: 19,
-    borderRadius: 5,
+  choice: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.muted,
-    justifyContent: "center",
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
   },
-  checkboxActive: {
+  choiceActive: {
     backgroundColor: colors.accentStrong,
     borderColor: colors.accentStrong,
   },
+  choiceText: { color: colors.text, fontSize: 15, fontWeight: "700" },
+  choiceTextActive: { color: "#FFFFFF" },
   adoptionRow: { flexDirection: "row", gap: 10, marginTop: 4 },
   ratingRow: { flexDirection: "row", gap: 8, marginTop: 4 },
   ratingButton: {

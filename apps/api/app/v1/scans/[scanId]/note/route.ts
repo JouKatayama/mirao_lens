@@ -1,4 +1,5 @@
 import {
+  createGetNoteHandler,
   createPostNoteHandler,
   INTERACTION_OPTIONS,
   productionInteractionHandlerDependencies,
@@ -6,6 +7,9 @@ import {
 
 export const runtime = "nodejs";
 
+export const GET = createGetNoteHandler(
+  productionInteractionHandlerDependencies,
+);
 export const POST = createPostNoteHandler(
   productionInteractionHandlerDependencies,
 );

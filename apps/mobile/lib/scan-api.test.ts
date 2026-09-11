@@ -171,6 +171,24 @@ describe("ScanApiClient", () => {
     );
   });
 
+  it("reads back the saved conversation note", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json({ note_text: "事例を送る約束", scan_id: scanId }),
+      );
+    const client = new ScanApiClient("https://api.example.invalid", fetchMock);
+
+    await expect(client.getNote("access-token", scanId)).resolves.toEqual({
+      note_text: "事例を送る約束",
+      scan_id: scanId,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `https://api.example.invalid/v1/scans/${scanId}/note`,
+      { headers: { Authorization: "Bearer access-token" } },
+    );
+  });
+
   it("asks the server to resume a stopped scan", async () => {
     const fetchMock = vi
       .fn()
