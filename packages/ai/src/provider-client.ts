@@ -39,6 +39,45 @@ export const providerTimeoutMilliseconds = {
 } as const;
 
 /**
+ * Reasoning depth, per stage.
+ *
+ * The GPT-5.6 family reasons by default, which the timeouts above were not
+ * sized for: they were measured against a non-reasoning model. Effort acts as
+ * a ceiling rather than a floor, so a low setting still lets the model skip
+ * reasoning entirely on an easy prompt — the fast path can ask for speed
+ * without forbidding thought.
+ *
+ * `minimal` is deliberately absent. The SDK still types it, but the GPT-5.6
+ * models reject it with HTTP 400, which would surface here as a provider
+ * outage and retry forever against a configuration mistake.
+ */
+export const reasoningEffortValues = [
+  "none",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+
+export type ReasoningEffort = (typeof reasoningEffortValues)[number];
+
+export function isReasoningEffort(value: string): value is ReasoningEffort {
+  return (reasoningEffortValues as readonly string[]).includes(value);
+}
+
+/**
+ * Absent effort omits the parameter entirely rather than sending a default.
+ * A model that does not reason — or a self-hosted server that does not know
+ * the field — must keep working, and only the caller knows which it is.
+ */
+export function toReasoningParameter(effort: ReasoningEffort | undefined): {
+  reasoning?: { effort: ReasoningEffort };
+} {
+  return effort ? { reasoning: { effort } } : {};
+}
+
+/**
  * `baseUrl` points the SDK at an OpenAI-compatible server instead of OpenAI.
  * vLLM implements `/v1/responses`, and Ollama has since v0.13.3, so the
  * structured-output calls in this package can run against a locally served

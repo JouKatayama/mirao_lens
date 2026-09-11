@@ -11,6 +11,8 @@ import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
   providerTimeoutMilliseconds,
+  toReasoningParameter,
+  type ReasoningEffort,
 } from "./provider-client";
 
 export type FlashBriefGeneratorErrorCode =
@@ -39,6 +41,7 @@ type StructuredOutputRequest = (request: {
 export type OpenAIFlashBriefGeneratorOptions = Readonly<{
   apiKey?: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -178,7 +181,8 @@ function toProviderError(error: unknown): FlashBriefGeneratorError {
 
 function createOpenAIRequest(
   apiKey: string,
-  baseUrl?: string,
+  baseUrl: string | undefined,
+  effort: ReasoningEffort | undefined,
 ): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
@@ -197,6 +201,7 @@ function createOpenAIRequest(
       text: {
         format: zodTextFormat(flashBriefStructuredOutputSchema, "flash_brief"),
       },
+      ...toReasoningParameter(effort),
     });
 
     return response.output_parsed;
@@ -228,6 +233,7 @@ export class OpenAIFlashBriefGenerator implements FlashBriefGenerator {
     this.request = createOpenAIRequest(
       apiKey,
       options.baseUrl?.trim() || undefined,
+      options.effort,
     );
   }
 

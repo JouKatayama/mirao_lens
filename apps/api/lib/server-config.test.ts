@@ -5,6 +5,7 @@ import {
   readOpenAICardExtractionConfig,
   readOpenAICompanyContextConfig,
   readOpenAIPersonalContextConfig,
+  readReasoningEffort,
   readServerSupabaseConfig,
   ServerConfigurationError,
 } from "./server-config";
@@ -139,6 +140,65 @@ describe("company web research configuration", () => {
       apiKey: "unused-locally",
       baseUrl: "http://127.0.0.1:11434/v1",
       model: "gemma4:12b",
+      webSearch: false,
+    });
+  });
+});
+
+describe("reasoning effort configuration", () => {
+  it("leaves the parameter unset when the variable is absent or blank", () => {
+    expect(readReasoningEffort({}, "AI_FLASH_BRIEF_EFFORT")).toBeUndefined();
+    expect(
+      readReasoningEffort(
+        { AI_FLASH_BRIEF_EFFORT: "  " },
+        "AI_FLASH_BRIEF_EFFORT",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("reads every supported depth, case-insensitively", () => {
+    expect(
+      readReasoningEffort(
+        { AI_FLASH_BRIEF_EFFORT: "LOW" },
+        "AI_FLASH_BRIEF_EFFORT",
+      ),
+    ).toBe("low");
+    expect(
+      readReasoningEffort(
+        { AI_FLASH_BRIEF_EFFORT: "none" },
+        "AI_FLASH_BRIEF_EFFORT",
+      ),
+    ).toBe("none");
+    expect(
+      readReasoningEffort(
+        { AI_FLASH_BRIEF_EFFORT: "xhigh" },
+        "AI_FLASH_BRIEF_EFFORT",
+      ),
+    ).toBe("xhigh");
+  });
+
+  it("refuses a value the provider would answer with a 400", () => {
+    for (const value of ["minimal", "standard", "default", "off"]) {
+      expect(() =>
+        readReasoningEffort(
+          { AI_FLASH_BRIEF_EFFORT: value },
+          "AI_FLASH_BRIEF_EFFORT",
+        ),
+      ).toThrow(ServerConfigurationError);
+    }
+  });
+
+  it("carries the per-stage depth into the stage configuration", () => {
+    expect(
+      readOpenAICompanyContextConfig({
+        AI_COMPANY_CONTEXT_EFFORT: "low",
+        AI_COMPANY_CONTEXT_MODEL: "gpt-5.6-terra",
+        OPENAI_API_KEY: "server-secret",
+      }),
+    ).toEqual({
+      apiKey: "server-secret",
+      effort: "low",
+      model: "gpt-5.6-terra",
       webSearch: false,
     });
   });

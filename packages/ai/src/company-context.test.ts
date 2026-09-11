@@ -289,3 +289,27 @@ describe("company context sources", () => {
     });
   });
 });
+
+describe("reasoning effort on the request", () => {
+  it("omits the parameter when no effort is configured", () => {
+    const body = buildCompanyContextRequestBody({
+      input,
+      model: "configured-model-alias",
+      webSearch: false,
+    });
+
+    expect(body).not.toHaveProperty("reasoning");
+  });
+
+  it("sends the configured effort alongside the search tool", () => {
+    const body = buildCompanyContextRequestBody({
+      effort: "low",
+      input,
+      model: "configured-model-alias",
+      webSearch: true,
+    });
+
+    expect(body.reasoning).toEqual({ effort: "low" });
+    expect(body.tools).toEqual([{ type: "web_search" }]);
+  });
+});

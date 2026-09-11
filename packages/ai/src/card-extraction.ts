@@ -10,6 +10,8 @@ import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
   providerTimeoutMilliseconds,
+  toReasoningParameter,
+  type ReasoningEffort,
 } from "./provider-client";
 
 export type CardExtractionErrorCode =
@@ -43,6 +45,7 @@ type StructuredOutputRequest = (request: {
 export type OpenAICardExtractorOptions = Readonly<{
   apiKey?: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -87,7 +90,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 function createOpenAIRequest(
   apiKey: string,
-  baseUrl?: string,
+  baseUrl: string | undefined,
+  effort: ReasoningEffort | undefined,
 ): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
@@ -116,6 +120,7 @@ function createOpenAIRequest(
       ],
       model,
       store: false,
+      ...toReasoningParameter(effort),
       text: {
         format: zodTextFormat(
           cardExtractionStructuredOutputSchema,
@@ -153,6 +158,7 @@ export class OpenAICardExtractor implements CardExtractor {
     this.request = createOpenAIRequest(
       apiKey,
       options.baseUrl?.trim() || undefined,
+      options.effort,
     );
   }
 

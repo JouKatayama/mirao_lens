@@ -9,6 +9,8 @@ import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
   providerTimeoutMilliseconds,
+  toReasoningParameter,
+  type ReasoningEffort,
 } from "./provider-client";
 
 export type CompanyContextGeneratorErrorCode =
@@ -55,6 +57,7 @@ fact, and you cannot verify identity from a business card.
 // Extracted so a test can assert the request the provider receives, which is
 // otherwise only visible inside a live call.
 export function buildCompanyContextRequestBody(request: {
+  effort?: ReasoningEffort;
   input: CompanyContextInput;
   model: string;
   webSearch: boolean;
@@ -79,6 +82,7 @@ ${companyWebSearchInstructions}`
         "company_context",
       ),
     },
+    ...toReasoningParameter(request.effort),
     ...(request.webSearch ? { tools: [{ type: "web_search" as const }] } : {}),
   };
 }
@@ -87,6 +91,7 @@ export type OpenAICompanyContextGeneratorOptions = Readonly<{
   apiKey?: string;
   baseUrl?: string;
   model: string;
+  effort?: ReasoningEffort;
   request?: StructuredOutputRequest;
   /**
    * Lets the stage read public web pages about the company through the
@@ -164,6 +169,7 @@ function createOpenAIRequest(
   apiKey: string,
   baseUrl: string | undefined,
   webSearch: boolean,
+  effort: ReasoningEffort | undefined,
 ): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
@@ -177,7 +183,7 @@ function createOpenAIRequest(
 
   return async ({ input, model }) => {
     const response = await client.responses.parse(
-      buildCompanyContextRequestBody({ input, model, webSearch }),
+      buildCompanyContextRequestBody({ effort, input, model, webSearch }),
     );
 
     return response.output_parsed;
@@ -210,6 +216,7 @@ export class OpenAICompanyContextGenerator implements CompanyContextGenerator {
       apiKey,
       options.baseUrl?.trim() || undefined,
       options.webSearch === true,
+      options.effort,
     );
   }
 

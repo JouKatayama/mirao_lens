@@ -11,6 +11,8 @@ import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
   providerTimeoutMilliseconds,
+  toReasoningParameter,
+  type ReasoningEffort,
 } from "./provider-client";
 
 export type MutualValueGeneratorErrorCode =
@@ -39,6 +41,7 @@ type StructuredOutputRequest = (request: {
 export type OpenAIMutualValueGeneratorOptions = Readonly<{
   apiKey?: string;
   baseUrl?: string;
+  effort?: ReasoningEffort;
   model: string;
   request?: StructuredOutputRequest;
 }>;
@@ -142,7 +145,8 @@ function toProviderError(error: unknown): MutualValueGeneratorError {
 
 function createOpenAIRequest(
   apiKey: string,
-  baseUrl?: string,
+  baseUrl: string | undefined,
+  effort: ReasoningEffort | undefined,
 ): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
@@ -158,6 +162,7 @@ function createOpenAIRequest(
       ],
       model,
       store: false,
+      ...toReasoningParameter(effort),
       text: {
         format: zodTextFormat(
           mutualValueStructuredOutputSchema,
@@ -195,6 +200,7 @@ export class OpenAIMutualValueGenerator implements MutualValueGenerator {
     this.request = createOpenAIRequest(
       apiKey,
       options.baseUrl?.trim() || undefined,
+      options.effort,
     );
   }
 
