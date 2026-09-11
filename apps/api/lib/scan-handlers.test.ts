@@ -3,9 +3,11 @@ import { ScanRepositoryError } from "@miraio/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createGetScansHandler,
   createPatchScanFavoriteHandler,
   createPostScanHandler,
   OPTIONS,
+  type GetScansHandlerDependencies,
   type ScanFavoriteHandlerDependencies,
   type ScanHandlerDependencies,
 } from "./scan-handlers";
@@ -277,5 +279,79 @@ describe("createPatchScanFavoriteHandler", () => {
     repository.setScanFavorite.mockRejectedValue(new Error("db"));
 
     expect((await patch({ is_favorite: true })).status).toBe(500);
+  });
+});
+
+describe("createGetScansHandler paging", () => {
+  const repository = { listScans: vi.fn() };
+  let dependencies: GetScansHandlerDependencies;
+
+  function item(createdAt: string) {
+    return {
+      card_company: null,
+      card_name: null,
+      card_title: null,
+      created_at: createdAt,
+      is_favorite: false,
+      meeting_goal: "networking" as const,
+      scan_id: favoriteScanId,
+      status: "deep_ready" as const,
+    };
+  }
+
+  function get(search = "") {
+    return createGetScansHandler(dependencies)(
+      new Request(`http://api/v1/scans${search}`, {
+        headers: { Authorization: "Bearer valid-token" },
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dependencies = {
+      authenticate: vi.fn().mockResolvedValue({ repository }),
+    };
+  });
+
+  it("asks for a default page and reports the end of the list", async () => {
+    repository.listScans.mockResolvedValue([item("2026-09-10T00:00:00.000Z")]);
+
+    const res = await get();
+
+    expect(repository.listScans).toHaveBeenCalledWith(20, undefined);
+    await expect(res.json()).resolves.toMatchObject({ next_cursor: null });
+  });
+
+  it("returns a cursor when the page came back full", async () => {
+    repository.listScans.mockResolvedValue(
+      Array.from({ length: 20 }, (_, index) =>
+        item(`2026-09-${String(20 - index).padStart(2, "0")}T00:00:00.000Z`),
+      ),
+    );
+
+    const res = await get();
+
+    await expect(res.json()).resolves.toMatchObject({
+      next_cursor: "2026-09-01T00:00:00.000Z",
+    });
+  });
+
+  it("passes the cursor and limit through", async () => {
+    repository.listScans.mockResolvedValue([]);
+
+    await get("?before=2026-09-01T00:00:00.000Z&limit=5");
+
+    expect(repository.listScans).toHaveBeenCalledWith(
+      5,
+      "2026-09-01T00:00:00.000Z",
+    );
+  });
+
+  it("rejects a cursor that is not a timestamp and a limit out of range", async () => {
+    expect((await get("?before=yesterday")).status).toBe(400);
+    expect((await get("?limit=0")).status).toBe(400);
+    expect((await get("?limit=500")).status).toBe(400);
+    expect(repository.listScans).not.toHaveBeenCalled();
   });
 });

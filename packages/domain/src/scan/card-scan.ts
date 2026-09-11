@@ -133,10 +133,35 @@ export const scanFavoriteResponseSchema = z
 export type ScanFavoriteRequest = z.infer<typeof scanFavoriteRequestSchema>;
 export type ScanFavoriteResponse = z.infer<typeof scanFavoriteResponseSchema>;
 
+export const scanHistoryPageSize = 20;
+export const maximumScanHistoryPageSize = 50;
+
+/**
+ * Keyset rather than offset: the list is ordered by creation time and a new
+ * scan arrives at its head while the user reads, which would shift an offset
+ * page and repeat or skip a row. The cursor is the created_at of the last row
+ * returned, and the next page is everything strictly older.
+ */
 export const scanListResponseSchema = z
-  .object({ items: z.array(scanHistoryItemSchema) })
+  .object({
+    items: z.array(scanHistoryItemSchema),
+    next_cursor: z.string().min(1).nullable().default(null),
+  })
   .strict();
 export type ScanListResponse = z.infer<typeof scanListResponseSchema>;
+
+export const scanListQuerySchema = z
+  .object({
+    before: z.string().datetime({ offset: true }).optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(maximumScanHistoryPageSize)
+      .default(scanHistoryPageSize),
+  })
+  .strict();
+export type ScanListQuery = z.infer<typeof scanListQuerySchema>;
 
 export function toScanHistoryStatus(dbStatus: string): ScanHistoryStatus {
   if (dbStatus === "brief_ready") return "brief_ready";

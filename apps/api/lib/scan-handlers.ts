@@ -11,6 +11,7 @@ import {
   scanCaptureMetadataSchema,
   scanImagePayloadSchema,
   scanFavoriteRequestSchema,
+  scanListQuerySchema,
   scanFavoriteResponseSchema,
   scanListResponseSchema,
   scanRecordSchema,
@@ -355,7 +356,7 @@ export function OPTIONS(): Response {
 // ─── GET /v1/scans — list the authenticated user's scans ─────────────────────
 
 type GetScansRepositoryPort = Readonly<{
-  listScans(limit: number): Promise<ScanHistoryItem[]>;
+  listScans(limit: number, before?: string): Promise<ScanHistoryItem[]>;
 }>;
 
 type GetScansSession = Readonly<{
@@ -390,9 +391,40 @@ export function createGetScansHandler(
       return errorResponse(401, "unauthorized", "Authentication is required.");
     }
 
+    const url = new URL(request.url);
+    const query = scanListQuerySchema.safeParse({
+      ...(url.searchParams.get("before")
+        ? { before: url.searchParams.get("before") }
+        : {}),
+      ...(url.searchParams.get("limit")
+        ? { limit: url.searchParams.get("limit") }
+        : {}),
+    });
+
+    if (!query.success) {
+      return errorResponse(
+        400,
+        "invalid_query",
+        "Check the before and limit parameters.",
+      );
+    }
+
     try {
-      const items = await session.repository.listScans(20);
-      return jsonResponse(scanListResponseSchema.parse({ items }));
+      const items = await session.repository.listScans(
+        query.data.limit,
+        query.data.before,
+      );
+
+      // A full page means there may be more. A short one is the end, and
+      // saying so keeps the client from asking for a page that is empty.
+      const nextCursor =
+        items.length === query.data.limit
+          ? (items[items.length - 1]?.created_at ?? null)
+          : null;
+
+      return jsonResponse(
+        scanListResponseSchema.parse({ items, next_cursor: nextCursor }),
+      );
     } catch {
       return internalError("scan_list_failed");
     }
