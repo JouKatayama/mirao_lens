@@ -10,6 +10,7 @@ type CompanyEvidenceRepositoryPort = Readonly<{
     scanId: string,
     userId: string,
   ): Promise<string | null>;
+  createCompanyWebEvidence(scanId: string, userId: string): Promise<number>;
 }>;
 
 type CompanyEvidenceSession = Readonly<{
@@ -46,6 +47,15 @@ export async function processCompanyEvidence(
       input.scanId,
       session.userId,
     );
+
+    // Researched pages are recorded separately from the inference row: the
+    // list has to show which claims trace to a page the user can open and
+    // which are the model's own reading of the card.
+    await session.repository.createCompanyWebEvidence(
+      input.scanId,
+      session.userId,
+    );
+
     return { status: "completed" };
   } catch {
     // Evidence creation is non-blocking; failure does not affect the scan pipeline.

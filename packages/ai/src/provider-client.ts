@@ -26,6 +26,12 @@ export const providerTimeoutMilliseconds = {
   /** Vision request with the largest payload; the slowest stage in practice. */
   cardExtraction: 20_000,
   companyContext: 10_000,
+  /**
+   * Company web research reads pages before answering, so it cannot fit the
+   * plain companyContext budget. It runs outside the brief's critical path:
+   * the brief is already generated when the evidence sweep uses it.
+   */
+  companyWebResearch: 25_000,
   flashBrief: 14_000,
   mutualValue: 14_000,
   /** Runs alone on the onboarding route rather than in the card pipeline. */

@@ -34,11 +34,66 @@ type StructuredOutputRequest = (request: {
   model: string;
 }) => Promise<unknown>;
 
+export const companyWebSearchInstructions = `
+Web research is enabled for this request.
+
+Search for the COMPANY only. You are given the company name, department and
+title, and deliberately not the person's name: a page about a same-named
+individual is the wrong-person failure this product must never present as
+fact, and you cannot verify identity from a business card.
+
+- Prefer the company's own site (about, company profile, IR, newsroom).
+- Read at most four pages and cite exactly the ones you used in SOURCES, with
+  the page title and its full https URL. Never cite a page you did not read.
+- Ground COMPANY_DESCRIPTION, INDUSTRY, COMPANY_SCALE and ROLE_SCOPE in what
+  those pages actually say.
+- If search returns nothing usable, output an empty SOURCES array and leave the
+  fields null. An honest null beats a guess dressed as a citation.
+- Public pages only. Never attempt a login, a paywall, or a closed network.
+`.trim();
+
+// Extracted so a test can assert the request the provider receives, which is
+// otherwise only visible inside a live call.
+export function buildCompanyContextRequestBody(request: {
+  input: CompanyContextInput;
+  model: string;
+  webSearch: boolean;
+}) {
+  return {
+    input: [
+      {
+        role: "system" as const,
+        content: request.webSearch
+          ? `${systemInstructions}
+
+${companyWebSearchInstructions}`
+          : systemInstructions,
+      },
+      { role: "user" as const, content: buildUserMessage(request.input) },
+    ],
+    model: request.model,
+    store: false,
+    text: {
+      format: zodTextFormat(
+        companyContextStructuredOutputSchema,
+        "company_context",
+      ),
+    },
+    ...(request.webSearch ? { tools: [{ type: "web_search" as const }] } : {}),
+  };
+}
+
 export type OpenAICompanyContextGeneratorOptions = Readonly<{
   apiKey?: string;
   baseUrl?: string;
   model: string;
   request?: StructuredOutputRequest;
+  /**
+   * Lets the stage read public web pages about the company through the
+   * provider's own search tool. Off by default: it costs money per scan, and
+   * it is the only place in the pipeline that reaches outside the provider.
+   */
+  webSearch?: boolean;
 }>;
 
 const systemInstructions = `
@@ -48,7 +103,7 @@ Given a business card's company name, title, and department, generate structured
 context about the organization and role to help the Flash Brief stage produce
 richer and more grounded analysis.
 
-Output exactly five fields in the supplied locale:
+Output every field below in the supplied locale:
 
 COMPANY_DESCRIPTION — One sentence describing what this company does, based only
 on the company name. If the company is unknown or the name provides no signal,
@@ -75,9 +130,14 @@ ROLE_LEVEL — Categorize the seniority level:
 - "executive": C-suite, president, CEO, CTO, 役員, 取締役
 - "unknown": cannot be determined from the available data
 
+SOURCES — The pages you read, as title and full URL. Unless web research is
+explicitly enabled below, you have read nothing: output an empty array. Never
+cite a page from memory; a remembered URL is a fabricated citation.
+
 Strict rules:
 - Respond in the user's locale (Japanese if locale is "ja").
-- Base inferences ONLY on the provided company name, title, and department.
+- Base inferences ONLY on the provided company name, title, and department,
+  plus any pages you actually read when web research is enabled.
 - Do not invent revenue figures, headcount, specific products, or named clients.
 - Never include sensitive inferences (politics, health, personality, etc.).
 - Do not add commentary outside the schema.
@@ -102,29 +162,23 @@ function toProviderError(error: unknown): CompanyContextGeneratorError {
 
 function createOpenAIRequest(
   apiKey: string,
-  baseUrl?: string,
+  baseUrl: string | undefined,
+  webSearch: boolean,
 ): StructuredOutputRequest {
   const client = createOpenAIClient(
     apiKey,
-    providerTimeoutMilliseconds.companyContext,
+    // Reading pages takes longer than answering from priors, and this stage is
+    // non-blocking for the brief, so researching gets its own budget.
+    webSearch
+      ? providerTimeoutMilliseconds.companyWebResearch
+      : providerTimeoutMilliseconds.companyContext,
     baseUrl,
   );
 
   return async ({ input, model }) => {
-    const response = await client.responses.parse({
-      input: [
-        { role: "system", content: systemInstructions },
-        { role: "user", content: buildUserMessage(input) },
-      ],
-      model,
-      store: false,
-      text: {
-        format: zodTextFormat(
-          companyContextStructuredOutputSchema,
-          "company_context",
-        ),
-      },
-    });
+    const response = await client.responses.parse(
+      buildCompanyContextRequestBody({ input, model, webSearch }),
+    );
 
     return response.output_parsed;
   };
@@ -155,6 +209,7 @@ export class OpenAICompanyContextGenerator implements CompanyContextGenerator {
     this.request = createOpenAIRequest(
       apiKey,
       options.baseUrl?.trim() || undefined,
+      options.webSearch === true,
     );
   }
 
