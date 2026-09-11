@@ -17,6 +17,7 @@ export * from "./context/personal-context";
 export * from "./card-intelligence/card-extraction";
 export * from "./evidence/evidence";
 export * from "./flash-brief/flash-brief";
+export * from "./identity/identity-assessment";
 export * from "./interaction/interaction";
 export * from "./mutual-value/mutual-value";
 export * from "./scan/card-scan";
