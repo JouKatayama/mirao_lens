@@ -4,45 +4,69 @@ import { describe, expect, it } from "vitest";
 import {
   activationStorageKey,
   createActivationTracker,
+  elapsedSinceCapture,
   isRecentSignup,
   recentSignupWindowMilliseconds,
   scanMilestoneEvents,
   toScanMilestoneSnapshot,
+  waitEvent,
   type ActivationStorage,
 } from "./funnel-events";
 
 const scanId = "11111111-1111-4111-8111-111111111111";
+const capturedAt = 1_000_000;
+const wait = { scanId, startedAt: capturedAt };
 
 function snapshot(hasCard: boolean, hasBrief: boolean) {
   return { hasBrief, hasCard, scanId };
 }
 
+function milestones(
+  previous: ReturnType<typeof snapshot> | null,
+  next: ReturnType<typeof snapshot>,
+) {
+  return scanMilestoneEvents(previous, next, null, capturedAt);
+}
+
 describe("scanMilestoneEvents", () => {
   it("emits extraction success when the card first appears", () => {
-    expect(
-      scanMilestoneEvents(snapshot(false, false), snapshot(true, false)),
-    ).toEqual(["card_extraction_success"]);
+    expect(milestones(snapshot(false, false), snapshot(true, false))).toEqual([
+      { name: "card_extraction_success" },
+    ]);
   });
 
   it("emits both milestones when a single poll reveals card and brief", () => {
-    expect(
-      scanMilestoneEvents(snapshot(false, false), snapshot(true, true)),
-    ).toEqual(["card_extraction_success", "brief_ready"]);
+    expect(milestones(snapshot(false, false), snapshot(true, true))).toEqual([
+      { name: "card_extraction_success" },
+      { name: "brief_ready" },
+    ]);
   });
 
   it("does not repeat a milestone that was already observed", () => {
-    expect(
-      scanMilestoneEvents(snapshot(true, true), snapshot(true, true)),
-    ).toEqual([]);
+    expect(milestones(snapshot(true, true), snapshot(true, true))).toEqual([]);
   });
 
   it("emits nothing without a previous observation, so reopened history is not recounted", () => {
-    expect(scanMilestoneEvents(null, snapshot(true, true))).toEqual([]);
+    expect(milestones(null, snapshot(true, true))).toEqual([]);
   });
 
   it("emits nothing when the previous observation belongs to another scan", () => {
     const other = { hasBrief: false, hasCard: false, scanId: "other" };
-    expect(scanMilestoneEvents(other, snapshot(true, true))).toEqual([]);
+    expect(milestones(other, snapshot(true, true))).toEqual([]);
+  });
+
+  it("reports how long the user waited for a milestone it watched arrive", () => {
+    expect(
+      scanMilestoneEvents(
+        snapshot(false, false),
+        snapshot(true, true),
+        wait,
+        capturedAt + 4200,
+      ),
+    ).toEqual([
+      { name: "card_extraction_success", properties: { elapsed_ms: 4200 } },
+      { name: "brief_ready", properties: { elapsed_ms: 4200 } },
+    ]);
   });
 
   it("derives a snapshot from a status response", () => {
@@ -53,6 +77,33 @@ describe("scanMilestoneEvents", () => {
         scan_id: scanId,
       }),
     ).toEqual({ hasBrief: false, hasCard: true, scanId });
+  });
+});
+
+describe("elapsedSinceCapture", () => {
+  it("measures the wait this client timed", () => {
+    expect(elapsedSinceCapture(wait, scanId, capturedAt + 5300)).toBe(5300);
+  });
+
+  it("measures nothing for a scan it did not time", () => {
+    // Reopening a finished scan from history is not a wait. Reporting one
+    // would put an invented number into the latency the pilot is judged on.
+    expect(elapsedSinceCapture(null, scanId, capturedAt + 5300)).toBeNull();
+    expect(elapsedSinceCapture(wait, "other", capturedAt + 5300)).toBeNull();
+  });
+
+  it("measures nothing when the clock ran backwards", () => {
+    expect(elapsedSinceCapture(wait, scanId, capturedAt - 1)).toBeNull();
+  });
+});
+
+describe("waitEvent", () => {
+  it("carries the wait only when there was one to measure", () => {
+    expect(waitEvent("brief_viewed", 4200)).toEqual({
+      name: "brief_viewed",
+      properties: { elapsed_ms: 4200 },
+    });
+    expect(waitEvent("brief_viewed", null)).toEqual({ name: "brief_viewed" });
   });
 });
 

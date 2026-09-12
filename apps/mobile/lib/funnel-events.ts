@@ -21,27 +21,83 @@ export function toScanMilestoneSnapshot(status: {
 }
 
 /**
+ * When the wait for a scan began on this device, and which scan it belongs to.
+ *
+ * The pilot is judged on how long the user waits for a Flash Brief (P50 ≤ 5s,
+ * P90 ≤ 10s), and the per-stage `ai_runs.latency_ms` the server records covers
+ * only the model calls. This is the other half: the wait as the user
+ * experiences it, measured from the moment the capture was accepted.
+ *
+ * Kept per scan on purpose. Opening a finished scan from history is not a
+ * wait, and reporting one would put an invented number into the one figure the
+ * latency hypothesis is checked against.
+ */
+export type ScanWaitClock = Readonly<{ scanId: string; startedAt: number }>;
+
+/**
+ * Milliseconds waited so far, or null when this client did not watch the whole
+ * wait — a different scan, or one opened after the fact.
+ */
+export function elapsedSinceCapture(
+  wait: ScanWaitClock | null,
+  scanId: string,
+  now: number,
+): number | null {
+  if (!wait || wait.scanId !== scanId) {
+    return null;
+  }
+
+  const elapsed = now - wait.startedAt;
+
+  // A clock that runs backwards (a device time change mid-scan) measures
+  // nothing; reporting the negative number would be worse than reporting none.
+  return elapsed >= 0 ? elapsed : null;
+}
+
+/**
  * Scan-funnel milestones are transitions, not states. Emitting them from the
  * observed status alone would count a completed scan again every time the user
  * reopens it from history, so a milestone only fires when this client actually
  * watched the field appear: same scan, previously absent, now present.
+ *
+ * That is also what makes the wait measurable: a milestone this client watched
+ * arrive is one whose wait it timed.
  */
 export function scanMilestoneEvents(
   previous: ScanMilestoneSnapshot | null,
   next: ScanMilestoneSnapshot,
-): AnalyticsEventName[] {
+  wait: ScanWaitClock | null,
+  now: number,
+): AnalyticsEvent[] {
   if (!previous || previous.scanId !== next.scanId) {
     return [];
   }
 
-  const events: AnalyticsEventName[] = [];
+  const names: AnalyticsEventName[] = [];
   if (!previous.hasCard && next.hasCard) {
-    events.push("card_extraction_success");
+    names.push("card_extraction_success");
   }
   if (!previous.hasBrief && next.hasBrief) {
-    events.push("brief_ready");
+    names.push("brief_ready");
   }
-  return events;
+
+  const elapsedMs = elapsedSinceCapture(wait, next.scanId, now);
+
+  return names.map((name) => waitEvent(name, elapsedMs));
+}
+
+/**
+ * An event carries `elapsed_ms` only when the wait was actually observed. An
+ * absent property reads as "not measured here"; a null would have to be
+ * filtered back out of every latency query.
+ */
+export function waitEvent(
+  name: AnalyticsEventName,
+  elapsedMs: number | null,
+): AnalyticsEvent {
+  return elapsedMs === null
+    ? { name }
+    : { name, properties: { elapsed_ms: elapsedMs } };
 }
 
 // ─── Once-per-user activation events ─────────────────────────────────────────

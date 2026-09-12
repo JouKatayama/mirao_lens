@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+import { readReminderScanId, toReminderTarget } from "./reminder-target";
+
 /**
  * Local notifications for next actions.
  *
@@ -65,6 +67,7 @@ export async function scheduleReminder(
   actionText: string,
   dueAt: Date,
   personName: string | null,
+  scanId: string,
 ): Promise<boolean> {
   if (!remindersSupported || dueAt.getTime() <= Date.now()) return false;
 
@@ -78,6 +81,10 @@ export async function scheduleReminder(
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         body: actionText,
+        // Carried by the notification itself: the tap has to lead back to this
+        // person days later, on a device that may have been offline or asleep
+        // in between.
+        data: toReminderTarget(scanId),
         title: personName ? `${personName}さんへの次の一手` : "次の一手",
       },
       trigger: {
@@ -122,6 +129,66 @@ export async function cancelAllReminders(): Promise<void> {
   } catch {
     // Best effort: failing to clear reminders must not block a sign-out.
   }
+}
+
+/**
+ * A tap is only worth acting on once. The response that launched the app is
+ * still readable after it has been handled, and a re-subscribe would otherwise
+ * navigate the user back out of wherever they had gone next.
+ */
+let handledTapIdentifier: string | null = null;
+
+/**
+ * Calls back with the scan a tapped reminder points at, for as long as the
+ * subscription is held. Returns the unsubscribe.
+ */
+export function subscribeToReminderTaps(
+  onTap: (scanId: string) => void,
+): () => void {
+  if (!remindersSupported) {
+    return () => {};
+  }
+
+  let active = true;
+
+  function handle(response: Notifications.NotificationResponse | null): void {
+    if (!active || !response) {
+      return;
+    }
+
+    const identifier = response.notification.request.identifier;
+
+    if (identifier === handledTapIdentifier) {
+      return;
+    }
+
+    const scanId = readReminderScanId(
+      response.notification.request.content.data,
+    );
+
+    if (!scanId) {
+      return;
+    }
+
+    handledTapIdentifier = identifier;
+    onTap(scanId);
+  }
+
+  // A tap that launched the app happened before any listener could exist, so
+  // the launch response is asked for rather than waited for.
+  void Notifications.getLastNotificationResponseAsync()
+    .then(handle)
+    .catch(() => {
+      // No launch notification is the ordinary case, not a failure.
+    });
+
+  const subscription =
+    Notifications.addNotificationResponseReceivedListener(handle);
+
+  return () => {
+    active = false;
+    subscription.remove();
+  };
 }
 
 /** Cancels the reminder for an action that is completed, dismissed or replaced. */

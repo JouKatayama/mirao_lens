@@ -23,10 +23,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createAnalyticsClient, type AnalyticsClient } from "../lib/analytics";
 import {
   createActivationTracker,
+  elapsedSinceCapture,
   scanMilestoneEvents,
   toScanMilestoneSnapshot,
+  waitEvent,
   type ActivationTracker,
   type ScanMilestoneSnapshot,
+  type ScanWaitClock,
 } from "../lib/funnel-events";
 import {
   ContextApiError,
@@ -63,6 +66,7 @@ import {
   cancelAllReminders,
   cancelReminder,
   scheduleReminder,
+  subscribeToReminderTaps,
 } from "../lib/reminders";
 import { EncounterHistoryScreen } from "./encounter-history-screen";
 import { ReanalysisScreen } from "./reanalysis-screen";
@@ -179,7 +183,16 @@ export function PersonalContextApp() {
   const pollStart = useRef<{ key: string; startedAt: number } | null>(null);
   // Scan-funnel milestones are reported on the transition this client watched,
   // so the last observed shape of the scan has to outlive each poll.
+  // Held rather than acted on at once: a tap can arrive before the session is
+  // restored or the history that names the scan has loaded.
+  const [tappedReminderScanId, setTappedReminderScanId] = useState<
+    string | null
+  >(null);
   const observedMilestones = useRef<ScanMilestoneSnapshot | null>(null);
+  // Started when a capture is accepted, so the Flash Brief wait can be
+  // reported as the user actually experienced it rather than as the sum of the
+  // model calls the server timed.
+  const waitClock = useRef<ScanWaitClock | null>(null);
   // How long the scan has sat between pipeline stages, so a stopped pipeline
   // is resumed once instead of polled until the budget runs out.
   const stallWatch = useRef<StallWatch>(null);
@@ -321,6 +334,7 @@ export function PersonalContextApp() {
       // Reminders name a contact and an action. They must not fire for a
       // signed-out account, nor for whoever signs in on this device next.
       void cancelAllReminders();
+      setTappedReminderScanId(null);
       setContext(null);
       setDrafts([]);
       setScanId(null);
@@ -343,6 +357,39 @@ export function PersonalContextApp() {
 
     void loadApprovedContext(session);
   }, [loadApprovedContext, session]);
+
+  const openScan = useCallback(
+    (id: string) => {
+      // Opening an old scan used to overwrite the meeting goal, so the next
+      // capture silently inherited that scan's goal.
+      const opened = historyItems?.find((item) => item.scan_id === id);
+      setScanFavorite(opened?.is_favorite ?? false);
+      setScanMeetingGoal(opened?.meeting_goal ?? "networking");
+      setScanResult({ scan_id: id, status: "extracting" });
+      setScanStatus(null);
+      observedMilestones.current = null;
+      // Reading a finished scan is not a wait, and timing it would report a
+      // latency nobody experienced.
+      waitClock.current = null;
+      setScanStatusError(null);
+      setView("scan-accepted");
+    },
+    [historyItems],
+  );
+
+  useEffect(() => subscribeToReminderTaps(setTappedReminderScanId), []);
+
+  useEffect(() => {
+    // History is what supplies the meeting goal and the star for a scan the
+    // user is returning to, so the tap waits for it rather than opening the
+    // person with the wrong ones.
+    if (!tappedReminderScanId || !session || historyItems === null) {
+      return;
+    }
+
+    openScan(tappedReminderScanId);
+    setTappedReminderScanId(null);
+  }, [historyItems, openScan, session, tappedReminderScanId]);
 
   useEffect(() => {
     if (!services.ok) return;
@@ -467,18 +514,29 @@ export function PersonalContextApp() {
         }
 
         const nextMilestones = toScanMilestoneSnapshot(nextStatus);
-        for (const name of scanMilestoneEvents(
+        for (const event of scanMilestoneEvents(
           observedMilestones.current,
           nextMilestones,
+          waitClock.current,
+          Date.now(),
         )) {
-          services.analytics.track({ name });
+          services.analytics.track(event);
         }
         observedMilestones.current = nextMilestones;
 
         const destination = scanNavigationTarget(view, nextStatus.status);
         if (destination) {
           if (destination === "flash-brief") {
-            services.analytics.track({ name: "brief_viewed" });
+            services.analytics.track(
+              waitEvent(
+                "brief_viewed",
+                elapsedSinceCapture(
+                  waitClock.current,
+                  nextStatus.scan_id,
+                  Date.now(),
+                ),
+              ),
+            );
             void services.activation.trackOnce(
               session.user.id,
               "first_brief_viewed",
@@ -910,6 +968,7 @@ export function PersonalContextApp() {
         actionText,
         new Date(dueAt),
         scanStatus?.card?.name ?? null,
+        scanResult.scan_id,
       );
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
@@ -1142,18 +1201,7 @@ export function PersonalContextApp() {
             setView("preparation");
           }}
           onDeleteScan={deleteScan}
-          onOpenScan={(id) => {
-            // Opening an old scan used to overwrite the meeting goal, so the
-            // next capture silently inherited that scan's goal.
-            const opened = historyItems?.find((item) => item.scan_id === id);
-            setScanFavorite(opened?.is_favorite ?? false);
-            setScanMeetingGoal(opened?.meeting_goal ?? "networking");
-            setScanResult({ scan_id: id, status: "extracting" });
-            setScanStatus(null);
-            observedMilestones.current = null;
-            setScanStatusError(null);
-            setView("scan-accepted");
-          }}
+          onOpenScan={openScan}
         />
       ) : null}
       {view === "preparation" && context ? (
@@ -1195,6 +1243,12 @@ export function PersonalContextApp() {
               hasBrief: false,
               hasCard: false,
               scanId: result.scan_id,
+            };
+            // The upload has landed and the pipeline owns the scan: from here
+            // the user is waiting.
+            waitClock.current = {
+              scanId: result.scan_id,
+              startedAt: Date.now(),
             };
             setScanFavorite(false);
             setScanMeetingGoal(meetingGoal);

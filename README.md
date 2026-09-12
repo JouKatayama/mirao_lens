@@ -266,7 +266,14 @@ Local, not push: a follow-up reminder needs no server, no device token and no
 third party. The cost is that a reminder lives on one device — a reinstall
 loses it, and it does not follow the user to another phone. A reminder due
 tomorrow or later fires at 9am local rather than at the minute the note was
-written. Completing or dismissing the action cancels it.
+written, and one due "今日中" is capped at the end of that day. Completing or
+dismissing the action cancels it, as does signing out or deleting the account:
+a notification naming a contact must not outlive the data it came from.
+
+The notification carries the scan it belongs to, so tapping it opens that
+person rather than the home screen — from a cold start as well as from the
+background. A tap that arrives before the session or the scan history is ready
+is held until both are, so the scan opens with its own meeting goal and star.
 
 ML-023 implements the Personal Context retrieval product spec 5.4 asks for:
 "do not send the full profile to every call". Set `AI_EMBEDDING_MODEL` and the
@@ -346,6 +353,15 @@ and sign-in are the same flow. It fires on the first session an install sees
 for a user whose account was created within the last 24 hours, so an existing
 user signing in on a new device is not counted as a sign-up. A reinstall can
 re-emit an activation event; count unique users, not raw events.
+
+`card_extraction_success`, `brief_ready` and `brief_viewed` carry an
+`elapsed_ms` property: the wait as the user experienced it, measured from the
+moment the capture was accepted by the API. The pilot hypothesis is stated in
+user-visible time (P50 ≤ 5s, P90 ≤ 10s for a Flash Brief), while the
+`ai_runs.latency_ms` the server records covers only the model calls, so
+neither figure answers for the other. The property is absent — not null —
+whenever this client did not watch the whole wait, so reopening a finished scan
+from history contributes nothing to the distribution.
 
 `brief_usefulness_rated` carries a `rating` property of 1–5, and
 `say_this_used_yes` / `say_this_used_no` supply the pilot North Star
