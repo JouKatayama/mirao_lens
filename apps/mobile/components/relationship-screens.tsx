@@ -17,6 +17,7 @@ import {
   toReminderDueDate,
   type ReminderChoice,
 } from "../lib/reminder-schedule";
+import { remindersSupported } from "../lib/reminders";
 import { Icon } from "./icons";
 import {
   Avatar,
@@ -600,11 +601,12 @@ type InteractionScreenProps = {
   loadError?: string | null;
   /** Null until Mutual Value is ready; the note never waits for it. */
   mutualValue: MutualValuePublic | null;
+  /** Resolves to whether a reminder notification was actually scheduled. */
   onAcceptNextAction: (
     actionText: string,
     timingText: string | null,
     dueAt: string | null,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   onBack: () => void;
   onCompleteNextAction?: (actionId: string) => Promise<void>;
   onDismissNextAction: (actionText: string) => Promise<void>;
@@ -680,6 +682,7 @@ function InteractionForm({
   const [localError, setLocalError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [reminder, setReminder] = useState<ReminderChoice>("none");
+  const [reminderNotice, setReminderNotice] = useState<string | null>(null);
   const settledActions = record.actions.filter(
     (item) => item.status === "completed" || item.status === "dismissed",
   );
@@ -714,6 +717,8 @@ function InteractionForm({
         await onSaveNote(trimmedNote);
         setSavedNote(trimmedNote);
       }
+      let reminderMissed = false;
+
       if (!decided && !actionSaved) {
         if (suggestion && decision === "dismissed") {
           await onDismissNextAction(suggestion.action);
@@ -722,14 +727,29 @@ function InteractionForm({
           action.trim()
         ) {
           const due = toReminderDueDate(reminder, new Date());
-          await onAcceptNextAction(
+          const scheduled = await onAcceptNextAction(
             action.trim(),
             timing.trim() || null,
             due ? due.toISOString() : null,
           );
+          // Only a device that could have delivered one owes the user an
+          // explanation; the caption already tells the rest.
+          reminderMissed = remindersSupported && due !== null && !scheduled;
         }
         setActionSaved(true);
       }
+
+      if (reminderMissed) {
+        // The action is saved; only the notification could not be set up.
+        // Said here rather than on the way out, because leaving for home is
+        // the last chance the user has to learn no reminder is coming.
+        // Pressing 保存する again finishes, since the action is recorded.
+        setReminderNotice(
+          "記録しました。ただし、この端末ではリマインド通知を設定できませんでした。通知の許可をご確認ください。",
+        );
+        return;
+      }
+
       onDone();
     } catch {
       setLocalError(
@@ -752,9 +772,11 @@ function InteractionForm({
       />
       <Text style={s.heading}>リマインド</Text>
       <Text style={s.caption}>
-        選ぶとこの端末に通知が届きます。ほかの端末には届きません。
+        {remindersSupported
+          ? "選ぶとこの端末に通知が届きます。ほかの端末には届きません。"
+          : "この端末では通知を設定できません。時期の記録だけが残ります。"}
       </Text>
-      <View style={s.reminderRow}>
+      <View accessibilityRole="radiogroup" style={s.reminderRow}>
         {reminderChoices.map((choice) => (
           <Pressable
             accessibilityRole="radio"
@@ -774,6 +796,10 @@ function InteractionForm({
               );
               if (choice.hoursFromNow && (!timing.trim() || canned)) {
                 setTiming(choice.label);
+              } else if (!choice.hoursFromNow && canned) {
+                // Dropping the reminder has to drop the wording it wrote too,
+                // or the action is saved as "明日" with nothing due.
+                setTiming("");
               }
             }}
             style={({ pressed }) => [
@@ -996,6 +1022,7 @@ function InteractionForm({
           ))}
         </View>
       ) : null}
+      {reminderNotice ? <Text style={s.caption}>{reminderNotice}</Text> : null}
       <ErrorNotice message={localError || error} />
     </ScreenFrame>
   );

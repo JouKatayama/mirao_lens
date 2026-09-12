@@ -59,7 +59,11 @@ import {
 } from "../lib/scan-polling";
 import type { InteractionRecord } from "./relationship-screens";
 import { LoadingScreen, PrimaryButton } from "./ui";
-import { cancelReminder, scheduleReminder } from "../lib/reminders";
+import {
+  cancelAllReminders,
+  cancelReminder,
+  scheduleReminder,
+} from "../lib/reminders";
 import { EncounterHistoryScreen } from "./encounter-history-screen";
 import { ReanalysisScreen } from "./reanalysis-screen";
 import { HomeScreen } from "./home-screen";
@@ -314,6 +318,9 @@ export function PersonalContextApp() {
     }
 
     if (session === null) {
+      // Reminders name a contact and an action. They must not fire for a
+      // signed-out account, nor for whoever signs in on this device next.
+      void cancelAllReminders();
       setContext(null);
       setDrafts([]);
       setScanId(null);
@@ -868,7 +875,7 @@ export function PersonalContextApp() {
     source: "ai" | "user",
     status: "accepted" | "dismissed",
     dueAt: string | null = null,
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (!session || !services.ok || !scanResult) {
       throw new Error("An authenticated scan is required.");
     }
@@ -891,15 +898,19 @@ export function PersonalContextApp() {
       }
 
       // Scheduled after the action is stored, so a reminder never outlives a
-      // save that failed. A refused permission leaves the action saved.
-      if (dueAt) {
-        await scheduleReminder(
-          saved.id,
-          actionText,
-          new Date(dueAt),
-          scanStatus?.card?.name ?? null,
-        );
+      // save that failed. A refused permission leaves the action saved, and
+      // the result is returned so the screen stops promising a notification
+      // that will never arrive.
+      if (!dueAt) {
+        return false;
       }
+
+      return await scheduleReminder(
+        saved.id,
+        actionText,
+        new Date(dueAt),
+        scanStatus?.card?.name ?? null,
+      );
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
         await services.supabase.auth.signOut();
@@ -952,13 +963,15 @@ export function PersonalContextApp() {
     }
 
     try {
-      // The action is settled, so its reminder has nothing left to remind of.
-      await cancelReminder(actionId);
       await services.scanApi.updateNextActionStatus(
         session.access_token,
         scanResult.scan_id,
         { action_id: actionId, status: "completed" },
       );
+
+      // Cancelled only after the completion is recorded: a failed update
+      // leaves the action accepted, and it must keep its reminder.
+      await cancelReminder(actionId);
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
         await services.supabase.auth.signOut();
@@ -1099,6 +1112,7 @@ export function PersonalContextApp() {
 
     await services.scanApi.deleteAccount(session.access_token);
     await services.supabase.auth.signOut();
+    await cancelAllReminders();
   }
 
   return (
@@ -1374,7 +1388,7 @@ export function PersonalContextApp() {
                 ? scanStatus.mutual_value.next_action.action.trim()
                 : null;
             const source = actionText.trim() === suggested ? "ai" : "user";
-            await saveNextAction(
+            return await saveNextAction(
               actionText,
               timingText,
               source,

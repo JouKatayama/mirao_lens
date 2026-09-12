@@ -232,6 +232,9 @@ function DemoScreen({ initial }: { initial: string }) {
   const home = () => setScreen("home");
   const summary = () => setScreen("summary");
   const noOp = async () => {};
+  // The preview never schedules anything; it reports the accept as saved
+  // without a reminder.
+  const noOpAccept = async () => false;
   if (screen === "welcome")
     return <WelcomeScreen onStart={home} onLogin={home} />;
   if (screen === "camera")
@@ -311,7 +314,7 @@ function DemoScreen({ initial }: { initial: string }) {
         card={person}
         error={null}
         mutualValue={value}
-        onAcceptNextAction={noOp}
+        onAcceptNextAction={noOpAccept}
         onBack={() => setScreen("give-get")}
         onCompleteNextAction={noOp}
         onDismissNextAction={noOp}
@@ -328,7 +331,7 @@ function DemoScreen({ initial }: { initial: string }) {
         card={person}
         error={null}
         mutualValue={value}
-        onAcceptNextAction={noOp}
+        onAcceptNextAction={noOpAccept}
         onBack={() => setScreen("give-get")}
         onCompleteNextAction={noOp}
         onDismissNextAction={noOp}
