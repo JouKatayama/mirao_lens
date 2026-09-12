@@ -4,7 +4,7 @@ import type {
   NextActionResponse,
 } from "@miraio/domain";
 import { colors } from "@miraio/ui-tokens";
-import { useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -17,6 +17,14 @@ import {
   toReminderDueDate,
   type ReminderChoice,
 } from "../lib/reminder-schedule";
+import {
+  claimTypeAccessibilityLabel,
+  claimTypeLabel,
+  flashBriefBelowFoldSections,
+  flashBriefFirstViewSections,
+  personIdentityLine,
+  type FlashBriefSectionId,
+} from "../lib/flash-brief-layout";
 import { remindersSupported } from "../lib/reminders";
 import { Icon } from "./icons";
 import {
@@ -131,55 +139,23 @@ export function FlashBriefScreen({
         ]
       : []),
   ];
-  return (
-    <ScreenFrame
-      title="Flash Brief"
-      onBack={onDone}
-      action={
-        onToggleFavorite ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              favorite ? "お気に入りから外す" : "お気に入りに追加"
-            }
-            accessibilityState={{ selected: favorite }}
-            disabled={favoriteBusy}
-            onPress={() => void toggleFavorite()}
-            style={({ pressed }) => [s.favoriteButton, pressed && s.pressed]}
-          >
-            <Icon
-              name="star"
-              color={favorite ? colors.accentStrong : colors.muted}
-              filled={favorite}
-              size={22}
-            />
-          </Pressable>
-        ) : undefined
-      }
-      footer={
-        <PrimaryButton
-          label="Win-Winを詳しく見る"
-          onPress={onViewMutualValue}
-        />
-      }
-    >
-      {/* The avatar is a placeholder icon, never a photo. At full size it
-          pushed SAY THIS, the part read mid-conversation, below the fold. */}
+  const claimLabel = claimTypeLabel(brief.why_you_claim_type);
+  const isFact = brief.why_you_claim_type === "fact";
+  const identityLine = personIdentityLine(card);
+
+  // Keyed by section so the reading order lives in one declared list rather
+  // than in the shape of the JSX, where a later edit can quietly sink SAY THIS
+  // back below the fold.
+  const sections: Record<FlashBriefSectionId, ReactNode> = {
+    person: (
       <View style={s.person}>
         <Avatar name={card.name} />
         <View style={s.personText}>
           <Text style={s.name}>{card.name || "名前未登録"}</Text>
-          {card.company ? <Text style={s.body}>{card.company}</Text> : null}
-          {card.title ? <Text style={s.body}>{card.title}</Text> : null}
-        </View>
-      </View>
-      <View style={s.briefHeader}>
-        <Text style={s.eyebrow}>5-SECOND BRIEF</Text>
-        <Text style={s.meta}>会話の前に、ここだけ確認</Text>
-      </View>
-      <Card>
-        <View style={s.briefLabelRow}>
-          <Text style={s.briefLabel}>WHO</Text>
+          {identityLine ? <Text style={s.body}>{identityLine}</Text> : null}
+          {/* Identity confidence belongs with the person, not with the WHO
+              paragraph it used to sit in: that paragraph is now read after the
+              conversation has already started. */}
           <View style={s.badgeRow}>
             {previousEncounters > 0 ? (
               <View style={s.encounterBadge}>
@@ -194,6 +170,90 @@ export function FlashBriefScreen({
               </Text>
             </View>
           </View>
+        </View>
+      </View>
+    ),
+    say_this: (
+      <View style={s.section}>
+        <View style={s.briefHeader}>
+          <Text style={s.eyebrow}>5-SECOND BRIEF</Text>
+          <Text style={s.meta}>会話の前に、ここだけ確認</Text>
+        </View>
+        <View style={s.sayPanel}>
+          <View style={s.briefLabelRow}>
+            <Text accessibilityRole="header" style={[s.briefLabel, s.sayLabel]}>
+              SAY THIS
+            </Text>
+            <View style={s.askBadge}>
+              <Text style={s.askBadgeText}>質問</Text>
+            </View>
+          </View>
+          {brief.say_this.map((question, index) => (
+            // Read as one element: the bulb is decoration, and a screen reader
+            // stopping on it before the question would cost the same seconds
+            // the layout just bought.
+            <View
+              accessible
+              accessibilityLabel={`質問${index + 1}、${question}`}
+              key={`${question}-${index}`}
+              style={s.sayRow}
+            >
+              <Icon name="bulb" color="#D9BCFF" size={22} />
+              <Text style={[s.sayQuestion, s.flex]}>{question}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    ),
+    why_you: (
+      <View style={[s.briefPanel, s.whyPanel]}>
+        <View style={s.briefLabelRow}>
+          <Text
+            accessibilityRole="header"
+            accessibilityLabel={claimTypeAccessibilityLabel(
+              "WHY YOU",
+              brief.why_you_claim_type,
+            )}
+            style={s.briefLabel}
+          >
+            WHY YOU
+          </Text>
+          <View style={isFact ? s.factBadge : s.hypothesisBadge}>
+            <Text style={isFact ? s.factBadgeText : s.hypothesisBadgeText}>
+              {claimLabel}
+            </Text>
+          </View>
+        </View>
+        <Text style={s.briefBody}>{brief.why_you}</Text>
+        {brief.connection_keywords.length > 0 ? (
+          <View style={s.keywords}>
+            <Text style={s.meta}>接点キーワード</Text>
+            <Chips items={brief.connection_keywords} />
+          </View>
+        ) : null}
+        {onMarkHypothesisUnhelpful ? (
+          hypothesisFlagged ? (
+            <Text style={s.caption}>役に立たない内容として記録しました。</Text>
+          ) : (
+            <TextButton
+              label={
+                isFact ? "この内容は役に立たない" : "この仮説は役に立たない"
+              }
+              onPress={() => {
+                setHypothesisFlagged(true);
+                onMarkHypothesisUnhelpful();
+              }}
+            />
+          )
+        ) : null}
+      </View>
+    ),
+    who: (
+      <Card>
+        <View style={s.briefLabelRow}>
+          <Text accessibilityRole="header" style={s.briefLabel}>
+            WHO
+          </Text>
         </View>
         <Text style={s.briefBody}>{brief.who}</Text>
         {onFlagIdentity ? (
@@ -212,69 +272,13 @@ export function FlashBriefScreen({
           )
         ) : null}
       </Card>
-      <View style={[s.briefPanel, s.whyPanel]}>
-        <View style={s.briefLabelRow}>
-          <Text style={s.briefLabel}>WHY YOU</Text>
-          <View
-            style={
-              brief.why_you_claim_type === "fact"
-                ? s.factBadge
-                : s.hypothesisBadge
-            }
-          >
-            <Text
-              style={
-                brief.why_you_claim_type === "fact"
-                  ? s.factBadgeText
-                  : s.hypothesisBadgeText
-              }
-            >
-              {brief.why_you_claim_type === "fact" ? "事実" : "仮説"}
-            </Text>
-          </View>
-        </View>
-        <Text style={s.briefBody}>{brief.why_you}</Text>
-        {brief.connection_keywords.length > 0 ? (
-          <View style={s.keywords}>
-            <Text style={s.meta}>接点キーワード</Text>
-            <Chips items={brief.connection_keywords} />
-          </View>
-        ) : null}
-        {onMarkHypothesisUnhelpful ? (
-          hypothesisFlagged ? (
-            <Text style={s.caption}>役に立たない内容として記録しました。</Text>
-          ) : (
-            <TextButton
-              label={
-                brief.why_you_claim_type === "fact"
-                  ? "この内容は役に立たない"
-                  : "この仮説は役に立たない"
-              }
-              onPress={() => {
-                setHypothesisFlagged(true);
-                onMarkHypothesisUnhelpful();
-              }}
-            />
-          )
-        ) : null}
-      </View>
-      <View style={s.sayPanel}>
-        <View style={s.briefLabelRow}>
-          <Text style={[s.briefLabel, s.sayLabel]}>SAY THIS</Text>
-          <View style={s.askBadge}>
-            <Text style={s.askBadgeText}>質問</Text>
-          </View>
-        </View>
-        {brief.say_this.map((question, index) => (
-          <View key={`${question}-${index}`} style={s.sayRow}>
-            <Icon name="bulb" color="#D9BCFF" size={22} />
-            <Text style={[s.sayQuestion, s.flex]}>{question}</Text>
-          </View>
-        ))}
-      </View>
+    ),
+    potential: (
       <View style={[s.briefPanel, s.potentialPanel]}>
         <View style={s.briefLabelRow}>
-          <Text style={s.briefLabel}>POTENTIAL</Text>
+          <Text accessibilityRole="header" style={s.briefLabel}>
+            POTENTIAL
+          </Text>
           <View style={s.hypothesisBadge}>
             <Text style={s.hypothesisBadgeText}>可能性・仮説</Text>
           </View>
@@ -313,6 +317,51 @@ export function FlashBriefScreen({
           </View>
         ) : null}
       </View>
+    ),
+  };
+
+  return (
+    <ScreenFrame
+      title="Flash Brief"
+      onBack={onDone}
+      action={
+        onToggleFavorite ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              favorite ? "お気に入りから外す" : "お気に入りに追加"
+            }
+            accessibilityState={{ selected: favorite }}
+            disabled={favoriteBusy}
+            onPress={() => void toggleFavorite()}
+            style={({ pressed }) => [s.favoriteButton, pressed && s.pressed]}
+          >
+            <Icon
+              name="star"
+              color={favorite ? colors.accentStrong : colors.muted}
+              filled={favorite}
+              size={22}
+            />
+          </Pressable>
+        ) : undefined
+      }
+      footer={
+        <PrimaryButton
+          label="Win-Winを詳しく見る"
+          onPress={onViewMutualValue}
+        />
+      }
+    >
+      {/* Tighter than the screen's own spacing: these three have to share one
+          375x812 screen, and the gaps were costing a line of the question. */}
+      <View style={s.firstView}>
+        {flashBriefFirstViewSections.map((id) => (
+          <Fragment key={id}>{sections[id]}</Fragment>
+        ))}
+      </View>
+      {flashBriefBelowFoldSections.map((id) => (
+        <Fragment key={id}>{sections[id]}</Fragment>
+      ))}
       {onChangeMeetingGoal ? (
         <TextButton
           label="面談ゴールを変えて分析し直す"
@@ -1055,7 +1104,8 @@ const s = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
   },
-  briefHeader: { gap: 2, marginTop: 2 },
+  firstView: { gap: 12 },
+  briefHeader: { gap: 2 },
   eyebrow: {
     color: colors.accentStrong,
     fontSize: 12,
