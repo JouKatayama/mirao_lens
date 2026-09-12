@@ -44,6 +44,32 @@ const brief: FlashBriefPublic = {
   potential_score: 4,
   say_this: ["今、営業の現場でどんな課題がありますか？"],
 };
+// The same screen with the longest text the contracts allow: a wrapped
+// question must stay whole and inside the first view, not be clipped to fit.
+const longPerson = {
+  name: "デモ 太郎左衛門",
+  company: "サンプルホールディングス株式会社",
+  title: "デジタルトランスフォーメーション推進本部 副本部長",
+};
+const longBrief: FlashBriefPublic = {
+  connection_keywords: [
+    "生成AIの社内展開",
+    "営業DX",
+    "データ基盤",
+    "学生エンジニア",
+  ],
+  identity_status: "medium_confidence",
+  who: "サンプルホールディングス株式会社でデジタル推進を担当。全社の業務プロセス改善と、現場に定着するデータ活用の仕組みづくりに取り組んでいます。",
+  why_you:
+    "生成AIの社内展開という同じテーマに取り組んでおり、現場で定着させるための進め方について、実際の経験を交換できる可能性があります。",
+  why_you_claim_type: "hypothesis",
+  potential:
+    "全社展開の知見と、実装まで踏み込める技術の組み合わせは、どちらの取り組みも前に進める可能性があります。",
+  potential_score: 5,
+  say_this: [
+    "生成AIを全社に広げるうえで、現場に定着させるために一番工夫されたことは何ですか？",
+  ],
+};
 const value: MutualValuePublic = {
   give: [
     "AI・Web開発の知識や技術",
@@ -196,6 +222,7 @@ const screens = [
   "welcome",
   "camera",
   "summary",
+  "summary-long",
   "preparation",
   "give-get",
   "bridge",
@@ -211,6 +238,7 @@ const titles = [
   "開始",
   "名刺を撮影",
   "人物サマリー",
+  "人物サマリー（長文）",
   "分析の準備",
   "GIVE / GET",
   "BRIDGE",
@@ -259,11 +287,11 @@ function DemoScreen({ initial }: { initial: string }) {
         </View>
       </CameraFrame>
     );
-  if (screen === "summary")
+  if (screen === "summary" || screen === "summary-long")
     return (
       <FlashBriefScreen
-        brief={brief}
-        card={person}
+        brief={screen === "summary-long" ? longBrief : brief}
+        card={screen === "summary-long" ? longPerson : person}
         deepEnriching={false}
         error={null}
         onDone={home}
