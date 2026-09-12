@@ -27,6 +27,7 @@ import {
 } from "../lib/flash-brief-layout";
 import { remindersSupported } from "../lib/reminders";
 import { Icon } from "./icons";
+import { NextActionReminder } from "./next-action-reminder";
 import {
   Avatar,
   Card,
@@ -659,6 +660,14 @@ type InteractionScreenProps = {
   onBack: () => void;
   onCompleteNextAction?: (actionId: string) => Promise<void>;
   onDismissNextAction: (actionText: string) => Promise<void>;
+  /**
+   * Sets, moves or clears the reminder on an action that already exists.
+   * Resolves to whether a notification was actually scheduled.
+   */
+  onSetNextActionReminder?: (
+    action: NextActionResponse,
+    dueAt: string | null,
+  ) => Promise<boolean>;
   onDone: () => void;
   onReload?: () => void;
   onSaveNote: (noteText: string) => Promise<void>;
@@ -708,6 +717,7 @@ function InteractionForm({
   onDismissNextAction,
   onDone,
   onSaveNote,
+  onSetNextActionReminder,
   onSayThisUsed,
   record,
   sayThis = [],
@@ -1056,6 +1066,13 @@ function InteractionForm({
               </View>
               {item.timing_text ? (
                 <Text style={s.caption}>目安：{item.timing_text}</Text>
+              ) : null}
+              {onSetNextActionReminder && item.status === "accepted" ? (
+                <NextActionReminder
+                  disabled={completingId !== null}
+                  dueAt={item.due_at}
+                  onChange={(dueAt) => onSetNextActionReminder(item, dueAt)}
+                />
               ) : null}
               {onCompleteNextAction &&
               (item.status === "accepted" || item.status === "suggested") ? (

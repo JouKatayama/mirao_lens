@@ -3,8 +3,9 @@ import {
   InteractionRepositoryError,
 } from "@miraio/db";
 import {
+  isNextActionDueUpdate,
   nextActionRequestSchema,
-  nextActionStatusUpdateRequestSchema,
+  nextActionUpdateRequestSchema,
   noteRequestSchema,
   scanRecordSchema,
   type NextActionOutcomeStatus,
@@ -34,6 +35,10 @@ type InteractionRepositoryPort = Readonly<{
   ): Promise<{ id: string } | null>;
   getNote(scanId: string): Promise<{ note_text: string | null } | null>;
   listNextActions(scanId: string): Promise<NextActionResponse[]>;
+  setNextActionDueAt(
+    actionId: string,
+    dueAt: string | null,
+  ): Promise<{ id: string } | null>;
   updateNextActionStatus(
     actionId: string,
     status: NextActionOutcomeStatus,
@@ -369,15 +374,15 @@ export function createPatchNextActionHandler(
       );
     }
 
-    const statusRequest = nextActionStatusUpdateRequestSchema.safeParse(body);
+    const update = nextActionUpdateRequestSchema.safeParse(body);
 
-    if (!statusRequest.success) {
+    if (!update.success) {
       return errorResponse(
         400,
         "invalid_next_action_status",
         "Check the request fields.",
         {
-          details: statusRequest.error.issues.map((issue) => ({
+          details: update.error.issues.map((issue) => ({
             message: issue.message,
             path: issue.path.join("."),
           })),
@@ -386,13 +391,30 @@ export function createPatchNextActionHandler(
     }
 
     try {
+      // The RPCs are owner-scoped, so an empty result is either an unknown
+      // action or another user's. Both are "not found" to this caller.
+      if (isNextActionDueUpdate(update.data)) {
+        const row = await session.repository.setNextActionDueAt(
+          update.data.action_id,
+          update.data.due_at,
+        );
+
+        if (!row) {
+          return errorResponse(404, "not_found", "Next action not found.");
+        }
+
+        return jsonResponse({
+          due_at: update.data.due_at,
+          id: row.id,
+          scan_id: scanId,
+        });
+      }
+
       const row = await session.repository.updateNextActionStatus(
-        statusRequest.data.action_id,
-        statusRequest.data.status,
+        update.data.action_id,
+        update.data.status,
       );
 
-      // The RPC is owner-scoped, so an empty result is either an unknown
-      // action or another user's. Both are "not found" to this caller.
       if (!row) {
         return errorResponse(404, "not_found", "Next action not found.");
       }
@@ -400,7 +422,7 @@ export function createPatchNextActionHandler(
       return jsonResponse({
         id: row.id,
         scan_id: scanId,
-        status: statusRequest.data.status,
+        status: update.data.status,
       });
     } catch (error) {
       return persistenceError(error);

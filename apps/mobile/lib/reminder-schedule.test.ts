@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatReminderDueAt,
   reminderHourOfDay,
   reminderLastMinuteOfDay,
   toReminderDueDate,
@@ -79,6 +80,20 @@ describe("toReminderDueDate", () => {
       const due = toReminderDueDate(choice, earlyMorning);
       expect(due?.getTime()).toBeGreaterThan(earlyMorning.getTime());
     }
+  });
+});
+
+describe("formatReminderDueAt", () => {
+  it("says when the reminder will actually arrive", () => {
+    expect(formatReminderDueAt(new Date(2026, 8, 13, 9, 0, 0, 0))).toBe(
+      "9月13日 9:00",
+    );
+  });
+
+  it("keeps a two-digit minute readable", () => {
+    expect(formatReminderDueAt(new Date(2026, 11, 1, 23, 5, 0, 0))).toBe(
+      "12月1日 23:05",
+    );
   });
 });
 

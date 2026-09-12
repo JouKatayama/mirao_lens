@@ -20,6 +20,7 @@ import {
   type NextActionListResponse,
   type NextActionRequest,
   type NextActionResponse,
+  type NextActionDueUpdateRequest,
   type NextActionStatusUpdateRequest,
   type ScanCreateResponse,
   type ScanFavoriteResponse,
@@ -193,6 +194,30 @@ export class ScanApiClient {
     accessToken: string,
     scanId: string,
     update: NextActionStatusUpdateRequest,
+  ): Promise<void> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/scans/${scanId}/next-action`,
+      {
+        body: JSON.stringify(update),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        method: "PATCH",
+      },
+    );
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+  }
+
+  // The reminder for an action that already exists. A null due moment is
+  // "リマインドしない", chosen after the fact.
+  async setNextActionDueAt(
+    accessToken: string,
+    scanId: string,
+    update: NextActionDueUpdateRequest,
   ): Promise<void> {
     const response = await this.fetchImplementation(
       `${this.baseUrl}/v1/scans/${scanId}/next-action`,

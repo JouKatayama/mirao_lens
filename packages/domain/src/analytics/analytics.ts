@@ -18,6 +18,9 @@ export const analyticsEventNames = [
   "conversation_note_saved",
   "next_action_created",
   "next_action_accepted",
+  // The action was actually done. Acceptance alone measures intent; the
+  // outcome is what says the brief changed behaviour.
+  "next_action_completed",
   // Trust
   "card_corrected",
   "identity_flagged_wrong",

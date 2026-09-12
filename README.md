@@ -52,7 +52,7 @@ ML-001 through ML-017 currently provide:
 - scan history listing with status badges, a mobile history screen, and a
   star that keeps the meeting worth returning to out of chronological order,
 - evidence-view source opening, restricted to `http`/`https` links,
-- event analytics via the PostHog HTTP Capture API with 20 named events
+- event analytics via the PostHog HTTP Capture API with 21 named events
   covering activation, scan funnel, value, and trust categories, including
   Flash Brief usefulness rating, `SAY THIS` adoption, wrong-person reporting,
   and unhelpful-hypothesis reporting,
@@ -275,6 +275,14 @@ person rather than the home screen — from a cold start as well as from the
 background. A tap that arrives before the session or the scan history is ready
 is held until both are, so the scan opens with its own meeting goal and star.
 
+ML-025 lets the reminder be chosen after the fact. The moment used to be
+settled in the seconds the action was written, which is when the user knows
+least about when they will get to it, and `due_at` was then fixed for the life
+of the row. `set_next_action_due_at` re-times an action that is still open —
+the same "a due moment needs an accepted action" rule `create_next_action`
+enforces — and a null clears it. The record changes first and the device
+notification follows, so a reminder never outlives a write that failed.
+
 ML-023 implements the Personal Context retrieval product spec 5.4 asks for:
 "do not send the full profile to every call". Set `AI_EMBEDDING_MODEL` and the
 Flash Brief receives the items that relate to the person on the card — the
@@ -362,6 +370,11 @@ user-visible time (P50 ≤ 5s, P90 ≤ 10s for a Flash Brief), while the
 neither figure answers for the other. The property is absent — not null —
 whenever this client did not watch the whole wait, so reopening a finished scan
 from history contributes nothing to the distribution.
+
+`next_action_created` and `next_action_accepted` measure intent;
+`next_action_completed` is the only event that says the brief changed what the
+user actually did, so the suggestion funnel is read as created → accepted →
+completed rather than stopping at the promise.
 
 `brief_usefulness_rated` carries a `rating` property of 1–5, and
 `say_this_used_yes` / `say_this_used_no` supply the pilot North Star

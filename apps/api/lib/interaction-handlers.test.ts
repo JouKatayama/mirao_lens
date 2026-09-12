@@ -548,6 +548,7 @@ describe("createPatchNextActionHandler", () => {
   const repository = {
     createNextAction: vi.fn(),
     listNextActions: vi.fn(),
+    setNextActionDueAt: vi.fn(),
     updateNextActionStatus: vi.fn(),
     upsertNote: vi.fn(),
   };
@@ -639,6 +640,75 @@ describe("createPatchNextActionHandler", () => {
     repository.updateNextActionStatus.mockRejectedValue(new Error("db error"));
 
     const res = await patch({ action_id: actionId, status: "completed" });
+
+    expect(res.status).toBe(500);
+  });
+
+  it("sets a reminder on an action that already exists", async () => {
+    repository.setNextActionDueAt.mockResolvedValue({ id: actionId });
+
+    const dueAt = "2026-09-14T00:00:00.000Z";
+    const res = await patch({ action_id: actionId, due_at: dueAt });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      due_at: dueAt,
+      id: actionId,
+      scan_id: scanId,
+    });
+    expect(repository.setNextActionDueAt).toHaveBeenCalledWith(actionId, dueAt);
+    // A re-timing is not a settlement: the two halves of PATCH stay apart.
+    expect(repository.updateNextActionStatus).not.toHaveBeenCalled();
+  });
+
+  it("clears a reminder the user no longer wants", async () => {
+    repository.setNextActionDueAt.mockResolvedValue({ id: actionId });
+
+    const res = await patch({ action_id: actionId, due_at: null });
+
+    expect(res.status).toBe(200);
+    expect(repository.setNextActionDueAt).toHaveBeenCalledWith(actionId, null);
+  });
+
+  it("rejects a due moment that is not an instant", async () => {
+    const res = await patch({ action_id: actionId, due_at: "明日" });
+
+    expect(res.status).toBe(400);
+    expect(repository.setNextActionDueAt).not.toHaveBeenCalled();
+  });
+
+  it("rejects a body that tries to settle and re-time at once", async () => {
+    const res = await patch({
+      action_id: actionId,
+      due_at: "2026-09-14T00:00:00.000Z",
+      status: "completed",
+    });
+
+    expect(res.status).toBe(400);
+    expect(repository.setNextActionDueAt).not.toHaveBeenCalled();
+    expect(repository.updateNextActionStatus).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the action to re-time is unknown", async () => {
+    repository.setNextActionDueAt.mockResolvedValue(null);
+
+    const res = await patch({
+      action_id: actionId,
+      due_at: "2026-09-14T00:00:00.000Z",
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 500 when an action that is no longer open is re-timed", async () => {
+    // The RPC refuses a due moment on a settled action, which reaches the
+    // handler as a repository failure rather than an empty result.
+    repository.setNextActionDueAt.mockRejectedValue(new Error("db error"));
+
+    const res = await patch({
+      action_id: actionId,
+      due_at: "2026-09-14T00:00:00.000Z",
+    });
 
     expect(res.status).toBe(500);
   });
