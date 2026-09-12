@@ -364,6 +364,7 @@ function DemoScreen({ initial }: { initial: string }) {
         onCompleteNextAction={noOp}
         onDismissNextAction={noOp}
         onSaveNote={noOp}
+        onSetNextActionReminder={noOpAccept}
         onDone={home}
         record={{
           actions: demoRecordedActions,

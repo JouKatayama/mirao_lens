@@ -697,6 +697,12 @@ export type Database = {
           status: string
         }[]
       }
+      set_next_action_due_at: {
+        Args: { p_action_id: string; p_due_at?: string }
+        Returns: {
+          action_id: string
+        }[]
+      }
       update_next_action_status: {
         Args: { p_action_id: string; p_status: string }
         Returns: {

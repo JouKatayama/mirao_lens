@@ -65,6 +65,18 @@ export function toReminderDueDate(
     : due;
 }
 
+/**
+ * The moment a reminder will actually arrive, for an action whose reminder was
+ * already set. "明日" is what the user chose; this is what they get, and it is
+ * the only way to tell a reminder set yesterday from one set today.
+ */
+export function formatReminderDueAt(due: Date): string {
+  const hours = due.getHours();
+  const minutes = due.getMinutes().toString().padStart(2, "0");
+
+  return `${due.getMonth() + 1}月${due.getDate()}日 ${hours}:${minutes}`;
+}
+
 export function toReminderLabel(choice: ReminderChoice): string {
   return (
     reminderChoices.find((candidate) => candidate.value === choice)?.label ??

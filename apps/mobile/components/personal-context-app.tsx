@@ -4,6 +4,7 @@ import type {
   EncounterHistoryItem,
   EvidenceItem,
   MeetingGoal,
+  NextActionResponse,
   PersonalContextItem,
   PersonalContextItemUpdate,
   PersonalContextOnboardingInput,
@@ -1031,6 +1032,9 @@ export function PersonalContextApp() {
       // Cancelled only after the completion is recorded: a failed update
       // leaves the action accepted, and it must keep its reminder.
       await cancelReminder(actionId);
+      // Acceptance measures intent; this is the only event that says the
+      // brief changed what the user actually did.
+      trackScanEvent("next_action_completed");
     } catch (error) {
       if (error instanceof ScanApiError && error.status === 401) {
         await services.supabase.auth.signOut();
@@ -1065,6 +1069,59 @@ export function PersonalContextApp() {
           : current,
       );
     }
+  }
+
+  /**
+   * The reminder on an action that already exists. The record is changed
+   * first: a notification the server does not know about would survive a
+   * reinstall as nothing at all, and the list the user is looking at would
+   * disagree with the device.
+   */
+  async function setNextActionReminder(
+    action: NextActionResponse,
+    dueAt: string | null,
+  ): Promise<boolean> {
+    if (!session || !services.ok || !scanResult) {
+      throw new Error("An authenticated scan is required.");
+    }
+
+    try {
+      await services.scanApi.setNextActionDueAt(
+        session.access_token,
+        scanResult.scan_id,
+        { action_id: action.id, due_at: dueAt },
+      );
+    } catch (error) {
+      if (error instanceof ScanApiError && error.status === 401) {
+        await services.supabase.auth.signOut();
+      }
+
+      throw error;
+    }
+
+    setInteraction((current) =>
+      current
+        ? {
+            ...current,
+            actions: current.actions.map((item) =>
+              item.id === action.id ? { ...item, due_at: dueAt } : item,
+            ),
+          }
+        : current,
+    );
+
+    if (!dueAt) {
+      await cancelReminder(action.id);
+      return false;
+    }
+
+    return await scheduleReminder(
+      action.id,
+      action.action_text,
+      new Date(dueAt),
+      scanStatus?.card?.name ?? null,
+      scanResult.scan_id,
+    );
   }
 
   async function reanalyzeScan(goal: MeetingGoal): Promise<void> {
@@ -1452,6 +1509,7 @@ export function PersonalContextApp() {
           }}
           onBack={() => setView(interactionReturn)}
           onCompleteNextAction={completeNextAction}
+          onSetNextActionReminder={setNextActionReminder}
           onDismissNextAction={async (actionText) => {
             await saveNextAction(actionText, null, "ai", "dismissed");
           }}

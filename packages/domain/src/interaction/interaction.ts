@@ -35,6 +35,36 @@ export const nextActionStatusUpdateRequestSchema = z
   })
   .strict();
 
+/**
+ * The reminder for an action that already exists.
+ *
+ * The moment could only be chosen as the action was written, so a user who
+ * decided afterwards that they did want reminding had no way to say so. A null
+ * due moment is "リマインドしない", chosen after the fact.
+ */
+export const nextActionDueUpdateRequestSchema = z
+  .object({
+    action_id: z.string().uuid(),
+    due_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .strict();
+
+/**
+ * The two things a PATCH can change about a next action. Both are strict and
+ * name different fields, so a body belongs to exactly one of them: a client
+ * cannot settle an action and re-time it in the same ambiguous request.
+ */
+export const nextActionUpdateRequestSchema = z.union([
+  nextActionStatusUpdateRequestSchema,
+  nextActionDueUpdateRequestSchema,
+]);
+
+export function isNextActionDueUpdate(
+  update: NextActionUpdateRequest,
+): update is NextActionDueUpdateRequest {
+  return "due_at" in update;
+}
+
 export const interactionNoteResponseSchema = z
   .object({
     id: z.string().uuid(),
@@ -77,6 +107,12 @@ export type NextActionOutcomeStatus = z.infer<
 >;
 export type NextActionStatusUpdateRequest = z.infer<
   typeof nextActionStatusUpdateRequestSchema
+>;
+export type NextActionDueUpdateRequest = z.infer<
+  typeof nextActionDueUpdateRequestSchema
+>;
+export type NextActionUpdateRequest = z.infer<
+  typeof nextActionUpdateRequestSchema
 >;
 export type NextActionListResponse = z.infer<
   typeof nextActionListResponseSchema

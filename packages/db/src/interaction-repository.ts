@@ -154,4 +154,26 @@ export class InteractionRepository {
 
     return row ? { id: row.action_id } : null;
   }
+
+  // Re-timing an action the user already saved. Like the status update, a null
+  // result means the action does not exist for this user; the RPC refuses a
+  // due moment on an action that is no longer open, which surfaces as a
+  // repository error rather than a silent no-op.
+  async setNextActionDueAt(
+    actionId: string,
+    dueAt: string | null,
+  ): Promise<{ id: string } | null> {
+    const { data, error } = await this.client.rpc("set_next_action_due_at", {
+      p_action_id: actionId,
+      ...(dueAt === null ? {} : { p_due_at: dueAt }),
+    });
+
+    if (error) {
+      throw new InteractionRepositoryError("set_next_action_due_at");
+    }
+
+    const row = data[0];
+
+    return row ? { id: row.action_id } : null;
+  }
 }
