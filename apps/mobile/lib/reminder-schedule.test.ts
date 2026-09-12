@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   reminderHourOfDay,
+  reminderLastMinuteOfDay,
   toReminderDueDate,
   toReminderLabel,
 } from "./reminder-schedule";
@@ -17,6 +18,25 @@ describe("toReminderDueDate", () => {
     const due = toReminderDueDate("today", afternoon);
 
     expect(due?.toISOString()).toBe("2026-09-11T09:00:00.000Z");
+  });
+
+  it("keeps a reminder due today inside the day it names", () => {
+    // 22:30 local: the raw four-hour offset would fire at 2:30 the next
+    // morning, after the day the choice promised.
+    const lateEvening = new Date(2026, 8, 11, 22, 30, 0, 0);
+    const due = toReminderDueDate("today", lateEvening);
+
+    expect(due?.getDate()).toBe(lateEvening.getDate());
+    expect(due?.getHours()).toBe(reminderLastMinuteOfDay.hour);
+    expect(due?.getMinutes()).toBe(reminderLastMinuteOfDay.minute);
+  });
+
+  it("still returns a future moment in the last minute of the day", () => {
+    const lastMinute = new Date(2026, 8, 11, 23, 59, 30, 0);
+
+    expect(toReminderDueDate("today", lastMinute)?.getTime()).toBeGreaterThan(
+      lastMinute.getTime(),
+    );
   });
 
   it("moves a later reminder to the morning", () => {

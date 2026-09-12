@@ -17,11 +17,30 @@ function storageKey(actionId: string): string {
 }
 
 // react-native-web has no notification scheduler, and the dev preview must not
-// crash on it.
-const supported = Platform.OS !== "web";
+// crash on it. Exported because a screen that offers a reminder has to say
+// whether one can actually be delivered here.
+export const remindersSupported = Platform.OS !== "web";
+
+/**
+ * Without a handler, expo-notifications drops a notification that arrives
+ * while the app is in the foreground: the 9am reminder would simply vanish
+ * for a user who happens to have Miraio open. Call once at app start.
+ */
+export function configureReminderNotifications(): void {
+  if (!remindersSupported) return;
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function requestReminderPermission(): Promise<boolean> {
-  if (!supported) return false;
+  if (!remindersSupported) return false;
 
   try {
     const current = await Notifications.getPermissionsAsync();
@@ -47,7 +66,7 @@ export async function scheduleReminder(
   dueAt: Date,
   personName: string | null,
 ): Promise<boolean> {
-  if (!supported || dueAt.getTime() <= Date.now()) return false;
+  if (!remindersSupported || dueAt.getTime() <= Date.now()) return false;
 
   if (!(await requestReminderPermission())) return false;
 
@@ -67,16 +86,47 @@ export async function scheduleReminder(
       },
     });
 
-    await AsyncStorage.setItem(storageKey(actionId), identifier);
+    try {
+      await AsyncStorage.setItem(storageKey(actionId), identifier);
+    } catch (error) {
+      // The stored identifier is the only handle on this notification. Left
+      // unstored, the reminder could never be cancelled and would fire after
+      // the action was completed, so undo the schedule instead.
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+      throw error;
+    }
+
     return true;
   } catch {
     return false;
   }
 }
 
+/**
+ * Drops every reminder this device holds. Used when the account is deleted or
+ * signed out: a notification naming a contact must not outlive the data it
+ * came from, or surface to whoever signs in next.
+ */
+export async function cancelAllReminders(): Promise<void> {
+  if (!remindersSupported) return;
+
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    const keys = await AsyncStorage.getAllKeys();
+    const owned = keys.filter((key) => key.startsWith(`${storageKeyPrefix}.`));
+
+    if (owned.length > 0) {
+      await AsyncStorage.multiRemove(owned);
+    }
+  } catch {
+    // Best effort: failing to clear reminders must not block a sign-out.
+  }
+}
+
 /** Cancels the reminder for an action that is completed, dismissed or replaced. */
 export async function cancelReminder(actionId: string): Promise<void> {
-  if (!supported) return;
+  if (!remindersSupported) return;
 
   try {
     const identifier = await AsyncStorage.getItem(storageKey(actionId));

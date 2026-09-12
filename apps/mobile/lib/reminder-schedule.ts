@@ -17,11 +17,15 @@ export type ReminderChoice = (typeof reminderChoices)[number]["value"];
 
 export const reminderHourOfDay = 9;
 
+export const reminderLastMinuteOfDay = { hour: 23, minute: 59 } as const;
+
 /**
  * A reminder due tomorrow or later fires at 9am local time: a notification at
  * the minute the note was written, a day later, arrives in the middle of
  * whatever the user is doing. "Today" keeps the offset, because moving it to
- * 9am would either be in the past or miss the day entirely.
+ * 9am would either be in the past or miss the day entirely — but it is capped
+ * at the end of the day, so a note written at 22:30 does not remind the user
+ * of something "今日中" at 2:30 the next morning.
  */
 export function toReminderDueDate(
   choice: ReminderChoice,
@@ -38,7 +42,17 @@ export function toReminderDueDate(
   const due = new Date(now.getTime() + hours * 60 * 60 * 1000);
 
   if (hours < 24) {
-    return due;
+    const endOfDay = new Date(now);
+    endOfDay.setHours(
+      reminderLastMinuteOfDay.hour,
+      reminderLastMinuteOfDay.minute,
+      0,
+      0,
+    );
+
+    // Only in the final minute of the day is there no "today" left to clamp
+    // to; there the raw offset is the honest answer.
+    return due > endOfDay && endOfDay > now ? endOfDay : due;
   }
 
   due.setHours(reminderHourOfDay, 0, 0, 0);
