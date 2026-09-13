@@ -18,7 +18,10 @@ import { AnalysisPreparationScreen } from "../components/analysis-preparation-sc
 import { CameraFrame } from "../components/camera-frame";
 import { EncounterHistoryScreen } from "../components/encounter-history-screen";
 import { ReanalysisScreen } from "../components/reanalysis-screen";
-import { EvidenceScreen } from "../components/card-scan-screens";
+import {
+  CardCaptureScreen,
+  EvidenceScreen,
+} from "../components/card-scan-screens";
 import { HomeScreen } from "../components/home-screen";
 import {
   FlashBriefScreen,
@@ -220,6 +223,7 @@ const demoRecordedActions: NextActionResponse[] = [
 ];
 const screens = [
   "welcome",
+  "pc-upload",
   "camera",
   "summary",
   "summary-long",
@@ -236,6 +240,7 @@ const screens = [
 ] as const;
 const titles = [
   "開始",
+  "PC画像選択",
   "名刺を撮影",
   "人物サマリー",
   "人物サマリー（長文）",
@@ -265,6 +270,18 @@ function DemoScreen({ initial }: { initial: string }) {
   const noOpAccept = async () => false;
   if (screen === "welcome")
     return <WelcomeScreen onStart={home} onLogin={home} />;
+  if (screen === "pc-upload")
+    return (
+      <CardCaptureScreen
+        onAccepted={summary}
+        onBack={home}
+        onUpload={async () => ({
+          scan_id: "00000000-0000-4000-8000-000000000026",
+          status: "extracting",
+        })}
+        scanId="00000000-0000-4000-8000-000000000026"
+      />
+    );
   if (screen === "camera")
     return (
       <CameraFrame

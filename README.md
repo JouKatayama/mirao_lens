@@ -172,6 +172,36 @@ Open `http://localhost:3000/api/health`. Expected response:
 }
 ```
 
+## Local PC pilot
+
+The desktop-browser pilot uses the same product flow as mobile, but starts a
+scan by selecting an existing JPEG, PNG, or WebP image. It does not require a
+camera or camera permission.
+
+1. Set the mobile URLs to `http://127.0.0.1:3000` and
+   `http://127.0.0.1:56321` in `apps/mobile/.env.local`.
+2. Set the local Supabase values, `OPENAI_API_KEY`, and all required
+   `AI_*_MODEL` values in `apps/api/.env.local`.
+3. Start and reset the local database:
+
+```bash
+pnpm supabase:start
+pnpm db:reset
+```
+
+4. In separate terminals, start the API and browser app:
+
+```bash
+pnpm dev:api
+pnpm --filter @miraio/mobile web
+```
+
+5. Open the Expo URL shown in the second terminal. OTP messages for local
+   sign-in are available at `http://127.0.0.1:56324`.
+6. Use only a synthetic card or a card whose owner has agreed to the pilot.
+   Check every extracted field before continuing because AI output can be
+   wrong. Delete the scan or account from the app when the test is complete.
+
 ML-003 API resources are:
 
 ```text

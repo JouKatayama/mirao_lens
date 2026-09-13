@@ -31,6 +31,9 @@ export function WelcomeScreen({
         <View style={styles.content}>
           <View style={styles.identity}>
             <LensMark />
+            <View style={styles.pilotBadge}>
+              <Text style={styles.pilotBadgeText}>LOCAL PILOT</Text>
+            </View>
             <Text accessibilityRole="header" style={styles.name}>
               Miraio Lens
             </Text>
@@ -46,6 +49,11 @@ export function WelcomeScreen({
                   <Text style={styles.pointText}>{point}</Text>
                 </View>
               ))}
+            </View>
+            <View style={styles.pilotNotice}>
+              <Text style={styles.pilotNoticeText}>
+                試用版です。AIの提案は誤る場合があるため、名刺の読み取り内容と根拠を確認してご利用ください。名刺画像は読み取り後に削除されます。
+              </Text>
             </View>
           </View>
           <View style={styles.actions}>
@@ -99,6 +107,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   points: { alignSelf: "stretch", gap: 12, paddingTop: 12 },
+  pilotBadge: {
+    backgroundColor: "rgba(210, 170, 255, 0.16)",
+    borderColor: "rgba(210, 170, 255, 0.55)",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  pilotBadgeText: {
+    color: "#D2AAFF",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.4,
+  },
+  pilotNotice: {
+    alignSelf: "stretch",
+    backgroundColor: "rgba(255, 255, 255, 0.07)",
+    borderRadius: 12,
+    padding: 13,
+  },
+  pilotNoticeText: {
+    color: "#DED7E8",
+    fontSize: 12,
+    lineHeight: 19,
+    textAlign: "left",
+  },
   point: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
   pointDot: {
     backgroundColor: "#D2AAFF",

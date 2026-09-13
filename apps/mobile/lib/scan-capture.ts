@@ -1,11 +1,27 @@
-import { meetingGoals, type MeetingGoal } from "@miraio/domain";
+import {
+  contentTypeForScanImagePath,
+  meetingGoals,
+  scanImageContentTypeSchema,
+  type MeetingGoal,
+  type ScanImageContentType,
+} from "@miraio/domain";
 
 export type CapturedCardImage = Readonly<{
-  contentType: "image/jpeg";
+  contentType: ScanImageContentType;
   height: number;
   uri: string;
   width: number;
 }>;
+
+export function selectedCardImageContentType(
+  mimeType: string | null | undefined,
+  uri: string,
+): ScanImageContentType | null {
+  const mimeResult = scanImageContentTypeSchema.safeParse(mimeType);
+  if (mimeResult.success) return mimeResult.data;
+
+  return contentTypeForScanImagePath(uri.split(/[?#]/, 1)[0] ?? uri);
+}
 
 export const meetingGoalLabels: Record<MeetingGoal, string> = {
   networking: "ネットワーキング",

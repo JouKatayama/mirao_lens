@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Image,
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -24,7 +25,10 @@ import {
 } from "react-native";
 
 import { fieldNeedsReview } from "../lib/card-review";
-import { type CapturedCardImage } from "../lib/scan-capture";
+import {
+  selectedCardImageContentType,
+  type CapturedCardImage,
+} from "../lib/scan-capture";
 import { toOpenableSourceUrl } from "../lib/source-url";
 import {
   Card,
@@ -136,15 +140,16 @@ export function CardCaptureScreen({
       if (selection.canceled) return;
       const asset = selection.assets[0];
       if (!asset) return;
-      if (
-        asset.mimeType !== "image/jpeg" &&
-        !/\.jpe?g(?:$|\?)/i.test(asset.uri)
-      ) {
-        setError("JPEG形式の写真を選択してください。");
+      const contentType = selectedCardImageContentType(
+        asset.mimeType,
+        asset.uri,
+      );
+      if (!contentType) {
+        setError("JPEG、PNG、WebP形式の画像を選択してください。");
         return;
       }
       setCaptured({
-        contentType: "image/jpeg",
+        contentType,
         height: asset.height,
         width: asset.width,
         uri: asset.uri,
@@ -205,27 +210,6 @@ export function CardCaptureScreen({
     }
   }
 
-  if (!permission) {
-    return (
-      <View style={styles.cameraLoading}>
-        <ActivityIndicator color={colors.accent} size="large" />
-        <Text style={styles.cameraLoadingText}>カメラを確認中...</Text>
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <PermissionScreen
-        canAskAgain={permission.canAskAgain}
-        error={error}
-        onBack={onBack}
-        onRefresh={refreshCameraPermission}
-        onRequest={requestCameraPermission}
-      />
-    );
-  }
-
   if (captured) {
     return (
       <ScreenFrame
@@ -248,7 +232,7 @@ export function CardCaptureScreen({
         />
         <SecondaryButton
           disabled={uploading}
-          label="撮り直す"
+          label={Platform.OS === "web" ? "別の画像を選ぶ" : "撮り直す"}
           onPress={() => {
             setCaptured(null);
             setError(null);
@@ -261,6 +245,49 @@ export function CardCaptureScreen({
           onPress={onBack}
         />
       </ScreenFrame>
+    );
+  }
+
+  if (Platform.OS === "web") {
+    return (
+      <ScreenFrame
+        subtitle="スマホなどで撮影した、文字とカード全体が読める画像を選んでください。"
+        title="名刺画像を選択"
+      >
+        <Card>
+          <Text style={styles.cardTitle}>PC Pilot</Text>
+          <Text style={styles.bodyText}>
+            JPEG、PNG、WebPに対応しています。画像は非公開で処理され、読み取り後に削除されます。
+          </Text>
+          <ErrorNotice message={error} />
+          <PrimaryButton
+            label="名刺画像を選ぶ"
+            onPress={() => void selectImage()}
+          />
+          <SecondaryButton label="戻る" onPress={onBack} />
+        </Card>
+      </ScreenFrame>
+    );
+  }
+
+  if (!permission) {
+    return (
+      <View style={styles.cameraLoading}>
+        <ActivityIndicator color={colors.accent} size="large" />
+        <Text style={styles.cameraLoadingText}>カメラを確認中...</Text>
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <PermissionScreen
+        canAskAgain={permission.canAskAgain}
+        error={error}
+        onBack={onBack}
+        onRefresh={refreshCameraPermission}
+        onRequest={requestCameraPermission}
+      />
     );
   }
 

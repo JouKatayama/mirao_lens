@@ -5,6 +5,7 @@ import {
   createScanId,
   meetingGoalLabels,
   meetingGoalOptions,
+  selectedCardImageContentType,
 } from "./scan-capture";
 
 describe("card capture helpers", () => {
@@ -28,5 +29,17 @@ describe("card capture helpers", () => {
         scan_id: scanId,
       }).scan_id,
     ).toBe(scanId);
+  });
+
+  it("keeps supported desktop file types from MIME or extension", () => {
+    expect(selectedCardImageContentType("image/png", "blob:local")).toBe(
+      "image/png",
+    );
+    expect(
+      selectedCardImageContentType(undefined, "file:///card.WEBP?preview=1"),
+    ).toBe("image/webp");
+    expect(selectedCardImageContentType("image/gif", "file:///card.gif")).toBe(
+      null,
+    );
   });
 });
