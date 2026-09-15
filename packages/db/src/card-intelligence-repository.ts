@@ -75,7 +75,24 @@ function mapBusinessCard(row: {
   user_corrected: boolean;
   website: string | null;
 }): BusinessCardRecord {
-  return businessCardRecordSchema.parse(row);
+  return businessCardRecordSchema.parse({
+    address: row.address,
+    company: row.company,
+    created_at: row.created_at,
+    department: row.department,
+    email: row.email,
+    extraction_json: row.extraction_json,
+    field_confidence: row.field_confidence,
+    id: row.id,
+    language: row.language,
+    name: row.name,
+    phone: row.phone,
+    scan_id: row.scan_id,
+    title: row.title,
+    updated_at: row.updated_at,
+    user_corrected: row.user_corrected,
+    website: row.website,
+  });
 }
 
 export async function authenticateCardIntelligenceSession(
