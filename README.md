@@ -197,7 +197,10 @@ pnpm --filter @miraio/mobile web
 ```
 
 5. Open the Expo URL shown in the second terminal. OTP messages for local
-   sign-in are available at `http://127.0.0.1:56324`.
+   sign-in are available at `http://127.0.0.1:56324`. For a registration-free
+   local pilot, set `EXPO_PUBLIC_ENABLE_GUEST_LOGIN=1`; the local Supabase
+   configuration allows an isolated anonymous Auth session. Email OTP remains
+   available as the durable sign-in path.
 6. Use only a synthetic card or a card whose owner has agreed to the pilot.
    Check every extracted field before continuing because AI output can be
    wrong. Delete the scan or account from the app when the test is complete.

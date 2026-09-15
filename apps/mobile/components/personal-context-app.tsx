@@ -37,6 +37,7 @@ import {
   createPersonalContextApiClient,
 } from "../lib/context-api";
 import { hasUsablePersonalContext } from "../lib/context-form";
+import { isGuestLoginEnabled } from "../lib/pilot-auth";
 import { createScanApiClient, ScanApiError } from "../lib/scan-api";
 import { createScanId, type CapturedCardImage } from "../lib/scan-capture";
 import { readCapturedCardBytes } from "../lib/scan-image-file";
@@ -105,6 +106,9 @@ type Services =
   | Readonly<{ error: string; ok: false }>;
 
 export function PersonalContextApp() {
+  const guestLoginEnabled = isGuestLoginEnabled(
+    process.env.EXPO_PUBLIC_ENABLE_GUEST_LOGIN,
+  );
   const services = useMemo<Services>(() => {
     try {
       const analytics = createAnalyticsClient(process.env);
@@ -654,7 +658,10 @@ export function PersonalContextApp() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="dark" />
-        <AuthScreen client={services.supabase} />
+        <AuthScreen
+          client={services.supabase}
+          guestLoginEnabled={guestLoginEnabled}
+        />
       </SafeAreaView>
     );
   }
@@ -1578,6 +1585,7 @@ export function PersonalContextApp() {
       ) : null}
       {view === "context" && context ? (
         <MyContextScreen
+          isGuest={session.user.is_anonymous === true}
           items={context.items}
           loading={busy}
           onBack={() => setView(contextReturn)}

@@ -35,13 +35,37 @@ import {
   TextButton,
 } from "./ui";
 
-export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
+export function AuthScreen({
+  client,
+  guestLoginEnabled = false,
+}: {
+  client: MobileSupabaseClient;
+  guestLoginEnabled?: boolean;
+}) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<"guest" | "otp" | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const loading = loadingAction !== null;
+
+  async function signInAsGuest() {
+    setLoadingAction("guest");
+    setError(null);
+    setNotice(null);
+
+    const { error: authError } = await client.auth.signInAnonymously();
+    setLoadingAction(null);
+
+    if (authError) {
+      setError(
+        "ゲスト利用を開始できませんでした。通信状態を確認して再試行してください。",
+      );
+    }
+  }
 
   async function sendCode() {
     const normalizedEmail = email.trim().toLocaleLowerCase();
@@ -51,14 +75,14 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
       return;
     }
 
-    setLoading(true);
+    setLoadingAction("otp");
     setError(null);
     setNotice(null);
     const { error: authError } = await client.auth.signInWithOtp({
       email: normalizedEmail,
       options: { shouldCreateUser: true },
     });
-    setLoading(false);
+    setLoadingAction(null);
 
     if (authError) {
       setError("コードを送信できませんでした。少し待って再試行してください。");
@@ -80,14 +104,14 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
       return;
     }
 
-    setLoading(true);
+    setLoadingAction("otp");
     setError(null);
     const { error: authError } = await client.auth.verifyOtp({
       email,
       token: code,
       type: "email",
     });
-    setLoading(false);
+    setLoadingAction(null);
 
     if (authError) {
       setError(
@@ -98,10 +122,31 @@ export function AuthScreen({ client }: { client: MobileSupabaseClient }) {
 
   return (
     <ScreenFrame
-      subtitle="あなたのコンテキストは非公開です。ログインして安全に管理します。"
+      subtitle={
+        guestLoginEnabled
+          ? "登録なしですぐ試せます。データはこのゲスト専用に分離されます。"
+          : "あなたのコンテキストは非公開です。ログインして安全に管理します。"
+      }
       title="はじめる"
     >
+      {guestLoginEnabled ? (
+        <Card>
+          <Text style={styles.authSectionTitle}>まずは無料で試す</Text>
+          <Text style={styles.guestDescription}>
+            メール登録は不要です。このブラウザのデータを消すと履歴へ戻れないため、試用後はプロフィールからゲストデータを削除してください。
+          </Text>
+          <PrimaryButton
+            disabled={loadingAction === "otp"}
+            label="ゲストで始める"
+            loading={loadingAction === "guest"}
+            onPress={() => void signInAsGuest()}
+          />
+        </Card>
+      ) : null}
       <Card>
+        {guestLoginEnabled ? (
+          <Text style={styles.authSectionTitle}>メールで続ける</Text>
+        ) : null}
         <Field
           autoCapitalize="none"
           autoComplete="email"
@@ -366,6 +411,7 @@ export function ReviewScreen({
 }
 
 export function MyContextScreen({
+  isGuest = false,
   items: sourceItems,
   loading,
   onBack,
@@ -376,6 +422,7 @@ export function MyContextScreen({
   onSignOut,
   profile,
 }: {
+  isGuest?: boolean;
   items: PersonalContextItem[];
   loading: boolean;
   onBack: () => void;
@@ -491,15 +538,17 @@ export function MyContextScreen({
         ) : null;
       })}
       <ErrorNotice message={error} />
-      <SecondaryButton
-        disabled={loading}
-        label="ログアウト"
-        onPress={() => void onSignOut()}
-      />
+      {!isGuest ? (
+        <SecondaryButton
+          disabled={loading}
+          label="ログアウト"
+          onPress={() => void onSignOut()}
+        />
+      ) : null}
       {onDeleteAccount ? (
         <SecondaryButton
           danger
-          label="アカウントを削除"
+          label={isGuest ? "ゲストデータを削除して終了" : "アカウントを削除"}
           onPress={() => {
             const title = "アカウントを削除";
             const message =
@@ -545,9 +594,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
   },
+  authSectionTitle: { color: colors.text, fontSize: 17, fontWeight: "800" },
   contextGroup: { gap: spacing.md },
   contextGroupTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
   draftLabel: { color: colors.warning, fontSize: 12, fontWeight: "800" },
+  guestDescription: { color: colors.muted, fontSize: 13, lineHeight: 21 },
   itemHeading: {
     flexDirection: "row",
     alignItems: "center",
