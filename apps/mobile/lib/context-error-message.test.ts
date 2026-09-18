@@ -29,6 +29,15 @@ describe("onboardingErrorMessage", () => {
     ).toContain("1分ほど待ってから再試行");
   });
 
+  it("does not tell the user to wait when the provider balance is spent", () => {
+    const message = onboardingErrorMessage(
+      new ContextApiError(503, "ai_quota_exhausted", "Unavailable."),
+    );
+
+    expect(message).toContain("運営担当者");
+    expect(message).not.toContain("待って");
+  });
+
   it("asks the pilot user to contact the operator for missing AI config", () => {
     expect(
       onboardingErrorMessage(

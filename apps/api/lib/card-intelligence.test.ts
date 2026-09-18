@@ -121,6 +121,24 @@ describe("Card Intelligence processor", () => {
     );
   });
 
+  it("marks a spent provider balance terminal rather than retryable", async () => {
+    // It arrives on the same 429 as a rate limit, but no number of retries
+    // refills an account, and a retryable scan invites the user to keep trying.
+    extractor.extract.mockRejectedValue(
+      new CardExtractionError("quota_exhausted"),
+    );
+
+    await expect(
+      processCardIntelligence({ accessToken: "token", scanId }, dependencies),
+    ).resolves.toMatchObject({ status: "failed_terminal" });
+    expect(repository.failExtraction).toHaveBeenCalledWith(
+      scanId,
+      "00000000-0000-4000-8000-000000000515",
+      "quota_exhausted",
+      true,
+    );
+  });
+
   it("marks missing configuration terminal after creating a run", async () => {
     dependencies = {
       ...dependencies,
