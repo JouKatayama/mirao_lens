@@ -29,6 +29,7 @@ import {
   selectedCardImageContentType,
   type CapturedCardImage,
 } from "../lib/scan-capture";
+import { scanFailureGuidance } from "../lib/scan-failure-message";
 import { toOpenableSourceUrl } from "../lib/source-url";
 import {
   Card,
@@ -550,32 +551,28 @@ export function CardIntelligenceScreen({
     status.status === "failed_retryable" ||
     status.status === "failed_terminal"
   ) {
-    // The same-image retry re-uploads the capture held on this device; a scan
-    // opened from history has none, so the button could only ever fail.
-    const retryable = status.status === "failed_retryable" && canRetry;
+    const guidance = scanFailureGuidance({
+      errorCode: status.error_code,
+      hasLocalCapture: canRetry,
+      status: status.status,
+    });
 
     return (
       <ScreenFrame
         subtitle="名刺の内容やプロバイダー詳細はエラー表示・ログに含まれません。"
-        title={retryable ? "読み取りを再試行できます" : "撮り直してください"}
+        title={guidance.title}
       >
-        <ErrorNotice
-          message={
-            localError ??
-            error ??
-            (retryable
-              ? "一時的に名刺を読み取れませんでした。同じ画像で再試行できます。"
-              : "名刺を読み取れませんでした。お手数ですが新しく撮影してください。")
-          }
-        />
-        {retryable ? (
+        <ErrorNotice message={localError ?? error ?? guidance.message} />
+        {guidance.canRetrySameImage ? (
           <PrimaryButton
             label="同じ画像で再試行"
             loading={retrying}
             onPress={() => void retryExtraction()}
           />
         ) : null}
-        <SecondaryButton label="新しく撮影" onPress={onRecapture} />
+        {guidance.canRecapture ? (
+          <SecondaryButton label="新しく撮影" onPress={onRecapture} />
+        ) : null}
         <SecondaryButton label="Homeへ戻る" onPress={onDone} />
       </ScreenFrame>
     );

@@ -132,6 +132,25 @@ describe("Personal Context HTTP handlers", () => {
     expect(repository.persistOnboarding).not.toHaveBeenCalled();
   });
 
+  it("does not dress a spent provider balance as a retryable 429", async () => {
+    structurer.structure.mockRejectedValue(
+      new PersonalContextStructuringError("quota_exhausted"),
+    );
+
+    const response = await createPostOnboardingHandler(dependencies)(
+      request("http://localhost/v1/context/onboarding", {
+        method: "POST",
+        body: JSON.stringify(validBody),
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    expect(
+      ((await response.json()) as { error: { code: string } }).error.code,
+    ).toBe("ai_quota_exhausted");
+    expect(repository.persistOnboarding).not.toHaveBeenCalled();
+  });
+
   it("maps provider rate limits to a retryable 429", async () => {
     structurer.structure.mockRejectedValue(
       new PersonalContextStructuringError("rate_limited"),

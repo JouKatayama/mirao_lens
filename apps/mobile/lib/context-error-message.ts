@@ -40,6 +40,12 @@ export function onboardingErrorMessage(cause: unknown): string {
     return "AIの利用が混み合っています。入力内容は保持されています。1分ほど待ってから再試行してください。";
   }
 
+  // Deliberately not the rate-limit message above: retrying changes nothing
+  // here, and the only person who can fix it is not the one reading this.
+  if (apiError.code === "ai_quota_exhausted") {
+    return "この試用環境でAIを利用できる上限に達しました。入力内容は保持されています。運営担当者にお知らせください。";
+  }
+
   if (apiError.code === "ai_unconfigured") {
     return "この試用環境ではAIの準備が完了していません。入力内容は保持されています。運営担当者にお知らせください。";
   }

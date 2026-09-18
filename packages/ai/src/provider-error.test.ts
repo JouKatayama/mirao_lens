@@ -23,6 +23,33 @@ describe("classifyProviderFailure", () => {
     expect(classifyProviderFailure(new APIUserAbortError({}))).toBe("timeout");
   });
 
+  it("separates a spent balance from a rate limit on the same status", () => {
+    // Both arrive as 429 and only the body tells them apart. Read as a rate
+    // limit, a spent balance told the user to wait a minute for a recovery
+    // that never comes, and left the scan retryable forever.
+    expect(
+      classifyProviderFailure({
+        status: 429,
+        type: "insufficient_quota",
+        code: "credit_balance_exhausted",
+      }),
+    ).toBe("quota_exhausted");
+
+    // The code has changed over time, so neither field is trusted alone.
+    expect(
+      classifyProviderFailure({ status: 429, code: "insufficient_quota" }),
+    ).toBe("quota_exhausted");
+    expect(
+      classifyProviderFailure({ status: 429, type: "insufficient_quota" }),
+    ).toBe("quota_exhausted");
+  });
+
+  it("still treats a plain 429 as a rate limit", () => {
+    expect(
+      classifyProviderFailure({ status: 429, code: "rate_limit_exceeded" }),
+    ).toBe("rate_limited");
+  });
+
   it("keeps rate limiting ahead of an abort raised on the same error", () => {
     expect(classifyProviderFailure({ name: "AbortError", status: 429 })).toBe(
       "rate_limited",

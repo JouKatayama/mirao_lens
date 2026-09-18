@@ -62,7 +62,11 @@ function classifyFailure(error: unknown): Failure {
   if (error instanceof CardExtractionError) {
     return {
       code: error.code,
-      terminal: error.code === "configuration",
+      // A spent balance is as permanent as a malformed request until someone
+      // acts on the account: retrying cannot refill it, and a retryable scan
+      // invites the user to keep trying something that can never succeed.
+      terminal:
+        error.code === "configuration" || error.code === "quota_exhausted",
     };
   }
 

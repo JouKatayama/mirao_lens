@@ -18,6 +18,7 @@ import {
 export type MutualValueGeneratorErrorCode =
   | "configuration"
   | "invalid_output"
+  | "quota_exhausted"
   | "rate_limited"
   | "timeout"
   | "provider_unavailable";

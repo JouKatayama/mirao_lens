@@ -167,6 +167,17 @@ function structuringErrorResponse(error: unknown): Response {
     );
   }
 
+  // Not a 429: that status, and the wait-and-retry guidance the client derives
+  // from it, promises a recovery that never arrives. Only the operator can
+  // clear this one.
+  if (error.code === "quota_exhausted") {
+    return errorResponse(
+      503,
+      "ai_quota_exhausted",
+      "Personal Context suggestions are temporarily unavailable.",
+    );
+  }
+
   if (error.code === "rate_limited") {
     return errorResponse(
       429,
