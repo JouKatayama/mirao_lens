@@ -24,6 +24,7 @@ import {
   personalContextTypeLabels,
   type OnboardingFormValues,
 } from "../lib/context-form";
+import { onboardingErrorMessage } from "../lib/context-error-message";
 import type { MobileSupabaseClient } from "../lib/supabase";
 import {
   Card,
@@ -229,14 +230,7 @@ export function OnboardingScreen({
     try {
       await onSubmit(createOnboardingInput(values, requestId.current));
     } catch (cause) {
-      if (cause instanceof Error && cause.name === "ZodError") {
-        setError("「今の役割」と「提供できること」は必ず入力してください。");
-        return;
-      }
-
-      setError(
-        "候補を作成できませんでした。入力内容を保ったまま再試行できます。",
-      );
+      setError(onboardingErrorMessage(cause));
     }
   }
 

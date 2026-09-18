@@ -60,7 +60,13 @@ ML-001 through ML-017 currently provide:
   deletion (`DELETE /v1/account`) with storage cleanup and cascading DB removal,
 - an authenticated `POST /api/internal/cleanup-expired-scans` sweep that
   removes raw card images whose expiry has passed, using a service-role client
-  to cross user boundaries.
+  to cross user boundaries,
+- an opt-in AI review loop: an eval-only expert judge that scores a generated
+  Flash Brief on the eight rubric dimensions and names its weaknesses, persona
+  definitions that expand into evaluation inputs, a run report with a
+  regression diff against the previous run, and an agreement check that
+  measures the judge against human-scored anchor cases before any product
+  score is read.
 
 ## Repository map
 
@@ -76,7 +82,7 @@ packages/
   ui-tokens/       Small visual token layer
   test-fixtures/   Deterministic non-PII fixtures
 docs/              Product, architecture, ADR, and execution plans
-evals/             Future AI golden datasets and scoring
+evals/             AI golden datasets, personas, scoring, and human anchors
 supabase/          Local config, migrations, RLS tests, and non-PII seed
 ```
 
