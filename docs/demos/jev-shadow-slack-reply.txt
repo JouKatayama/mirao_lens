@@ -1,0 +1,21 @@
+代表向けデモを3枚にまとめました（合成名刺1件：架空精密工業の情報システム課長 × 在庫管理SaaSの法人営業）。
+
+*現在の本番経路*
+名刺画像の抽出、会社・役割文脈、Flash Brief は OpenAI の構造化出力で各1回、計3回です。
+Personal Context 検索を使う場合は埋め込み1回＋pgvector の cosine 距離による DB 検索が加わります。
+Identity の既存人物照合は DB 処理です。Jev は本番経路では0回です。
+文章・キーワード・potential_score・identity_status・claim_type は、現状では Flash Brief の1回の構造化出力に同梱されています。
+
+*PHASE 3 の今回の実測*
+合成3ケース × 同一入力5反復 × 5つの shadow 評価 = Jev 75リクエストを回し、JSON レポートに保存しました。
+このケースでは SAY THIS は candidate_1 を5/5回選択。confidence は 0.32–0.38（幅0.06）。
+Identity は medium_confidence を5/5回選択し、confidence は 0.54–0.70（幅0.16）。
+POTENTIAL は最頻レベル5、期待値4.64–4.68、confidence 0.71–0.74でした。
+全ケースの score 質問では、期待値を四捨五入したレベルと最頻レベルの不一致が49/135件です。
+応答時間は Jev 1回あたり p50 225ms / p95 406ms、5評価を直列に通すと p50 1,159ms / p95 1,795msでした。
+
+*PHASE 4 について*
+「Jevで判定し、OpenAIが文章化」は段階分離の方向性として合っています。
+ただし Jev の判定を本番で採用する処理も、その後にOpenAIが再文章化する処理も未実装です。
+閾値はまだ置けません。同一ケースの confidence 揺れ幅は最大0.18で、人間の採点との一致も未検証です。
+ブリーフ本文は OpenAI 残高切れのため実生成ではなく想定例。Jev の数字だけが実測です。
