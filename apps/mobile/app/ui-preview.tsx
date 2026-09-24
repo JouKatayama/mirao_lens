@@ -1,4 +1,5 @@
-// Opt-in development gallery. Uses synthetic content and never calls an API.
+// Synthetic UI flow for the public demo route and opt-in development gallery.
+// It never calls an API.
 import type {
   EncounterHistoryItem,
   EvidenceItem,
@@ -10,9 +11,16 @@ import type {
   ScanHistoryItem,
 } from "@miraio/domain";
 import { colors } from "@miraio/ui-tokens";
-import { Redirect, useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams, usePathname } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AnalysisPreparationScreen } from "../components/analysis-preparation-screen";
 import { CameraFrame } from "../components/camera-frame";
@@ -23,6 +31,8 @@ import {
   EvidenceScreen,
 } from "../components/card-scan-screens";
 import { HomeScreen } from "../components/home-screen";
+import { OnboardingScreen } from "../components/personal-context-screens";
+import { ProcessingDemoScreen } from "../components/processing-demo-screen";
 import {
   FlashBriefScreen,
   InteractionScreen,
@@ -223,8 +233,10 @@ const demoRecordedActions: NextActionResponse[] = [
 ];
 const screens = [
   "welcome",
+  "onboarding",
   "pc-upload",
   "camera",
+  "processing",
   "summary",
   "summary-long",
   "preparation",
@@ -240,8 +252,10 @@ const screens = [
 ] as const;
 const titles = [
   "開始",
+  "プロフィール登録",
   "PC画像選択",
   "名刺を撮影",
+  "処理中",
   "人物サマリー",
   "人物サマリー（長文）",
   "分析の準備",
@@ -262,14 +276,44 @@ function DemoScreen({ initial }: { initial: string }) {
   const [torch, setTorch] = useState(false);
   const [history, setHistory] = useState(demoHistory);
   const [notice, setNotice] = useState("");
+  const [demoNote, setDemoNote] = useState<string | null>(null);
+  const [demoActions, setDemoActions] = useState<NextActionResponse[]>([]);
   const home = () => setScreen("home");
   const summary = () => setScreen("summary");
   const noOp = async () => {};
-  // The preview never schedules anything; it reports the accept as saved
-  // without a reminder.
-  const noOpAccept = async () => false;
+  // Demo changes live only in memory. Nothing is sent to a server or scheduled.
+  const saveDemoAction = async (
+    actionText: string,
+    timingText: string | null,
+    dueAt: string | null,
+  ) => {
+    setDemoActions([
+      {
+        action_text: actionText,
+        due_at: dueAt,
+        id: "00000000-0000-4000-8000-000000000027",
+        scan_id: "00000000-0000-4000-8000-000000000026",
+        source: "ai",
+        status: "accepted",
+        timing_text: timingText,
+      },
+    ]);
+    return false;
+  };
   if (screen === "welcome")
     return <WelcomeScreen onStart={home} onLogin={home} />;
+  if (screen === "onboarding")
+    return (
+      <OnboardingScreen
+        initialProfile={{
+          current_company: "株式会社サンプル",
+          current_role: "Webサービスの企画・開発",
+        }}
+        loading={false}
+        onBack={home}
+        onSubmit={async () => setScreen("home")}
+      />
+    );
   if (screen === "pc-upload")
     return (
       <CardCaptureScreen
@@ -304,6 +348,8 @@ function DemoScreen({ initial }: { initial: string }) {
         </View>
       </CameraFrame>
     );
+  if (screen === "processing")
+    return <ProcessingDemoScreen onBack={home} onReady={summary} />;
   if (screen === "summary" || screen === "summary-long")
     return (
       <FlashBriefScreen
@@ -324,7 +370,7 @@ function DemoScreen({ initial }: { initial: string }) {
         onViewEvidence={() => setScreen("detail")}
         onViewMutualValue={() => setScreen("give-get")}
         onViewInteraction={() => setScreen("note")}
-        previousEncounters={demoEncounters.length}
+        previousEncounters={0}
       />
     );
   if (screen === "preparation")
@@ -359,14 +405,26 @@ function DemoScreen({ initial }: { initial: string }) {
         card={person}
         error={null}
         mutualValue={value}
-        onAcceptNextAction={noOpAccept}
+        onAcceptNextAction={saveDemoAction}
         onBack={() => setScreen("give-get")}
         onCompleteNextAction={noOp}
-        onDismissNextAction={noOp}
-        onSaveNote={noOp}
+        onDismissNextAction={async (actionText) => {
+          setDemoActions([
+            {
+              action_text: actionText,
+              due_at: null,
+              id: "00000000-0000-4000-8000-000000000027",
+              scan_id: "00000000-0000-4000-8000-000000000026",
+              source: "ai",
+              status: "dismissed",
+              timing_text: null,
+            },
+          ]);
+        }}
+        onSaveNote={async (text) => setDemoNote(text)}
         onSayThisUsed={() => undefined}
         onDone={home}
-        record={{ actions: [], note: null }}
+        record={{ actions: demoActions, note: demoNote }}
         sayThis={brief.say_this}
       />
     );
@@ -376,12 +434,12 @@ function DemoScreen({ initial }: { initial: string }) {
         card={person}
         error={null}
         mutualValue={value}
-        onAcceptNextAction={noOpAccept}
+        onAcceptNextAction={saveDemoAction}
         onBack={() => setScreen("give-get")}
         onCompleteNextAction={noOp}
         onDismissNextAction={noOp}
         onSaveNote={noOp}
-        onSetNextActionReminder={noOpAccept}
+        onSetNextActionReminder={async () => false}
         onDone={home}
         record={{
           actions: demoRecordedActions,
@@ -445,26 +503,100 @@ function DemoScreen({ initial }: { initial: string }) {
 
 export default function UiPreview() {
   const { screen } = useLocalSearchParams<{ screen?: string }>();
-  if (!__DEV__ || process.env.EXPO_PUBLIC_ENABLE_UI_PREVIEW !== "1")
+  const pathname = usePathname();
+  const { width } = useWindowDimensions();
+  const [demoStart, setDemoStart] = useState("home");
+  const isGalleryRoute = pathname === "/ui-preview";
+  if (
+    isGalleryRoute &&
+    (!__DEV__ || process.env.EXPO_PUBLIC_ENABLE_UI_PREVIEW !== "1")
+  )
     return <Redirect href="/" />;
-  if (screen)
+  if (isGalleryRoute && screen)
     return (
       <SafeAreaView style={s.fill}>
         <DemoScreen key={screen} initial={screen} />
       </SafeAreaView>
     );
-  return (
-    <ScrollView contentContainerStyle={s.gallery}>
-      <Text style={s.galleryTitle}>Miraio Lens — UI確認用（架空データ）</Text>
-      <View style={s.grid}>
-        {screens.map((item, i) => (
-          <View key={item} style={s.tile}>
-            <Text style={s.tileLabel}>{titles[i]}</Text>
-            <View style={s.phone}>
-              <DemoScreen initial={item} />
+  if (isGalleryRoute)
+    return (
+      <ScrollView contentContainerStyle={s.gallery}>
+        <Text style={s.galleryTitle}>Miraio Lens — UI確認用（架空データ）</Text>
+        <View style={s.grid}>
+          {screens.map((item, i) => (
+            <View key={item} style={s.tile}>
+              <Text style={s.tileLabel}>{titles[i]}</Text>
+              <View style={s.phone}>
+                <DemoScreen initial={item} />
+              </View>
             </View>
+          ))}
+        </View>
+      </ScrollView>
+    );
+  const compact = width < 850;
+  const demoWidth = Math.min(375, width - 32);
+  const quickStarts = [
+    ["ホーム", "home"],
+    ["プロフィール登録", "onboarding"],
+    ["名刺を撮る", "camera"],
+    ["処理中", "processing"],
+    ["Flash Brief", "summary"],
+    ["相互価値", "give-get"],
+    ["次の行動", "note"],
+  ] as const;
+  return (
+    <ScrollView contentContainerStyle={s.demoPage}>
+      <View style={[s.demoLayout, compact && s.demoLayoutCompact]}>
+        <View style={[s.demoIntro, compact && s.demoIntroCompact]}>
+          <Text style={s.demoBrand}>Miraio Lens</Text>
+          <Text style={[s.demoEyebrow, compact && s.demoEyebrowCompact]}>
+            操作できる製品モック
+          </Text>
+          <Text style={[s.demoHeadline, compact && s.demoHeadlineCompact]}>
+            名刺交換の、その先へ。
+          </Text>
+          <Text
+            style={[s.demoDescription, compact && s.demoDescriptionCompact]}
+          >
+            {compact
+              ? "名刺を撮る → 接点を見る → 次の一手を残す。"
+              : "名刺を撮る → 相手と自分の接点を読む → 会話後の一手を残す。画面を操作して、最初の出会いの流れを体験できます。"}
+          </Text>
+          <View style={[s.demoSteps, compact && s.demoStepsCompact]}>
+            {quickStarts.map(([label, value], index) => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${label}から見る`}
+                key={value}
+                onPress={() => setDemoStart(value)}
+                style={[
+                  s.demoStep,
+                  compact && s.demoStepCompact,
+                  demoStart === value && s.demoStepActive,
+                ]}
+              >
+                <Text style={s.demoStepNumber}>
+                  {String(index + 1).padStart(2, "0")}
+                </Text>
+                <Text style={s.demoStepLabel}>{label}</Text>
+              </Pressable>
+            ))}
           </View>
-        ))}
+          {!compact ? (
+            <Text style={s.demoDisclosure}>
+              架空の名刺・人物情報を使用しています。入力内容はサーバーへ保存されません。
+            </Text>
+          ) : null}
+        </View>
+        <View style={[s.demoPhone, { width: demoWidth }]}>
+          <DemoScreen key={demoStart} initial={demoStart} />
+        </View>
+        {compact ? (
+          <Text style={s.demoDisclosureCompact}>
+            架空の名刺・人物情報を使用しています。入力内容はサーバーへ保存されません。
+          </Text>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -508,4 +640,92 @@ const s = StyleSheet.create({
   demoCompany: { fontSize: 12 },
   demoName: { fontSize: 23, fontWeight: "600" },
   demoCaption: { fontSize: 10, color: colors.muted, paddingTop: 10 },
+  demoPage: {
+    alignItems: "center",
+    backgroundColor: "#F6F4EE",
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
+  demoLayout: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 72,
+    justifyContent: "center",
+    maxWidth: 1120,
+    width: "100%",
+  },
+  demoLayoutCompact: { flexDirection: "column", gap: 16 },
+  demoIntro: { flex: 1, maxWidth: 580 },
+  demoIntroCompact: { width: "100%" },
+  demoBrand: { color: "#173638", fontSize: 20, fontWeight: "800" },
+  demoEyebrow: {
+    color: "#167A76",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 58,
+  },
+  demoEyebrowCompact: { marginTop: 20 },
+  demoHeadline: {
+    color: "#173638",
+    fontSize: 43,
+    fontWeight: "800",
+    lineHeight: 60,
+    marginTop: 16,
+  },
+  demoHeadlineCompact: { fontSize: 31, lineHeight: 43, marginTop: 8 },
+  demoDescription: {
+    color: "#4D605E",
+    fontSize: 18,
+    lineHeight: 31,
+    marginTop: 20,
+  },
+  demoDescriptionCompact: { fontSize: 15, lineHeight: 24, marginTop: 8 },
+  demoSteps: { gap: 8, marginTop: 34 },
+  demoStepsCompact: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 16,
+  },
+  demoStep: {
+    alignItems: "center",
+    borderBottomColor: "#DDDCD3",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 18,
+    minHeight: 48,
+    paddingHorizontal: 8,
+  },
+  demoStepCompact: {
+    borderColor: "#DDDCD3",
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 9,
+  },
+  demoStepActive: { backgroundColor: "#E2ECE7", borderRadius: 8 },
+  demoStepNumber: { color: "#B96448", fontSize: 15, fontWeight: "700" },
+  demoStepLabel: { color: "#173638", fontSize: 17, fontWeight: "700" },
+  demoDisclosure: {
+    color: "#5A6661",
+    fontSize: 13,
+    lineHeight: 22,
+    marginTop: 30,
+  },
+  demoDisclosureCompact: {
+    color: "#5A6661",
+    fontSize: 12,
+    lineHeight: 20,
+    maxWidth: 375,
+  },
+  demoPhone: {
+    backgroundColor: colors.background,
+    borderColor: "#D8D8D1",
+    borderRadius: 28,
+    borderWidth: 8,
+    height: 812,
+    overflow: "hidden",
+  },
 });
