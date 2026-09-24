@@ -5,5 +5,6 @@ export * from "./eval-assertions";
 export * from "./eval-rubric";
 export * from "./flash-brief-fixtures";
 export * from "./judge-agreement";
+export * from "./jev-shadow-fixtures";
 export * from "./mutual-value-fixtures";
 export * from "./persona-fixtures";

@@ -7,6 +7,8 @@ import {
 } from "@miraio/domain";
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { identityStatusInstructionBlock } from "./identity-status-rubric";
+import { potentialScoreInstructionBlock } from "./potential-score-rubric";
 import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
@@ -90,29 +92,9 @@ POTENTIAL — One or two sentences describing the relationship potential:
 what the user can give, receive, or bridge with this person. Ground it in the
 user's actual offers and seeks.
 
-POTENTIAL_SCORE — The same judgement as an integer from 1 to 5. This is an
-explainable heuristic about the strength of the overlap, not a score for the
-person: rate how much concrete, grounded common ground the POTENTIAL sentences
-actually rest on.
-- 5: several explicit overlaps with what the user offers or seeks.
-- 4: one explicit overlap, clearly relevant to the meeting goal.
-- 3: same industry or adjacent role, no explicit overlap.
-- 2: only the meeting goal connects them.
-- 1: the card is too sparse to see any connection.
-The score must agree with the POTENTIAL sentences; never score higher than the
-evidence you just described.
+${potentialScoreInstructionBlock}
 
-IDENTITY_STATUS — Assess how confidently the card data identifies this
-specific individual. Choose exactly one value:
-- "high_confidence": full name + company present AND email domain matches
-  company domain, OR the name is demonstrably uncommon combined with a unique
-  title/department.
-- "medium_confidence": full name + company are present but email is absent or
-  the domain does not match the company.
-- "unresolved": name is null/blank, or only a single name with no company, or
-  the data is too sparse to form a working hypothesis.
-- "verified": do not use — this requires external confirmation not available
-  from card data alone.
+${identityStatusInstructionBlock}
 
 If prior_identity_status is provided (not null), treat it as a confidence
 floor: you may output the same level or upgrade it (e.g., unresolved →

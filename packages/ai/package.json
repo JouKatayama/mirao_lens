@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@miraio/domain": "workspace:*",
+    "@typesafe-ai/sdk": "^0.6.0",
     "openai": "^7.4.0",
     "zod": "^3.25.76"
   },

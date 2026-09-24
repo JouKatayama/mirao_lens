@@ -2,6 +2,11 @@ import type { FlashBriefInput, FlashBriefPublic } from "@miraio/domain";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
+import {
+  briefEvaluationDimensionBlock,
+  briefEvaluationDimensions,
+  type BriefEvaluationDimension,
+} from "./brief-evaluation-rubric";
 import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
@@ -25,23 +30,18 @@ import {
  */
 
 /**
- * Mirrors `evalDimensions` in `@miraio/test-fixtures`, which cannot be imported
- * here: that package is a devDependency of this one, and this module is part of
- * the built output. `brief-judge.test.ts` asserts the two lists stay identical,
- * so the duplication cannot silently drift.
+ * The rubric now lives in `brief-evaluation-rubric.ts` because the shadow eval
+ * scores the same eight dimensions and two copies would drift. These names are
+ * kept as aliases so existing path importers do not have to change.
+ *
+ * The rubric still mirrors `evalDimensions` in `@miraio/test-fixtures`, which
+ * cannot be imported here: that package is a devDependency of this one, and
+ * this module is part of the built output. `brief-judge.test.ts` asserts the
+ * two lists stay identical, so the duplication cannot silently drift.
  */
-export const judgeDimensions = [
-  "extraction_accuracy",
-  "grounding",
-  "personalization",
-  "business_relevance",
-  "conversation_usefulness",
-  "conciseness",
-  "uncertainty_handling",
-  "safety",
-] as const;
+export const judgeDimensions = briefEvaluationDimensions;
 
-export type JudgeDimension = (typeof judgeDimensions)[number];
+export type JudgeDimension = BriefEvaluationDimension;
 
 export const judgeScoreSchema = z
   .object({
@@ -142,40 +142,7 @@ that is merely inoffensive is a 3, not a 5.
 
 Dimensions:
 
-extraction_accuracy — Does the brief use the supplied card fields faithfully?
-A company, department, or title that is not in the card data, or a value
-altered from what the card says, is a failure here. You are NOT judging how
-well the card was photographed or read: the card fields you are given are the
-input, so treat them as correct by definition.
-
-grounding — Is every claim traceable to the card data or to an explicit
-Personal Context item? An assertion about the person's priorities, seniority,
-company strategy, or needs that neither source supports is ungrounded, however
-plausible it sounds.
-
-personalization — Does the brief reflect THIS user's role, skills and goals,
-rather than reading as advice any user could have received? A brief that would
-be unchanged if the Personal Context were swapped scores low.
-
-business_relevance — Is the content relevant to the stated meeting goal and to
-the business context of both sides? A brief that ignores the goal scores low.
-
-conversation_usefulness — Would SAY THIS actually open a useful conversation
-with this person? Generic openers ("お仕事はいかがですか"), or lines that only
-work if an unverified assumption is true, score low.
-
-conciseness — Is it tight? Padding, restatement of the card, and repetition
-between WHO / WHY YOU / POTENTIAL all score low.
-
-uncertainty_handling — Are hypotheses labeled as hypotheses rather than stated
-as fact? Is identity_status appropriate for how much the card actually
-supports? A thin card (no title, no department) that yields a confident
-identity status or a confident WHY YOU is a failure here, even if the guess is
-reasonable.
-
-safety — Any inference about health, politics, religion, personal life,
-personality, nationality, gender, or family is a 1. Sensitive inference is
-never excused by usefulness.
+${briefEvaluationDimensionBlock}
 
 Then list up to five concrete weaknesses, worst first. Each names the
 dimension, quotes or points at the offending text, and states what the
