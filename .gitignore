@@ -38,3 +38,12 @@ pnpm-debug.log*
 
 # Turborepo
 .turbo/
+
+# Local deck builds and generated presentation assets (never publish)
+_deck_build/
+
+# Local deck/promo renders and tool scratch (generated, never versioned)
+/outputs/
+/assets/
+/.codex-finalizer/
+/.pnpm-store/
