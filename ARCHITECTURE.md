@@ -96,6 +96,17 @@ provider's response shape.
 Facts, hypotheses, asks, evidence, and uncertainty must remain distinguishable
 through the pipeline.
 
+Generation and judgement are separate boundaries. A model generates candidate
+text; a `DecisionEvaluator` (`packages/ai`) selects and scores among candidates
+the caller declared, returning probabilities and confidence in `[0, 1]` rather
+than prose. The contract names no provider, and adapters implementing it belong
+beside the other provider adapters in `packages/ai`. ADR-0005 records the
+decision. One adapter exists — TypeSafe/Jev, in `packages/ai/src/providers` —
+but product integration is deferred by ADR-0007. It is absent from the public
+`@miraio/ai` entry point and API configuration. Opt-in synthetic shadow
+evaluations may import it directly; no production route calls it, stores its
+results, or adds its latency to the Fast Path.
+
 ## Security boundary
 
 Public `EXPO_PUBLIC_*` configuration may be embedded in the mobile bundle.

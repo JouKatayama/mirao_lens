@@ -7,6 +7,7 @@ import {
 } from "@miraio/domain";
 import { zodTextFormat } from "openai/helpers/zod";
 
+import { mutualValueClaimRule } from "./mutual-value-claim-rubric";
 import { classifyProviderFailure } from "./provider-error";
 import {
   createOpenAIClient,
@@ -85,8 +86,7 @@ Strict rules:
 - Respond in the user's locale (Japanese if locale is "ja").
 - Do not translate names or company names.
 - Never invent roles, skills, achievements, or relationships.
-- Distinguish facts (grounded in card data or explicit user context) from
-  hypotheses (inferred or assumed). Use claim_type accordingly.
+${mutualValueClaimRule}
 - Never include sensitive inferences (personality, politics, health, etc.).
 - Do not manufacture complementarity where none plausibly exists.
 - Keep each item concise and actionable.

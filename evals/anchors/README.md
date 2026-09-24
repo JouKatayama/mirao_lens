@@ -74,3 +74,48 @@ need work: sharpen the dimension definitions it disagrees on, then re-run.
 These files are committed. They contain scores of synthetic cases, so they
 carry no personal or business data — and they are the slowest asset here to
 rebuild.
+
+## Jev shadow human review (offline)
+
+This is separate from the OpenAI brief judge above. It compares the five Jev
+shadow evaluations with human answers to the **same closed questions**. It
+does not call Jev or OpenAI and does not set a threshold.
+
+1. First run `MIRAIO_RUN_JEV_SHADOW=1` with `TYPESAFE_API_KEY` to produce
+   `evals/reports/jev-shadow-latest.json` (see the shadow runner). Do not
+   expose this report to human scorers before they label.
+2. In PowerShell, run:
+
+   ```powershell
+   $env:MIRAIO_RUN_JEV_HUMAN_REVIEW = "1"
+   pnpm --filter @miraio/ai exec vitest run src/jev-shadow-human-review.eval.test.ts --disable-console-intercept
+   ```
+
+   This creates `evals/reports/jev-shadow-human-template.json`: 3 synthetic
+   cases, 5 evaluations per case, 87 questions. Each contains the **exact
+   minimized state and question** shown to Jev, but no Jev answer.
+
+3. Copy that template to `evals/anchors/jev-shadow-human-labels.json`. Have
+   reviewers fill only `human_answer`: one declared option string for a
+   `choice`, one declared numeric level for a `score`, or `true`/`false` for a
+   `boolean`. Leave uncertain or unreviewed answers as `null`. Do not copy
+   Jev's answers or infer labels from its probabilities.
+4. Re-run the command. It writes
+   `evals/reports/jev-shadow-human-review.json` with coverage, per-question
+   comparisons and previous-run deltas. No API key is needed for this step.
+
+The denominator is unique labeled case/evaluation/question combinations,
+**not** the number of repeated Jev calls. Choice agreement uses the majority
+selection across repeats; ties are reported as undecided and omitted from the
+agreement denominator. `abstain` is a normal choice and also has its own
+summary. Score error is the absolute difference between the human level and
+the mean Jev **expected score** across repeats. Modal-level agreement is shown
+separately, with tied modes omitted. Boolean Brier error uses the mean Jev
+probability against the human true/false label. Previous-run deltas are only
+comparable if the human labels and coverage are unchanged.
+
+The shadow state omits raw card image/OCR and some Personal Context by design.
+Reviewers can therefore judge the stated questions against that context, but
+this sheet cannot establish OCR extraction accuracy or human agreement on the
+full original context. One reviewer per question also does not measure
+inter-rater agreement. Neither limitation should be read as a passing gate.

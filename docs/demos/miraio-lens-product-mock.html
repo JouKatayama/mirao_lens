@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#151226" />
+    <title>Miraio Lens｜紹介用アプリモック</title>
+    <style>
+      :root {
+        font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+        color: #18152a;
+        background: #151226;
+        font-synthesis: none;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      button, textarea { font: inherit; }
+      button { cursor: pointer; }
+      button:focus-visible, textarea:focus-visible { outline: 3px solid #aa8aff; outline-offset: 3px; }
+      .page { min-height: 100vh; overflow: hidden; background: radial-gradient(circle at 14% 14%, #392b68 0, transparent 32%), radial-gradient(circle at 86% 76%, #302356 0, transparent 32%), #151226; color: #fff; }
+      .shell { width: min(1300px, calc(100% - 72px)); margin: auto; }
+      header { display: flex; align-items: center; justify-content: space-between; min-height: 82px; border-bottom: 1px solid #ffffff1a; }
+      .brand { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 17px; font-weight: 800; letter-spacing: .07em; }
+      .mark { width: 33px; height: 33px; display: grid; place-items: center; border: 2px solid #ad8cff; border-radius: 10px; color: #d8c8ff; font-size: 23px; line-height: 1; transform: rotate(-8deg); }
+      .header-note { color: #bcb2d5; font-size: 12px; letter-spacing: .08em; }
+      main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(355px, 495px); align-items: center; gap: min(7vw, 100px); min-height: calc(100vh - 82px); padding: 50px 0 64px; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 9px; color: #c7b0ff; font-size: 12px; font-weight: 800; letter-spacing: .18em; }
+      .eyebrow::before { content: ""; width: 19px; height: 2px; background: #a77cff; }
+      h1 { margin: 25px 0 20px; font-size: clamp(40px, 4.5vw, 70px); line-height: 1.28; letter-spacing: -.055em; }
+      h1 span { color: #b69aff; }
+      .lead { max-width: 580px; margin: 0; color: #d9d2e9; font-size: clamp(16px, 1.45vw, 19px); line-height: 1.85; }
+      .story { margin-top: 48px; display: grid; gap: 9px; }
+      .story button { display: flex; align-items: center; gap: 16px; width: min(100%, 535px); min-height: 61px; padding: 11px 17px; color: #bdb5d3; text-align: left; background: transparent; border: 1px solid transparent; border-radius: 14px; transition: background .2s, color .2s, border-color .2s; }
+      .story button:hover, .story button[aria-current="step"] { color: #fff; background: #ffffff12; border-color: #ffffff22; }
+      .story .number { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #80769b; border-radius: 50%; font-size: 12px; font-weight: 800; }
+      .story button[aria-current="step"] .number { color: #261747; background: #c6aaff; border-color: #c6aaff; }
+      .story strong { display: block; color: inherit; font-size: 15px; letter-spacing: .02em; }
+      .story small { display: block; margin-top: 2px; color: #a9a0bf; font-size: 12px; line-height: 1.5; }
+      .story button[aria-current="step"] small { color: #ddd5ee; }
+      .disclaimer { margin: 25px 0 0; color: #968da9; font-size: 11px; line-height: 1.7; }
+      .stage { position: relative; display: flex; justify-content: center; align-items: center; min-height: 690px; }
+      .halo { position: absolute; width: 530px; height: 530px; border: 1px solid #ffffff13; border-radius: 50%; box-shadow: 0 0 0 52px #ffffff06, 0 0 0 104px #ffffff03; }
+      .phone { position: relative; width: 355px; height: 690px; padding: 9px; border: 2px solid #554d6b; border-radius: 45px; background: #0d0c13; box-shadow: 0 35px 90px #0009, inset 0 0 0 2px #8b829b4d; }
+      .phone::before { content: ""; position: absolute; z-index: 4; top: 13px; left: 50%; width: 104px; height: 23px; transform: translateX(-50%); background: #0d0c13; border-radius: 0 0 16px 16px; }
+      .display { position: relative; height: 100%; overflow: hidden; border-radius: 35px; background: #faf9fd; color: #18152a; }
+      .status { display: flex; justify-content: space-between; height: 45px; padding: 13px 26px 0; color: #312c3d; font: 700 12px Arial, sans-serif; }
+      .screen { display: none; height: calc(100% - 45px); overflow-y: auto; scrollbar-width: none; }
+      .screen::-webkit-scrollbar { display: none; }
+      .screen.active { display: block; }
+      .apphead { display: flex; justify-content: space-between; align-items: center; min-height: 52px; padding: 0 23px; }
+      .apphead .title { font-size: 15px; font-weight: 800; }
+      .apphead .back, .apphead .more { padding: 6px 0; color: #332651; background: none; border: 0; font-size: 21px; }
+      .apphead .more { font-size: 17px; }
+      .content { padding: 15px 22px 28px; }
+      .app-eyebrow { margin: 0 0 9px; color: #693cb3; font-size: 11px; font-weight: 900; letter-spacing: .13em; }
+      .screen h2 { margin: 0; font-size: 23px; line-height: 1.45; letter-spacing: -.04em; }
+      .sub { margin: 9px 0 20px; color: #686277; font-size: 12px; line-height: 1.7; }
+      .card { padding: 18px; background: white; border: 1px solid #e9e4f0; border-radius: 18px; box-shadow: 0 5px 16px #20142b08; }
+      .card + .card { margin-top: 10px; }
+      .card-label { margin-bottom: 10px; color: #6235a8; font-size: 11px; font-weight: 900; letter-spacing: .09em; }
+      .card p { margin: 0; font-size: 13px; line-height: 1.65; }
+      .tagrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+      .tag { display: inline-block; padding: 6px 9px; color: #5c319c; background: #f1eafa; border-radius: 7px; font-size: 10px; font-weight: 700; }
+      .fact { color: #13745a; background: #e7f5ef; }
+      .hypothesis { color: #8b5c0d; background: #fff3d9; }
+      .muted { color: #736c80; }
+      .full { width: 100%; min-height: 47px; margin-top: 16px; color: white; background: #6136af; border: 0; border-radius: 11px; font-size: 13px; font-weight: 800; box-shadow: 0 6px 15px #6338ac30; }
+      .full:hover { background: #4f2899; }
+      .secondary { width: 100%; min-height: 42px; margin-top: 9px; color: #6036a7; background: #f0eafa; border: 0; border-radius: 11px; font-size: 12px; font-weight: 800; }
+      .profile { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
+      .avatar { flex: none; width: 50px; height: 50px; display: grid; place-items: center; color: #6735b3; background: #f0e8fb; border-radius: 17px; font-size: 22px; }
+      .profile b { display: block; font-size: 16px; }
+      .profile span { display: block; margin-top: 3px; color: #6b6577; font-size: 11px; line-height: 1.45; }
+      .field { display: flex; justify-content: space-between; gap: 10px; padding: 11px 0; border-top: 1px solid #f0edf4; font-size: 11px; }
+      .field b { color: #282139; text-align: right; }
+      .field span { color: #81798e; }
+      .goal { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 13px 15px; background: #f5f0fc; border-radius: 11px; font-size: 11px; }
+      .goal b { color: #5d2fa5; }
+      .camera-screen { background: #101018; color: white; }
+      .camera-screen .status { color: white; }
+      .camera-screen .apphead { color: white; }
+      .camera-screen .back { color: white; }
+      .camera-view { position: relative; display: grid; place-items: center; height: 400px; margin: 9px 15px; overflow: hidden; background: radial-gradient(circle at 50% 50%, #454553, #1d1d27 65%); border-radius: 17px; }
+      .scan-card { width: 267px; height: 154px; padding: 22px; color: #242235; background: #f9f9f8; border-radius: 4px; box-shadow: 0 13px 33px #0006; transform: rotate(-5deg); }
+      .scan-card small { display: block; margin-bottom: 29px; color: #64538b; font-size: 10px; font-weight: 800; }
+      .scan-card strong { display: block; font-size: 19px; }
+      .scan-card span { display: block; margin-top: 5px; color: #68616e; font-size: 10px; }
+      .corner { position: absolute; width: 30px; height: 30px; border-color: #c9b0ff; border-style: solid; }
+      .tl { top: 88px; left: 18px; border-width: 3px 0 0 3px; border-radius: 10px 0 0; }
+      .tr { top: 88px; right: 18px; border-width: 3px 3px 0 0; border-radius: 0 10px 0 0; }
+      .bl { bottom: 88px; left: 18px; border-width: 0 0 3px 3px; border-radius: 0 0 0 10px; }
+      .br { bottom: 88px; right: 18px; border-width: 0 3px 3px 0; border-radius: 0 0 10px 0; }
+      .camera-hint { margin: 13px 0 0; color: #c3bfd0; text-align: center; font-size: 11px; }
+      .shutter { display: block; width: 63px; height: 63px; margin: 22px auto 0; background: white; border: 5px solid #5a526e; border-radius: 50%; box-shadow: inset 0 0 0 3px white; }
+      .shutter:hover { background: #d7c5ff; }
+      .brief-person { display: flex; align-items: center; gap: 11px; margin: 5px 0 24px; }
+      .brief-person .avatar { width: 49px; height: 49px; }
+      .brief-person b { display: block; font-size: 17px; }
+      .brief-person small { display: block; margin-top: 4px; color: #696274; font-size: 11px; }
+      .brief-grid { display: grid; gap: 9px; }
+      .brief-grid .card { padding: 15px; }
+      .brief-grid .card + .card { margin: 0; }
+      .brief-grid .card p { font-size: 12px; }
+      .quote { color: #4e278b; font-weight: 800; }
+      .potential { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+      .potential b { color: #6436ad; font-size: 17px; }
+      .dots { color: #6d41b6; letter-spacing: 3px; font-size: 14px; }
+      .value-intro { padding: 14px 16px; margin-bottom: 12px; color: #4e3a6b; background: #eee7f9; border-radius: 13px; font-size: 11px; line-height: 1.6; }
+      .value-card { padding: 15px 16px; margin-bottom: 9px; background: white; border: 1px solid #e9e4ef; border-radius: 14px; }
+      .value-card b { display: block; margin-bottom: 6px; color: #6235a8; font-size: 11px; letter-spacing: .07em; }
+      .value-card p { margin: 0; font-size: 12px; line-height: 1.6; }
+      .value-card.green b { color: #087e62; }
+      .value-card.blue b { color: #3569d4; }
+      .note-box { width: 100%; height: 105px; padding: 12px; resize: none; color: #241d32; background: white; border: 1px solid #ded8e7; border-radius: 12px; font-size: 12px; line-height: 1.55; }
+      .save-state { min-height: 20px; margin-top: 8px; color: #087e62; font-size: 11px; }
+      .progress { position: absolute; z-index: 2; right: -50px; bottom: 19px; display: grid; gap: 8px; }
+      .progress button { width: 8px; height: 8px; padding: 0; background: #817891; border: 0; border-radius: 8px; }
+      .progress button[aria-current="step"] { height: 27px; background: #b69aff; }
+      .phone-home { position: absolute; bottom: 7px; left: 50%; width: 112px; height: 4px; transform: translateX(-50%); background: #2d2936; border-radius: 5px; }
+      @media (max-width: 900px) {
+        .shell { width: min(100% - 36px, 660px); }
+        header { min-height: 67px; }
+        main { display: flex; flex-direction: column; gap: 30px; padding: 44px 0 60px; }
+        .intro { width: 100%; }
+        h1 { margin: 17px 0 12px; font-size: clamp(37px, 8vw, 53px); }
+        .lead { font-size: 15px; }
+        .story { grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 26px; }
+        .story button { display: block; min-height: 72px; padding: 8px; text-align: center; }
+        .story .number { margin: 0 auto 5px; }
+        .story strong { font-size: 10px; }
+        .story small { display: none; }
+        .disclaimer { margin-top: 15px; }
+        .stage { width: 100%; min-height: 700px; }
+        .progress { right: max(0px, calc((100% - 410px) / 2)); }
+      }
+      @media (max-width: 430px) {
+        .shell { width: calc(100% - 24px); }
+        .header-note { font-size: 10px; }
+        .phone { transform: scale(.94); transform-origin: center top; }
+        .stage { min-height: 663px; align-items: flex-start; }
+        .progress { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="shell">
+        <header><div class="brand"><span class="mark" aria-hidden="true">◈</span>MIRAIO LENS</div><div class="header-note">PRODUCT EXPERIENCE / 01</div></header>
+        <main>
+          <section class="intro" aria-labelledby="hero-title">
+            <div class="eyebrow">FIRST-MEETING RELATIONSHIP INTELLIGENCE</div>
+            <h1 id="hero-title">名刺交換の<br /><span>その先</span>を、見つける。</h1>
+            <p class="lead" id="story-copy">自分の強みや関心を登録。相手との接点を見つけるための土台をつくります。</p>
+            <nav class="story" aria-label="モックの画面を選択">
+              <button type="button" data-step="0" aria-current="step"><span class="number">01</span><span><strong>自分を知る</strong><small>仕事・強み・会いたい人を登録</small></span></button>
+              <button type="button" data-step="1"><span class="number">02</span><span><strong>名刺を撮る</strong><small>出会った相手をその場で読み取る</small></span></button>
+              <button type="button" data-step="2"><span class="number">03</span><span><strong>接点がわかる</strong><small>会話前に読む Flash Brief</small></span></button>
+              <button type="button" data-step="3"><span class="number">04</span><span><strong>相互価値を見る</strong><small>GIVE / GET / BRIDGE / ASK</small></span></button>
+              <button type="button" data-step="4"><span class="number">05</span><span><strong>次につなげる</strong><small>会話メモと次の一手</small></span></button>
+            </nav>
+            <p class="disclaimer">紹介用の操作可能なモックです。人物・会社・分析結果はすべて架空です。カメラ、AI分析、外部送信は行いません。</p>
+          </section>
+          <section class="stage" aria-label="Miraio Lens のアプリ画面">
+            <div class="halo" aria-hidden="true"></div>
+            <div class="phone">
+              <div class="display">
+                <div class="status"><span>9:41</span><span>●●●  ▰</span></div>
+                <section class="screen active" data-screen="0" aria-label="自分の情報">
+                  <div class="apphead"><span class="title">Miraio Lens</span><span class="more">✦</span></div>
+                  <div class="content">
+                    <p class="app-eyebrow">MY CONTEXT</p><h2>まずは、あなたのことを。</h2>
+                    <p class="sub">相手を調べるだけでなく、あなたとの接点を考えるために使います。</p>
+                    <div class="card"><div class="profile"><div class="avatar">◈</div><div><b>あなたのプロフィール</b><span>自分だけが見られる情報</span></div></div><div class="field"><span>今の仕事</span><b>Webサービスの企画・開発</b></div><div class="field"><span>得意なこと</span><b>生成AIの活用、UI設計</b></div><div class="field"><span>提供できること</span><b>小さな実証実験の設計</b></div><div class="field"><span>知りたいこと</span><b>営業現場のリアルな課題</b></div></div>
+                    <div class="goal"><span>今日の目的</span><b>情報交換 ↗</b></div>
+                    <button class="full" type="button" data-next>名刺を読み取る →</button>
+                  </div>
+                </section>
+                <section class="screen camera-screen" data-screen="1" aria-label="名刺を撮影">
+                  <div class="apphead"><button class="back" type="button" data-prev aria-label="前の画面へ">‹</button><span class="title">名刺を撮影</span><span class="more">⌁</span></div>
+                  <div class="camera-view"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span><div class="scan-card"><small>MIRAIO SAMPLE CO.</small><strong>デモ 太郎</strong><span>株式会社サンプル　営業部 部長</span></div></div>
+                  <p class="camera-hint">名刺を枠の中に入れて撮影</p>
+                  <button class="shutter" type="button" data-next aria-label="名刺を撮影して Flash Brief を見る"></button>
+                  <p class="camera-hint">架空の名刺を使ったデモ</p>
+                </section>
+                <section class="screen" data-screen="2" aria-label="Flash Brief">
+                  <div class="apphead"><button class="back" type="button" data-prev aria-label="前の画面へ">‹</button><span class="title">Flash Brief</span><span class="more">⋯</span></div>
+                  <div class="content">
+                    <div class="brief-person"><div class="avatar">♙</div><div><b>デモ 太郎</b><small>株式会社サンプル / 営業部 部長</small></div></div>
+                    <p class="app-eyebrow">5-SECOND BRIEF</p><p class="sub" style="margin-top:0">会話の前に、ここだけ確認</p>
+                    <div class="brief-grid">
+                      <div class="card"><div class="card-label">WHO <span class="tag fact">名刺の事実</span></div><p>株式会社サンプルの営業部長。相手の役割は名刺から確認できます。</p></div>
+                      <div class="card"><div class="card-label">WHY YOU <span class="tag hypothesis">仮説</span></div><p>あなたのAI活用の知見と、相手の営業現場の経験を交換できる可能性があります。</p></div>
+                      <div class="card"><div class="card-label">SAY THIS <span class="tag">質問</span></div><p class="quote">「今、営業の現場でどんな課題がありますか？」</p></div>
+                      <div class="card"><div class="card-label">POTENTIAL <span class="tag hypothesis">目安</span></div><p>実務課題と技術の接点を探れそうです。</p><div class="potential"><b>4 / 5</b><span class="dots">●●●●○</span></div></div>
+                    </div>
+                    <button class="full" type="button" data-next>相互価値を詳しく見る →</button>
+                  </div>
+                </section>
+                <section class="screen" data-screen="3" aria-label="相互価値">
+                  <div class="apphead"><button class="back" type="button" data-prev aria-label="前の画面へ">‹</button><span class="title">相互価値</span><span class="more">⋯</span></div>
+                  <div class="content"><p class="app-eyebrow">MUTUAL VALUE</p><h2>一緒に話す価値を、<br />両側から。</h2><p class="sub">確定した事実と、会話で確かめたい仮説を分けて表示します。</p>
+                    <div class="value-intro">あなた：AIを使った小規模な実証実験が得意<br />相手：営業部長 <span class="tag fact">名刺の事実</span></div>
+                    <div class="value-card green"><b>GIVE　あなたから</b><p>営業課題を小さく検証する進め方を共有できそうです。</p></div>
+                    <div class="value-card blue"><b>GET　相手から</b><p>営業現場で本当に困っていることを聞ける可能性があります。</p></div>
+                    <div class="value-card"><b>BRIDGE　接点</b><p>現場の課題と技術の選択肢を持ち寄れば、具体的な試し方が見つかるかもしれません。</p></div>
+                    <div class="value-card"><b>ASK　確かめる</b><p>「今、営業で一番時間がかかっている仕事は何ですか？」</p></div>
+                    <button class="full" type="button" data-next>会話を記録する →</button>
+                  </div>
+                </section>
+                <section class="screen" data-screen="4" aria-label="会話メモと次の行動">
+                  <div class="apphead"><button class="back" type="button" data-prev aria-label="前の画面へ">‹</button><span class="title">次につなげる</span><span class="more">⋯</span></div>
+                  <div class="content"><p class="app-eyebrow">AFTER THE CONVERSATION</p><h2>いい出会いを、<br />その場限りにしない。</h2><p class="sub">話したことを短く残し、自分で次の行動を決めます。</p>
+                    <div class="card"><div class="card-label">会話メモ</div><textarea class="note-box" id="demo-note" aria-label="会話メモ">営業チームでは提案資料づくりに時間がかかるとのこと。小さなAI活用事例に関心あり。</textarea><div class="save-state" id="save-state" role="status"></div></div>
+                    <div class="card"><div class="card-label">NEXT ACTION <span class="tag hypothesis">提案</span></div><p>今日の会話のお礼と、関連するAI活用事例を共有する。</p><div class="tagrow"><span class="tag">目安：3日以内</span><span class="tag">送信は自動で行いません</span></div></div>
+                    <button class="full" type="button" id="save-note">このデモ内でメモを保存</button><button class="secondary" type="button" data-step="0">最初から見る</button>
+                  </div>
+                </section>
+                <div class="phone-home" aria-hidden="true"></div>
+              </div>
+            </div>
+            <nav class="progress" aria-label="画面の進行状況"><button type="button" data-step="0" aria-label="自分の情報" aria-current="step"></button><button type="button" data-step="1" aria-label="名刺を撮影"></button><button type="button" data-step="2" aria-label="Flash Brief"></button><button type="button" data-step="3" aria-label="相互価値"></button><button type="button" data-step="4" aria-label="次の行動"></button></nav>
+          </section>
+        </main>
+      </div>
+    </div>
+    <script>
+      const descriptions = [
+        "自分の強みや関心を登録。相手との接点を見つけるための土台をつくります。",
+        "名刺を撮ると、名前・会社・役職などの事実を読み取ります。このモックでは架空の名刺で流れを体験できます。",
+        "相手は誰か、なぜ自分と関係があるか、何を聞くか。最初の会話に必要な情報を短く表示します。",
+        "自分から提供できることと、相手から学べそうなこと。仮説は仮説として示し、会話で確かめます。",
+        "会話の要点を残し、次の一手を提案。送信や予定登録は本人が判断します。"
+      ];
+      let current = 0;
+      function showStep(step) {
+        current = Math.max(0, Math.min(4, step));
+        document.querySelectorAll("[data-screen]").forEach((screen) => screen.classList.toggle("active", Number(screen.dataset.screen) === current));
+        document.querySelectorAll("[data-step]").forEach((button) => {
+          if (Number(button.dataset.step) === current) button.setAttribute("aria-current", "step");
+          else button.removeAttribute("aria-current");
+        });
+        document.getElementById("story-copy").textContent = descriptions[current];
+      }
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        if (button.dataset.step !== undefined) showStep(Number(button.dataset.step));
+        else if (button.hasAttribute("data-next")) showStep(current + 1);
+        else if (button.hasAttribute("data-prev")) showStep(current - 1);
+      });
+      document.getElementById("save-note").addEventListener("click", () => {
+        document.getElementById("save-state").textContent = "このページを開いている間だけ保存しました。";
+      });
+    </script>
+  </body>
+</html>

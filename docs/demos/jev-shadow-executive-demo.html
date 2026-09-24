@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Miraio Lens | 名刺交換から Flash Brief まで — Jev shadow 実測</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172537;
+        --muted: #526272;
+        --navy: #10283b;
+        --blue: #137c9b;
+        --teal: #12a48d;
+        --orange: #b96425;
+        --paper: #f6f8f7;
+        --line: #dce6e5;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 1000px; background: #e5eceb; }
+      body { font-family: "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif; color: var(--ink); }
+      .sheet {
+        width: 1000px;
+        height: 1240px;
+        overflow: hidden;
+        padding: 45px 54px 42px;
+        background: var(--paper);
+        border-bottom: 12px solid #e5eceb;
+      }
+      .sheet:nth-of-type(2) { height: 1450px; }
+      .mast { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+      .logo { font-size: 22px; letter-spacing: .03em; font-weight: 800; color: var(--navy); }
+      .logo span { color: var(--teal); }
+      .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .14em; color: var(--blue); text-transform: uppercase; }
+      .issue { font-size: 12px; color: var(--muted); }
+      h1 { font-size: 38px; line-height: 1.3; margin: 0 0 12px; letter-spacing: -.03em; }
+      h2 { font-size: 22px; margin: 0 0 14px; line-height: 1.4; }
+      h3 { font-size: 16px; margin: 0 0 8px; }
+      p { margin: 0; line-height: 1.65; }
+      .lead { color: var(--muted); font-size: 17px; margin-bottom: 24px; }
+      .casebar { background: var(--navy); color: white; border-radius: 16px; padding: 15px 19px; display: flex; gap: 12px; align-items: center; margin-bottom: 22px; font-size: 14px; }
+      .casebar b { color: #82ddc9; white-space: nowrap; }
+      .card { background: white; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 7px 25px #1a3a4d0c; }
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+      .persona { padding: 21px 24px; min-height: 180px; }
+      .persona .tag { font-size: 12px; color: var(--blue); font-weight: 800; letter-spacing: .08em; margin-bottom: 12px; }
+      .persona strong { font-size: 21px; display: block; margin-bottom: 7px; }
+      .persona .small { font-size: 13px; color: var(--muted); line-height: 1.6; }
+      .flowhead { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 0 12px; }
+      .flowhead span { font-size: 12px; color: var(--muted); }
+      .rows { display: grid; gap: 9px; }
+      .row { display: grid; grid-template-columns: 44px 1fr 174px; gap: 15px; align-items: center; padding: 12px 16px; border: 1px solid var(--line); border-radius: 11px; background: white; min-height: 65px; }
+      .n { width: 31px; height: 31px; border-radius: 50%; background: #e9f4f5; color: var(--blue); font-weight: 800; display: grid; place-items: center; font-size: 15px; }
+      .row-title { font-weight: 800; font-size: 15px; }
+      .row-detail { color: var(--muted); font-size: 12px; line-height: 1.45; margin-top: 2px; }
+      .badge { padding: 7px 9px; border-radius: 8px; font-size: 12px; font-weight: 800; text-align: center; }
+      .llm { background: #e7efff; color: #244e96; }
+      .det { background: #e2f5ef; color: #17765b; }
+      .optional { background: #fff2e6; color: #925519; }
+      .callout { border-left: 4px solid var(--teal); background: #e9f4f1; padding: 15px 19px; border-radius: 0 12px 12px 0; margin-top: 18px; font-size: 14px; line-height: 1.65; }
+      .bottom { margin-top: 20px; font-size: 12px; color: var(--muted); line-height: 1.65; }
+      .brief { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .brief .cell { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; min-height: 147px; }
+      .brief .cell.wide { grid-column: span 2; min-height: 124px; }
+      .cell .label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--blue); font-weight: 800; letter-spacing: .1em; margin-bottom: 9px; }
+      .cell p { font-size: 16px; font-weight: 600; }
+      .cell small { font-size: 12px; color: var(--muted); }
+      .pill { display: inline-block; background: #fff1d8; color: #89510d; border-radius: 99px; padding: 2px 7px; font-size: 11px; letter-spacing: 0; }
+      .line { height: 1px; background: var(--line); margin: 23px 0; }
+      .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0 20px; }
+      .metric { background: var(--navy); color: white; border-radius: 15px; padding: 19px 18px; min-height: 142px; }
+      .metric .label { color: #a9cbcc; font-size: 12px; font-weight: 700; }
+      .metric strong { display: block; font-size: 27px; margin: 11px 0 5px; letter-spacing: -.04em; white-space: nowrap; }
+      .metric small { font-size: 11px; line-height: 1.5; color: #bbd1d1; }
+      .chart { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 21px 24px; }
+      .chartrow { display: grid; grid-template-columns: 122px 1fr 78px; gap: 14px; align-items: center; font-size: 14px; margin: 9px 0; }
+      .track { height: 15px; border-radius: 20px; background: #e7eeed; overflow: hidden; }
+      .fill { height: 100%; background: linear-gradient(90deg, #1685a0, #13b59b); border-radius: 20px; }
+      .chartrow b { text-align: right; font-variant-numeric: tabular-nums; }
+      .caption { font-size: 12px; color: var(--muted); margin-top: 11px; }
+      .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .box { background: white; border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; }
+      .box p { font-size: 14px; line-height: 1.6; }
+      .big { font-size: 32px; color: var(--navy); font-weight: 900; line-height: 1.15; margin: 10px 0 6px; }
+      .measure { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 18px 0 14px; }
+      .measure .box { padding: 18px 18px; min-height: 138px; }
+      .measure .num { font-size: 25px; font-weight: 900; color: var(--blue); margin: 8px 0 4px; }
+      .measure small { font-size: 11px; line-height: 1.5; color: var(--muted); display: block; }
+      .table { width: 100%; border-collapse: collapse; font-size: 14px; background: white; border-radius: 12px; overflow: hidden; }
+      .table th, .table td { border-bottom: 1px solid var(--line); padding: 11px 13px; text-align: left; }
+      .table th { background: #e7efef; font-size: 12px; }
+      .table td:nth-child(n+2) { font-variant-numeric: tabular-nums; }
+      .arrow { color: var(--teal); font-weight: 900; }
+      .foot { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 30px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+      code { font-family: Consolas, monospace; background: #e9eeee; padding: 2px 4px; border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <section class="sheet">
+      <div class="mast"><div class="logo">MIRAIO <span>LENS</span></div><div class="issue">技術デモ 01 / 03 ・ 合成ケース</div></div>
+      <div class="eyebrow">One exchange → one Flash Brief</div>
+      <h1>名刺1枚から、会話の一手へ。</h1>
+      <p class="lead">ケース：展示会で、在庫管理SaaSの法人営業が製造業の情報システム課長と名刺交換。名前・企業・本文はすべて架空。</p>
+      <div class="casebar"><b>CASE ID</b> saas-field-sales/manufacturing-it-manager <span style="margin-left:auto">meeting_goal: sales</span></div>
+      <div class="pair">
+        <div class="card persona"><div class="tag">受け取った名刺 / 合成入力</div><strong>佐藤 健一</strong><div>架空精密工業株式会社<br />情報システム課　課長</div><div class="small" style="margin-top:10px">撮影画像そのものは今回の実測に送信していない。Jev の入力は既存フィクスチャの構造化データ。</div></div>
+        <div class="card persona"><div class="tag">自分の Personal Context / 合成入力</div><strong>架空クラウド株式会社</strong><div>法人営業 / フィールドセールス</div><div class="small" style="margin-top:10px">製造業向け在庫管理SaaSの提案経験。現場と情報システム部門の要件調整が得意。</div></div>
+      </div>
+      <div class="flowhead"><h2>現在の本番経路：ブリーフ表示まで</h2><span>通常経路の実装をコードで確認。今回は OpenAI 残高切れのため実走していない。</span></div>
+      <div class="rows">
+        <div class="row"><div class="n">1</div><div><div class="row-title">撮影 → 非公開 Storage → 名刺抽出</div><div class="row-detail">画像を OpenAI Responses API の構造化出力で CardExtraction に変換</div></div><div class="badge llm">OpenAI 生成 1回</div></div>
+        <div class="row"><div class="n">2</div><div><div class="row-title">会社・役割の Fast Context</div><div class="row-detail">会社名・部署・役職から構造化出力。公開Web検索は設定時のみ</div></div><div class="badge llm">OpenAI 生成 1回</div></div>
+        <div class="row"><div class="n">3</div><div><div class="row-title">既存人物の Identity Resolution</div><div class="row-detail">ユーザースコープの DB 照合。失敗してもブリーフは続行</div></div><div class="badge det">決定的 / DB</div></div>
+        <div class="row"><div class="n">4</div><div><div class="row-title">Personal Context の検索</div><div class="row-detail">設定・既存ベクトルがあれば対象文を埋め込み、pgvector の cosine 距離で近傍を取得。無ければ全件を渡す</div></div><div class="badge optional">OpenAI埋め込み 0–1回<br />＋ 決定的 / DB</div></div>
+        <div class="row"><div class="n">5</div><div><div class="row-title">Flash Brief 生成 → 画面表示</div><div class="row-detail">WHO / WHY YOU / SAY THIS / POTENTIAL、キーワード、点数、Identity を1回の構造化出力に同梱</div></div><div class="badge llm">OpenAI 生成 1回</div></div>
+      </div>
+      <div class="callout"><b>ブリーフ表示まで：OpenAI 生成3回 ＋ 埋め込み0–1回。Jev 0回。</b><br />Mutual Value はブリーフ後に OpenAI 生成1回。未埋め込み Personal Context の補完も、その後に別途行う。</div>
+      <div class="foot"><span>出典：<code>apps/api/lib/scan-pipeline.ts</code>、<code>flash-brief.ts</code>、<code>personal-context-retrieval.ts</code>、各 provider 実装</span><span>01 / 03</span></div>
+    </section>
+
+    <section class="sheet">
+      <div class="mast"><div class="logo">MIRAIO <span>LENS</span></div><div class="issue">技術デモ 02 / 03 ・ 合成ケース</div></div>
+      <div class="eyebrow">Output & measured shadow</div>
+      <h1>画面に出る内容と、裏で測れた判定。</h1>
+      <p class="lead">同じ合成ケース：架空精密工業株式会社・佐藤健一（情報システム課長） × 在庫管理SaaSの法人営業。</p>
+      <div class="casebar"><b>表示本文は想定例</b> OpenAI API は残高切れのため呼んでいない。下のブリーフ文面は手作りフィクスチャであり、実生成結果ではない。</div>
+      <div class="brief">
+        <div class="cell"><div class="label">WHO <span class="pill">想定例</span></div><p>架空精密工業株式会社の情報システム課長。</p></div>
+        <div class="cell"><div class="label">WHY YOU <span class="pill">想定例</span></div><p>製造業向け在庫管理SaaSの提案経験を基に、在庫運用の実態を具体的に聞ける可能性がある。</p><small>claim_type: hypothesis</small></div>
+        <div class="cell"><div class="label">SAY THIS <span class="pill">想定例</span></div><p>「現在の在庫管理で、現場と情報システム課の間にどんな調整が発生していますか？」</p><small>候補は3本。これが candidate_1。</small></div>
+        <div class="cell"><div class="label">POTENTIAL <span class="pill">想定例</span></div><p>現場運用を確認できる接点がある。</p><small>生成器側の想定点数: 4 / 5</small></div>
+        <div class="cell wide"><div class="label">MUTUAL VALUE → NEXT ACTION <span class="pill">想定例・ブリーフ後</span></div><p>GIVE: 在庫管理SaaSの提案経験を共有。GET: 実際の運用論点を確認。NEXT: 1週間以内に短い打ち合わせを提案。</p></div>
+      </div>
+      <div class="line"></div>
+      <h2>この想定例を Jev で shadow 評価した実測</h2>
+      <p style="font-size:13px;color:var(--muted)">同一入力を5回。各評価は1回の Jev リクエストで複数の型付き質問をまとめて判定。画面表示・保存済みブリーフには反映しない。</p>
+      <div class="metrics">
+        <div class="metric"><div class="label">SAY THIS / 選択</div><strong>candidate_1</strong><small>5/5回同じ選択<br />confidence 0.32–0.38（幅 0.06）</small></div>
+        <div class="metric"><div class="label">IDENTITY / 選択</div><strong style="font-size:23px">medium_confidence</strong><small>5/5回同じ選択<br />confidence 0.54–0.70（幅 0.16）</small></div>
+        <div class="metric"><div class="label">POTENTIAL / 期待値</div><strong>4.64–4.68</strong><small>最頻レベル 5（5/5回）<br />confidence 0.71–0.74（幅 0.03）</small></div>
+      </div>
+      <div class="chart"><h3>SAY THIS 選択肢の確率分布 / 1回目の実測</h3><div class="chartrow"><span>candidate_1</span><div class="track"><div class="fill" style="width:52%"></div></div><b>0.52</b></div><div class="chartrow"><span>candidate_2</span><div class="track"><div class="fill" style="width:37%"></div></div><b>0.37</b></div><div class="chartrow"><span>candidate_3</span><div class="track"><div class="fill" style="width:3%"></div></div><b>0.03</b></div><div class="chartrow"><span>abstain</span><div class="track"><div class="fill" style="width:8%"></div></div><b>0.08</b></div><div class="caption">candidate_1 の選択と confidence は別の値。0.52 を confidence と読み替えない。</div></div>
+      <div class="foot"><span>実測：<code>evals/reports/jev-shadow-latest.json</code>、2026-09-22 15:39 UTC。合成フィクスチャ3件×5回のうち、このケースを表示。</span><span>02 / 03</span></div>
+    </section>
+
+    <section class="sheet">
+      <div class="mast"><div class="logo">MIRAIO <span>LENS</span></div><div class="issue">技術デモ 03 / 03 ・ 合成ケース</div></div>
+      <div class="eyebrow">Phase 3 measured → Phase 4 decision</div>
+      <h1>実装済みの位置と、次に変わる境界。</h1>
+      <p class="lead">代表の理解「3でJevが数値化判定し、4でOpenAIが文章化」は、目指す段階分離としては近い。ただし現行の本番経路はその順序で動いていない。</p>
+      <div class="casebar"><b>CASE ID</b> saas-field-sales/manufacturing-it-manager <span style="margin-left:auto">3ケース×5反復の実測から</span></div>
+      <div class="split" style="margin-bottom:16px">
+        <div class="box"><h3>現在の本番</h3><p><b>OpenAI 生成1回</b>の構造化出力が、Flash Brief の文章・キーワード・potential_score・identity_status・claim_type を同時に作る。Jev の値は使わない。</p><div class="big">Jev 0回</div><p>生成と判定はこの呼び出しで同梱。</p></div>
+        <div class="box"><h3>PHASE 3（今回、実測可能に）</h3><p>既存の合成ブリーフを <b>Jev 5リクエスト</b>で shadow 評価。8次元採点、SAY THIS、POTENTIAL、Identity、Mutual Value claim を測定し JSON に記録。</p><div class="big">75回 / 全測定</div><p>3ケース × 5反復 × 5評価。品質の合否や閾値は置かない。</p></div>
+      </div>
+      <div class="box" style="border-left:5px solid var(--teal); margin-bottom:19px"><h3>PHASE 4 で具体的に変えるなら</h3><p>生成器が候補文を作る <span class="arrow">→</span> Jev が型付き質問で候補・点数・分布を判定する <span class="arrow">→</span> アプリが結果の扱いを決める <span class="arrow">→</span> 必要な場合だけ生成器が確定結果を文章へ反映する。<b>最後の OpenAI 再文章化は未実装の設計選択</b>であり、呼び出し回数・遅延・コストは未測定。</p></div>
+      <h2>閾値を決める前に見る数字</h2>
+      <div class="measure">
+        <div class="box"><h3>ケース横断 confidence</h3><div class="num">0.00–0.92</div><small>選択・採点が返す confidence 165件。評価の種類が違うので、全体幅を単一閾値には使えない。</small></div>
+        <div class="box"><h3>同一ケースの揺れ</h3><div class="num">最大 0.18</div><small>同一質問5反復の confidence 幅の最大値（Flash Brief の extraction_accuracy）。このケースの Identity は 0.16。</small></div>
+        <div class="box"><h3>最頻値と期待値</h3><div class="num">49 / 135</div><small>期待値を四捨五入したレベルと最頻レベルの不一致。Flash Brief 49/120、POTENTIAL 0/15。</small></div>
+      </div>
+      <table class="table"><thead><tr><th>応答時間（実測、同一プロセス）</th><th>p50</th><th>p95</th><th>範囲</th></tr></thead><tbody><tr><td>Jev 1リクエスト / 75回</td><td>225 ms</td><td>406 ms</td><td>173–680 ms</td></tr><tr><td>5評価を直列に通した1ケース / 15回</td><td>1,159 ms</td><td>1,795 ms</td><td>約1,092–1,795 ms</td></tr></tbody></table>
+      <div class="callout" style="margin-top:19px"><b>まだ分からないこと：</b>人間の採点との一致、abstain の妥当性、本番で必要な閾値、冷起動時と本番負荷下の p95、PHASE 4 の追加生成コスト。現在の実測だけでは本番接続を正当化できない。</div>
+      <div class="foot"><span>根拠：ADR-0005 / ADR-0006、<code>jev-shadow-latest.json</code>。2026-09-22 15:39 UTC。OpenAI は呼び出していない。</span><span>03 / 03</span></div>
+    </section>
+  </body>
+</html>
