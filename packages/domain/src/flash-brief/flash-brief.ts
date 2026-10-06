@@ -41,7 +41,7 @@ export const flashBriefStructuredOutputSchema = z
     identity_status: identityStatusSchema,
     potential: z.string().min(1).max(1000),
     potential_score: potentialScoreSchema,
-    say_this: z.array(z.string().min(1).max(400)).min(1).max(3),
+    say_this: z.array(z.string().min(1).max(400)).length(1),
     who: z.string().min(1).max(1000),
     why_you: z.string().min(1).max(1000),
     why_you_claim_type: flashBriefClaimTypeSchema,
@@ -64,6 +64,7 @@ export const flashBriefSchema = z
     identity_status: identityStatusSchema.default("unresolved"),
     potential: z.string().trim().min(1).max(1000),
     potential_score: potentialScoreSchema.nullable().default(null),
+    // Previously stored briefs may contain up to three openers.
     say_this: z.array(z.string().trim().min(1).max(400)).min(1).max(3),
     who: z.string().trim().min(1).max(1000),
     why_you: z.string().trim().min(1).max(1000),

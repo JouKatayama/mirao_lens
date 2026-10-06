@@ -32,13 +32,13 @@ describe("flashBriefStructuredOutputSchema", () => {
     ).toBe(true);
   });
 
-  it("accepts 3 say_this items", () => {
+  it("requires one opener for the five-second brief", () => {
     const input = {
       ...validStructuredOutput,
-      say_this: ["Item 1", "Item 2", "Item 3"],
+      say_this: ["Item 1", "Item 2"],
     };
     expect(flashBriefStructuredOutputSchema.safeParse(input).success).toBe(
-      true,
+      false,
     );
   });
 
@@ -49,7 +49,7 @@ describe("flashBriefStructuredOutputSchema", () => {
     );
   });
 
-  it("rejects more than 3 say_this items", () => {
+  it("rejects more than one say_this item", () => {
     const input = {
       ...validStructuredOutput,
       say_this: ["A", "B", "C", "D"],
@@ -151,6 +151,15 @@ describe("flashBriefPublicSchema", () => {
       true,
     );
   });
+
+  it("still reads previously stored briefs with three openers", () => {
+    expect(
+      flashBriefPublicSchema.safeParse({
+        ...validFlashBrief,
+        say_this: ["First", "Second", "Third"],
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe("flashBriefInputSchema", () => {
@@ -230,29 +239,21 @@ describe("normalizeFlashBrief", () => {
     const result = normalizeFlashBrief({
       ...validStructuredOutput,
       potential: "  potential  ",
-      say_this: ["  starter one  ", "  starter two  "],
+      say_this: ["  starter one  "],
       who: "  who  ",
       why_you: "  why  ",
     });
     expect(result.who).toBe("who");
     expect(result.why_you).toBe("why");
-    expect(result.say_this).toEqual(["starter one", "starter two"]);
+    expect(result.say_this).toEqual(["starter one"]);
     expect(result.potential).toBe("potential");
   });
 
-  it("filters blank say_this entries after trimming", () => {
-    const result = normalizeFlashBrief({
-      ...validStructuredOutput,
-      say_this: ["  ", "valid starter", "  "],
-    });
-    expect(result.say_this).toEqual(["valid starter"]);
-  });
-
-  it("throws FlashBriefValidationError when all say_this entries are blank", () => {
+  it("throws FlashBriefValidationError when the opener is blank", () => {
     expect(() =>
       normalizeFlashBrief({
         ...validStructuredOutput,
-        say_this: ["  ", "  "],
+        say_this: ["  "],
       }),
     ).toThrow(FlashBriefValidationError);
   });
