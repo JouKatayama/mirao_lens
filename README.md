@@ -575,4 +575,5 @@ db:reset`, `pnpm db:test`, and `pnpm db:types`.
 - Architecture documentation: `docs/architecture/index.md`
 - Decision records: `docs/adr/`
 - Active execution plans: `docs/exec-plans/active/`
+- Physical-device acceptance runbook: `docs/device-acceptance.md`
 - Agent repository instructions: `AGENTS.md`
