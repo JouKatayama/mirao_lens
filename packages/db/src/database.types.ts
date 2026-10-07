@@ -147,6 +147,92 @@ export type Database = {
           },
         ]
       }
+      event_members: {
+        Row: {
+          created_at: string
+          event_id: string
+          member_user_id: string
+          owner_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          member_user_id: string
+          owner_user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          member_user_id?: string
+          owner_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_members_event_id_owner_user_id_fkey"
+            columns: ["event_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
+      event_scans: {
+        Row: {
+          created_at: string
+          event_id: string
+          owner_user_id: string
+          scan_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          owner_user_id: string
+          scan_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          owner_user_id?: string
+          scan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_scans_event_id_owner_user_id_fkey"
+            columns: ["event_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+          {
+            foreignKeyName: "event_scans_scan_id_owner_user_id_fkey"
+            columns: ["scan_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string
+        }
+        Relationships: []
+      }
       evidence: {
         Row: {
           confidence: number
@@ -194,100 +280,87 @@ export type Database = {
           },
         ]
       }
-      event_scans: {
+      hubspot_connections: {
         Row: {
-          created_at: string
-          event_id: string
-          owner_user_id: string
-          scan_id: string
+          access_expires_at: string
+          encrypted_tokens: string
+          hub_id: number
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          created_at?: string
-          event_id: string
-          owner_user_id: string
-          scan_id: string
+          access_expires_at: string
+          encrypted_tokens: string
+          hub_id: number
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          created_at?: string
-          event_id?: string
-          owner_user_id?: string
+          access_expires_at?: string
+          encrypted_tokens?: string
+          hub_id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hubspot_exports: {
+        Row: {
+          contact_id: string
+          hub_id: number
+          note_id: string | null
+          note_status: string
+          scan_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          hub_id: number
+          note_id?: string | null
+          note_status?: string
+          scan_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          hub_id?: number
+          note_id?: string | null
+          note_status?: string
           scan_id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "event_scans_event_id_owner_user_id_fkey"
-            columns: ["event_id", "owner_user_id"]
+            foreignKeyName: "hubspot_exports_scan_id_user_id_fkey"
+            columns: ["scan_id", "user_id"]
             isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id", "owner_user_id"]
-          },
-          {
-            foreignKeyName: "event_scans_scan_id_owner_user_id_fkey"
-            columns: ["scan_id", "owner_user_id"]
-            isOneToOne: true
             referencedRelation: "scans"
             referencedColumns: ["id", "user_id"]
           },
         ]
       }
-      event_members: {
-        Row: {
-          created_at: string
-          event_id: string
-          member_user_id: string
-          owner_user_id: string
-        }
-        Insert: {
-          created_at?: string
-          event_id: string
-          member_user_id: string
-          owner_user_id: string
-        }
-        Update: {
-          created_at?: string
-          event_id?: string
-          member_user_id?: string
-          owner_user_id?: string
-        }
-        Relationships: []
-      }
-      events: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          owner_user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          owner_user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          owner_user_id?: string
-        }
-        Relationships: []
-      }
       hubspot_oauth_states: {
-        Row: { state_hash: string; user_id: string; expires_at: string; created_at: string }
-        Insert: { state_hash: string; user_id: string; expires_at: string; created_at?: string }
-        Update: { state_hash?: string; user_id?: string; expires_at?: string; created_at?: string }
-        Relationships: []
-      }
-      hubspot_connections: {
-        Row: { user_id: string; hub_id: number; encrypted_tokens: string; access_expires_at: string; updated_at: string }
-        Insert: { user_id: string; hub_id: number; encrypted_tokens: string; access_expires_at: string; updated_at?: string }
-        Update: { user_id?: string; hub_id?: number; encrypted_tokens?: string; access_expires_at?: string; updated_at?: string }
-        Relationships: []
-      }
-      hubspot_exports: {
-        Row: { user_id: string; scan_id: string; hub_id: number; contact_id: string; note_id: string | null; note_status: string; updated_at: string }
-        Insert: { user_id: string; scan_id: string; hub_id: number; contact_id: string; note_id?: string | null; note_status?: string; updated_at?: string }
-        Update: { user_id?: string; scan_id?: string; hub_id?: number; contact_id?: string; note_id?: string | null; note_status?: string; updated_at?: string }
+        Row: {
+          created_at: string
+          expires_at: string
+          state_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          state_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          state_hash?: string
+          user_id?: string
+        }
         Relationships: []
       }
       interaction_notes: {
@@ -595,23 +668,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      consume_hubspot_oauth_state: { Args: { p_state_hash: string }; Returns: string | null }
-      list_shared_events: {
-        Args: never
-        Returns: { id: string; name: string; owner_user_id: string }[]
-      }
-      read_event_team_items: {
-        Args: { p_event_id: string }
-        Returns: {
-          scan_id: string
-          card_name: string | null
-          card_company: string | null
-          card_title: string | null
-          note_text: string | null
-          action_text: string | null
-          action_status: string | null
-        }[]
-      }
       claim_card_extraction: {
         Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
         Returns: {
@@ -636,6 +692,10 @@ export type Database = {
         Returns: {
           run_id: string
         }[]
+      }
+      consume_hubspot_oauth_state: {
+        Args: { p_state_hash: string }
+        Returns: string
       }
       correct_business_card: {
         Args: { p_corrections: Json; p_scan_id: string }
@@ -701,6 +761,14 @@ export type Database = {
       fail_mutual_value: {
         Args: { p_error_code: string; p_run_id: string; p_scan_id: string }
         Returns: boolean
+      }
+      list_shared_events: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          owner_user_id: string
+        }[]
       }
       match_personal_context_items: {
         Args: { p_embedding: string; p_limit?: number; p_offer_limit?: number }
@@ -803,6 +871,18 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      read_event_team_items: {
+        Args: { p_event_id: string }
+        Returns: {
+          action_status: string
+          action_text: string
+          card_company: string
+          card_name: string
+          card_title: string
+          note_text: string
+          scan_id: string
+        }[]
       }
       restart_scan_analysis: {
         Args: { p_meeting_goal: string; p_scan_id: string }
