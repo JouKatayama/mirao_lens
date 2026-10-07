@@ -24,7 +24,13 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "同意を得た会話の音声メモを録音するためにマイクを使用します。"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

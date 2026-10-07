@@ -3,6 +3,8 @@
 **Document status:** Draft for implementation / Codex-ready baseline  
 **Version:** 0.1  
 **Date:** 2026-08-17  
+**Last amended:** 2026-10-08 (field validation and pilot extensions)
+
 **Product:** Miraio Lens  
 **Category:** First-Meeting Relationship Intelligence  
 **Development model:** Human Product Owner × GPT PM/Scrum Master/Tech Lead × Codex Implementation Agent
@@ -148,7 +150,7 @@ Validation thresholds, not contractual SLAs:
 14. delete flow,
 15. analytics and AI evaluation logging.
 
-## 2.2 OUT
+## 2.2 OUT of MVP v0.1
 
 - digital business-card creation,
 - NFC card issuance,
@@ -167,6 +169,46 @@ Validation thresholds, not contractual SLAs:
 - Career / Teams / Alliance products,
 - automatic outreach/send-email,
 - billing.
+
+## 2.3 Approved pilot extension scope (after MVP v0.1)
+
+The November 2026 networking-event rehearsal and subsequent B2B exhibitor
+trial use the first-meeting MVP to learn which part of the relationship flow
+changes real behavior. These experiments do not expand the MVP v0.1 delivery
+commitment. The Product Owner has authorized implementation of the following
+pilot extensions now. Each is a separate, testable slice and is available to
+pilot users only after its acceptance criteria are met:
+
+1. **Event review and follow-up triage:** A user can group their scans under a
+   named event, review that event's encounters and accepted/completed actions,
+   and record a priority or a later follow-up without changing the original
+   first-meeting result. Only user-selected scans join an event.
+2. **Audio-assisted conversation notes:** A user can deliberately start and
+   stop a recording for one encounter after affirming that participants agreed.
+   The UI visibly indicates recording, never records in the background, and
+   provides playback and deletion. Any transcript or suggested note is a draft
+   that the user reviews before saving; it must not silently become a card fact,
+   verified identity, or sent message. Raw audio remains private, has a stated
+   retention period, and is deleted with its encounter.
+3. **HubSpot handoff:** A user can connect their own HubSpot account through
+   server-side OAuth and review the exact contact fields and optional
+   note/action before an explicit one-way export. Never send raw card images,
+   Personal Context, AI hypotheses, or unreviewed transcripts. Handle duplicate
+   contacts, token refresh/revocation, and a failed partial export without
+   silent duplication. No automatic outreach or background sync.
+4. **Event-limited team sharing:** An event owner can invite a member and share
+   only scans deliberately added to that event. Members may view the selected
+   business-card facts, reviewed conversation note, and Next Action status for
+   those scans. Personal Context, raw images, private AI analyses, unrelated
+   scans, and another event remain private. Revoking membership immediately
+   removes read access. Shared edits and ownership transfer are outside this
+   first slice.
+
+HubSpot is the first CRM target. Team access is event-scoped. These two choices
+replace the broader CRM/team interpretations in the earlier sales illustration.
+Each slice needs a scoped execution ticket and a data/security ADR where its
+ownership, retention, or authorization model changes. The modular monolith and
+staged AI pipeline remain the architecture baseline.
 
 ---
 
@@ -888,6 +930,7 @@ Value:
 - `conversation_note_saved`
 - `next_action_created`
 - `next_action_accepted`
+- `next_action_completed`
 
 Trust:
 - `card_corrected`
@@ -901,6 +944,36 @@ Trust:
 ### Guardrail
 **Wrong Identity Incident Rate**
 Target: zero high-severity incidents.
+
+### Field validation: 3 November rehearsal and exhibitor trial
+
+The 3 November 2026 networking event is a single-user usability and behavior
+rehearsal, not a PMF test of B2B exhibition buyers. A later one-event trial
+with actual exhibiting companies tests the sales wedge and willingness to pay.
+Do not combine the two populations or claim a commercial conversion from a
+scan alone.
+
+For each eligible first meeting, distinguish: card exchange; socially feasible
+scan; Brief viewed while still useful; `SAY THIS` actually used; conversation
+note and accepted Next Action; manually completed follow-up; and an agreed next
+meeting. Track the numerator and denominator for each step, along with reasons
+for non-use, unsupported claims, wrong-person incidents, and missing data.
+Use privacy-safe event tallies rather than raw card or conversation content in
+analytics. Check outcomes after 24 hours, 7 days, and 30 days. Observed
+behavior and participant interviews inform GO / PIVOT / STOP; illustrative
+funnel counts in sales materials are not acceptance thresholds.
+
+Before field use, confirm the real phone, sign-in, camera, backend connection,
+synthetic-card scan, Brief latency, note, Next Action, local reminder, and
+analytics delivery. Local reminders depend on device permission and do not
+send outreach. A field-ready deployment is a separate readiness decision.
+
+For the exhibitor trial, recruit a founder or sales lead who both uses the
+product at a scheduled event and can judge a paid trial. Interview them about
+their most recent event before a demo; record their current follow-up process
+and baseline. Test whether the product changes a conversation and follow-up,
+then ask whether they would pay for the next event. Price remains a hypothesis
+until tested with a real purchasing decision.
 
 ---
 

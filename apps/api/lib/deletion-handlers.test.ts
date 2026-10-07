@@ -211,6 +211,41 @@ describe("createDeleteAccountHandler", () => {
     expect(session?.repository.deleteAccount).toHaveBeenCalledWith(userId);
   });
 
+  it("revokes a connected HubSpot token before deleting the account", async () => {
+    const base = makeAccountDeps();
+    const revokeHubSpot = vi.fn(async () => undefined);
+    const handler = createDeleteAccountHandler({ ...base, revokeHubSpot });
+    const response = await handler(
+      new Request("http://localhost/v1/account", {
+        method: "DELETE",
+        headers: { Authorization: "Bearer test-token" },
+      }),
+    );
+    expect(response.status).toBe(204);
+    expect(revokeHubSpot).toHaveBeenCalledWith(userId);
+    const session = await base.authenticate("test-token");
+    expect(revokeHubSpot.mock.invocationCallOrder[0]!).toBeLessThan(
+      vi.mocked(session!.repository.deleteAccount).mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("keeps the account when token revocation fails", async () => {
+    const base = makeAccountDeps();
+    const revokeHubSpot = vi.fn(async () => {
+      throw new Error("HubSpot unavailable");
+    });
+    const handler = createDeleteAccountHandler({ ...base, revokeHubSpot });
+    const response = await handler(
+      new Request("http://localhost/v1/account", {
+        method: "DELETE",
+        headers: { Authorization: "Bearer test-token" },
+      }),
+    );
+    expect(response.status).toBe(500);
+    const session = await base.authenticate("test-token");
+    expect(session?.repository.deleteAccount).not.toHaveBeenCalled();
+  });
+
   it("returns 500 when deleteAccount throws", async () => {
     const handler = createDeleteAccountHandler(
       makeAccountDeps({ deleteAccountThrows: new Error("rpc failed") }),
