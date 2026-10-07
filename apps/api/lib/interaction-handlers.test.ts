@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createGetNextActionsHandler,
+  createGetRemindersHandler,
   createGetNoteHandler,
   createPatchNextActionHandler,
   createPostNextActionHandler,
@@ -11,6 +12,47 @@ import {
 
 const scanId = "00000000-0000-4013-8000-000000000801";
 const actionId = "00000000-0000-4013-8000-000000000901";
+
+describe("createGetRemindersHandler", () => {
+  const repository = { listFutureReminders: vi.fn() };
+  const dependencies: InteractionHandlerDependencies = {
+    authenticate: vi.fn().mockResolvedValue({ repository, userId: "owner" }),
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("requires a bearer session before reading reminders", async () => {
+    const response = await createGetRemindersHandler(dependencies)(
+      makeRequest("http://api/v1/reminders", {}, false),
+    );
+    expect(response.status).toBe(401);
+    expect(repository.listFutureReminders).not.toHaveBeenCalled();
+  });
+
+  it("returns only the authenticated repository's future accepted actions", async () => {
+    repository.listFutureReminders.mockResolvedValue([
+      {
+        action_text: "架空の相手に連絡する",
+        due_at: "2030-01-01T09:00:00.000Z",
+        id: actionId,
+        scan_id: scanId,
+        source: "user",
+        status: "accepted",
+        timing_text: null,
+      },
+    ]);
+    const response = await createGetRemindersHandler(dependencies)(
+      makeRequest("http://api/v1/reminders"),
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()) as unknown).toMatchObject({
+      items: [{ id: actionId, scan_id: scanId }],
+    });
+    expect(repository.listFutureReminders).toHaveBeenCalledWith(
+      expect.any(String),
+    );
+  });
+});
 
 function makeRequest(
   url: string,

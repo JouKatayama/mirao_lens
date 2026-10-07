@@ -50,6 +50,8 @@ export function HomeScreen({
   onDeleteScan,
   onCapture,
   onProfile,
+  onEnableReminders,
+  reminderPermissionNeeded = false,
   analysisOnly = false,
 }: {
   items: ScanHistoryItem[] | null;
@@ -62,6 +64,8 @@ export function HomeScreen({
   onDeleteScan: (id: string) => Promise<void>;
   onCapture: () => void;
   onProfile: () => void;
+  onEnableReminders?: () => void;
+  reminderPermissionNeeded?: boolean;
   analysisOnly?: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -93,6 +97,15 @@ export function HomeScreen({
         title="出会いの履歴"
         action={<TextButton label="撮影" onPress={onCapture} />}
       >
+        {reminderPermissionNeeded && onEnableReminders ? (
+          <Card>
+            <Text>保存済みのリマインダーをこの端末に復元できます。</Text>
+            <SecondaryButton
+              label="通知を許可して復元する"
+              onPress={onEnableReminders}
+            />
+          </Card>
+        ) : null}
         <View style={s.search}>
           <Icon name="search" size={20} />
           <TextInput

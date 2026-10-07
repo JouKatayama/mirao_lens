@@ -6,6 +6,7 @@ import {
   interactionNoteReadResponseSchema,
   interactionNoteResponseSchema,
   nextActionListResponseSchema,
+  reminderListResponseSchema,
   nextActionResponseSchema,
   scanCreateResponseSchema,
   scanListResponseSchema,
@@ -20,6 +21,7 @@ import {
   type NextActionListResponse,
   type NextActionRequest,
   type NextActionResponse,
+  type ReminderListResponse,
   type NextActionDueUpdateRequest,
   type NextActionStatusUpdateRequest,
   type ScanCreateResponse,
@@ -335,6 +337,18 @@ export class ScanApiClient {
     }
 
     return scanListResponseSchema.parse(await response.json());
+  }
+
+  async listReminders(accessToken: string): Promise<ReminderListResponse> {
+    const response = await this.fetchImplementation(
+      `${this.baseUrl}/v1/reminders`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
+
+    if (!response.ok) throw await toApiError(response);
+    return reminderListResponseSchema.parse(await response.json());
   }
 
   async getNote(

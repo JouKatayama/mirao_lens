@@ -134,6 +134,31 @@ export class InteractionRepository {
     return (data ?? []).map((row) => nextActionResponseSchema.parse(row));
   }
 
+  async listFutureReminders(now: string): Promise<NextActionResponse[]> {
+    const items: NextActionResponse[] = [];
+    const pageSize = 500;
+
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await this.client
+        .from("next_actions")
+        .select("id,scan_id,action_text,timing_text,due_at,source,status")
+        .eq("status", "accepted")
+        .gt("due_at", now)
+        .order("due_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) {
+        throw new InteractionRepositoryError("list_future_reminders");
+      }
+
+      items.push(
+        ...(data ?? []).map((row) => nextActionResponseSchema.parse(row)),
+      );
+      if ((data ?? []).length < pageSize) return items;
+    }
+  }
+
   // Settling an action is an update, so it cannot reuse create_next_action.
   // A null result means the action does not exist for this user; the caller
   // turns that into a 404 rather than reporting a write that never happened.

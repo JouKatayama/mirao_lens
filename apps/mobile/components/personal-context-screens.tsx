@@ -25,6 +25,11 @@ import {
   type OnboardingFormValues,
 } from "../lib/context-form";
 import { onboardingErrorMessage } from "../lib/context-error-message";
+import {
+  confirmGuestEmail,
+  GuestUpgradeError,
+  requestGuestEmail,
+} from "../lib/guest-upgrade";
 import type { MobileSupabaseClient } from "../lib/supabase";
 import {
   Card,
@@ -405,6 +410,8 @@ export function ReviewScreen({
 }
 
 export function MyContextScreen({
+  client,
+  guestUserId,
   isGuest = false,
   items: sourceItems,
   loading,
@@ -416,6 +423,8 @@ export function MyContextScreen({
   onSignOut,
   profile,
 }: {
+  client: MobileSupabaseClient;
+  guestUserId?: string;
   isGuest?: boolean;
   items: PersonalContextItem[];
   loading: boolean;
@@ -532,6 +541,9 @@ export function MyContextScreen({
         ) : null;
       })}
       <ErrorNotice message={error} />
+      {isGuest && guestUserId ? (
+        <GuestUpgradeCard client={client} guestUserId={guestUserId} />
+      ) : null}
       {!isGuest ? (
         <SecondaryButton
           disabled={loading}
@@ -579,6 +591,96 @@ export function MyContextScreen({
         />
       ) : null}
     </ScreenFrame>
+  );
+}
+
+function GuestUpgradeCard({
+  client,
+  guestUserId,
+}: {
+  client: MobileSupabaseClient;
+  guestUserId: string;
+}) {
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    setLoading(true);
+    setError(null);
+    try {
+      setSentTo(await requestGuestEmail(client.auth, guestUserId, email));
+    } catch (cause) {
+      setError(
+        cause instanceof GuestUpgradeError && cause.code === "invalid_email"
+          ? "有効なメールアドレスを入力してください。"
+          : "メールを登録できませんでした。既存アカウントのメールでは引き継げません。",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirm() {
+    if (!sentTo) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await confirmGuestEmail(client.auth, guestUserId, sentTo, code);
+    } catch (cause) {
+      setError(
+        cause instanceof GuestUpgradeError && cause.code === "identity_changed"
+          ? "アカウントを確認できませんでした。再ログインしてデータを確認してください。"
+          : "コードを確認できませんでした。メールの最新のコードを入力してください。",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card>
+      <Text style={styles.authSectionTitle}>データを引き継ぐ</Text>
+      <Text style={styles.guestDescription}>
+        メールを確認すると、同じアカウントのまま再ログインできるようになります。
+      </Text>
+      <Field
+        autoCapitalize="none"
+        autoComplete="email"
+        editable={!sentTo}
+        keyboardType="email-address"
+        label="引き継ぎ先のメールアドレス"
+        onChangeText={setEmail}
+        value={email}
+      />
+      {sentTo ? (
+        <Field
+          keyboardType="number-pad"
+          label="メールに届いた6桁コード"
+          maxLength={6}
+          onChangeText={(value) => setCode(value.replace(/\D/g, ""))}
+          value={code}
+        />
+      ) : null}
+      <ErrorNotice message={error} />
+      <PrimaryButton
+        label={sentTo ? "コードを確認して引き継ぐ" : "確認コードを送る"}
+        loading={loading}
+        onPress={() => void (sentTo ? confirm() : send())}
+      />
+      {sentTo ? (
+        <TextButton
+          label="別のメールアドレスを使う"
+          onPress={() => {
+            setSentTo(null);
+            setCode("");
+            setError(null);
+          }}
+        />
+      ) : null}
+    </Card>
   );
 }
 

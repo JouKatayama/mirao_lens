@@ -67,7 +67,10 @@ import { LoadingScreen, PrimaryButton } from "./ui";
 import {
   cancelAllReminders,
   cancelReminder,
+  remindersSupported,
+  requestReminderPermission,
   scheduleReminder,
+  restoreReminders,
   subscribeToReminderTaps,
 } from "../lib/reminders";
 import { EncounterHistoryScreen } from "./encounter-history-screen";
@@ -138,6 +141,8 @@ export function PersonalContextApp() {
   // and approval returns there instead of dropping the user on Home.
   const [editingContext, setEditingContext] = useState(false);
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const activeUserId = useRef<string | null>(null);
+  activeUserId.current = session?.user.id ?? null;
   const [view, setView] = useState<ViewName>("loading");
   const [context, setContext] = useState<PersonalContextResponse | null>(null);
   const [drafts, setDrafts] = useState<PersonalContextItem[]>([]);
@@ -176,6 +181,8 @@ export function PersonalContextApp() {
     null,
   );
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [reminderPermissionNeeded, setReminderPermissionNeeded] =
+    useState(false);
   // Null once the server says the page it returned was the last one.
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
@@ -330,6 +337,27 @@ export function PersonalContextApp() {
   }, [services]);
 
   useEffect(() => {
+    if (!services.ok || !session) return;
+    let current = true;
+    void services.scanApi
+      .listReminders(session.access_token)
+      .then(async ({ items }) => {
+        const restored = await restoreReminders(items, () => current);
+        if (current) {
+          setReminderPermissionNeeded(
+            remindersSupported && items.length > 0 && !restored,
+          );
+        }
+      })
+      .catch(() => {
+        // Keep existing notifications if the server is temporarily unreachable.
+      });
+    return () => {
+      current = false;
+    };
+  }, [services, session]);
+
+  useEffect(() => {
     if (session === undefined) {
       setView("loading");
       return;
@@ -339,6 +367,7 @@ export function PersonalContextApp() {
       // Reminders name a contact and an action. They must not fire for a
       // signed-out account, nor for whoever signs in on this device next.
       void cancelAllReminders();
+      setReminderPermissionNeeded(false);
       setTappedReminderScanId(null);
       setContext(null);
       setDrafts([]);
@@ -1254,6 +1283,27 @@ export function PersonalContextApp() {
           loadingMore={historyLoadingMore}
           onLoadMore={() => void loadMoreHistory()}
           onRefresh={() => void loadHistory()}
+          reminderPermissionNeeded={reminderPermissionNeeded}
+          onEnableReminders={() => {
+            void (async () => {
+              if (!(await requestReminderPermission())) return;
+              try {
+                const { items } = await services.scanApi.listReminders(
+                  session.access_token,
+                );
+                if (
+                  await restoreReminders(
+                    items,
+                    () => activeUserId.current === session.user.id,
+                  )
+                ) {
+                  setReminderPermissionNeeded(false);
+                }
+              } catch {
+                // Leave the recovery action available for a later retry.
+              }
+            })();
+          }}
           onProfile={() => {
             setContextReturn("home");
             setView("context");
@@ -1585,6 +1635,10 @@ export function PersonalContextApp() {
       ) : null}
       {view === "context" && context ? (
         <MyContextScreen
+          client={services.supabase}
+          guestUserId={
+            session.user.is_anonymous === true ? session.user.id : undefined
+          }
           isGuest={session.user.is_anonymous === true}
           items={context.items}
           loading={busy}
