@@ -3,6 +3,8 @@ import type {
   CardCorrection,
   EncounterHistoryItem,
   EvidenceItem,
+  EventRecord,
+  EventTeamItem,
   MeetingGoal,
   NextActionResponse,
   PersonalContextItem,
@@ -39,6 +41,13 @@ import {
 import { hasUsablePersonalContext } from "../lib/context-form";
 import { isGuestLoginEnabled } from "../lib/pilot-auth";
 import { createScanApiClient, ScanApiError } from "../lib/scan-api";
+import { createEventApiClient } from "../lib/event-api";
+import { createHubSpotApiClient } from "../lib/hubspot-api";
+import {
+  deleteAudioMemo,
+  deleteUserAudioMemos,
+  pruneExpiredAudioMemos,
+} from "../lib/audio-memo";
 import { createScanId, type CapturedCardImage } from "../lib/scan-capture";
 import { readCapturedCardBytes } from "../lib/scan-image-file";
 import { getSupabaseClient } from "../lib/supabase";
@@ -104,6 +113,8 @@ type Services =
       api: ReturnType<typeof createPersonalContextApiClient>;
       ok: true;
       scanApi: ReturnType<typeof createScanApiClient>;
+      eventApi: ReturnType<typeof createEventApiClient>;
+      hubSpotApi: ReturnType<typeof createHubSpotApiClient>;
       supabase: ReturnType<typeof getSupabaseClient>;
     }>
   | Readonly<{ error: string; ok: false }>;
@@ -124,6 +135,8 @@ export function PersonalContextApp() {
         api: createPersonalContextApiClient(),
         ok: true,
         scanApi: createScanApiClient(),
+        eventApi: createEventApiClient(),
+        hubSpotApi: createHubSpotApiClient(),
         supabase: getSupabaseClient(),
       };
     } catch (error) {
@@ -180,6 +193,63 @@ export function PersonalContextApp() {
   const [historyItems, setHistoryItems] = useState<ScanHistoryItem[] | null>(
     null,
   );
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventItems, setEventItems] = useState<ScanHistoryItem[] | null>(null);
+  const [eventError, setEventError] = useState<string | null>(null);
+  const [eventMembers, setEventMembers] = useState<string[]>([]);
+  const [eventTeamItems, setEventTeamItems] = useState<EventTeamItem[]>([]);
+  const [sharedEvents, setSharedEvents] = useState<
+    Array<{ id: string; name: string; owner_user_id: string }>
+  >([]);
+  const [sharedItems, setSharedItems] = useState<EventTeamItem[]>([]);
+  const [hubSpotConnected, setHubSpotConnected] = useState(false);
+
+  useEffect(() => {
+    void pruneExpiredAudioMemos().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!session || !services.ok) {
+      setEvents([]);
+      setSelectedEventId(null);
+      setEventItems(null);
+      setEventTeamItems([]);
+      setEventMembers([]);
+      setSharedEvents([]);
+      setSharedItems([]);
+      setHubSpotConnected(false);
+      return;
+    }
+    let live = true;
+    void services.eventApi
+      .list(session.access_token)
+      .then((items) => {
+        if (live) setEvents(items);
+      })
+      .catch(() => {
+        if (live) setEventError("イベントを読み込めませんでした。");
+      });
+    void services.eventApi
+      .listSharedEvents(session.access_token)
+      .then((items) => {
+        if (live) setSharedEvents(items);
+      })
+      .catch(() => {
+        if (live) setEventError("共有イベントを読み込めませんでした。");
+      });
+    void services.hubSpotApi
+      .status(session.access_token)
+      .then((status) => {
+        if (live) setHubSpotConnected(status.connected);
+      })
+      .catch(() => {
+        if (live) setHubSpotConnected(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [session, services]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [reminderPermissionNeeded, setReminderPermissionNeeded] =
     useState(false);
@@ -834,6 +904,97 @@ export function PersonalContextApp() {
     }
   }
 
+  async function selectEvent(eventId: string | null) {
+    setSelectedEventId(eventId);
+    setEventError(null);
+    if (!eventId || !session || !services.ok) {
+      setEventItems(null);
+      setEventMembers([]);
+      setEventTeamItems([]);
+      return;
+    }
+    setEventItems(null);
+    try {
+      setEventItems(
+        await services.eventApi.listScans(session.access_token, eventId),
+      );
+      setEventMembers(
+        await services.eventApi.listMembers(session.access_token, eventId),
+      );
+      setEventTeamItems(
+        await services.eventApi.readTeamItems(session.access_token, eventId),
+      );
+    } catch {
+      setEventError("イベントの名刺を読み込めませんでした。");
+    }
+  }
+
+  async function addEventMember(userId: string) {
+    if (!session || !services.ok || !selectedEventId) return;
+    await services.eventApi.addMember(
+      session.access_token,
+      selectedEventId,
+      userId,
+    );
+    setEventMembers((current) => [...current, userId]);
+  }
+
+  async function removeEventMember(userId: string) {
+    if (!session || !services.ok || !selectedEventId) return;
+    await services.eventApi.removeMember(
+      session.access_token,
+      selectedEventId,
+      userId,
+    );
+    setEventMembers((current) => current.filter((id) => id !== userId));
+  }
+
+  async function openSharedEvent(eventId: string) {
+    if (!session || !services.ok) return;
+    try {
+      setSharedItems(
+        await services.eventApi.readTeamItems(session.access_token, eventId),
+      );
+    } catch {
+      setEventError("共有された名刺を読み込めませんでした。");
+    }
+  }
+
+  async function refreshHubSpot() {
+    if (!session || !services.ok) return;
+    const status = await services.hubSpotApi.status(session.access_token);
+    setHubSpotConnected(status.connected);
+  }
+
+  async function connectHubSpot() {
+    if (!session || !services.ok) return;
+    const url = await services.hubSpotApi.authorize(session.access_token);
+    await Linking.openURL(url);
+  }
+
+  async function disconnectHubSpot() {
+    if (!session || !services.ok) return;
+    await services.hubSpotApi.disconnect(session.access_token);
+    setHubSpotConnected(false);
+  }
+
+  async function createEvent(name: string) {
+    if (!session || !services.ok) return;
+    const event = await services.eventApi.create(session.access_token, name);
+    setEvents((current) => [event, ...current]);
+    await selectEvent(event.id);
+  }
+
+  async function attachScanToEvent(targetScanId: string) {
+    if (!session || !services.ok || !selectedEventId) return;
+    await services.eventApi.attach(
+      session.access_token,
+      selectedEventId,
+      targetScanId,
+    );
+    await selectEvent(selectedEventId);
+  }
+
   async function uploadCardImage(
     captured: CapturedCardImage,
     activeScanId: string,
@@ -1243,6 +1404,7 @@ export function PersonalContextApp() {
 
     try {
       await services.scanApi.deleteScan(session.access_token, targetScanId);
+      await deleteAudioMemo(session.user.id, targetScanId);
       setHistoryItems((current) =>
         current
           ? current.filter((item) => item.scan_id !== targetScanId)
@@ -1263,8 +1425,12 @@ export function PersonalContextApp() {
     }
 
     await services.scanApi.deleteAccount(session.access_token);
-    await services.supabase.auth.signOut();
-    await cancelAllReminders();
+    try {
+      await deleteUserAudioMemos(session.user.id);
+    } finally {
+      await services.supabase.auth.signOut();
+      await cancelAllReminders();
+    }
   }
 
   return (
@@ -1277,8 +1443,26 @@ export function PersonalContextApp() {
       <StatusBar style={view === "camera" ? "light" : "dark"} />
       {view === "home" && context ? (
         <HomeScreen
-          items={historyItems}
-          error={historyError}
+          items={selectedEventId ? eventItems : historyItems}
+          allItems={historyItems ?? []}
+          onAttachScan={attachScanToEvent}
+          error={eventError || historyError}
+          events={events}
+          selectedEventId={selectedEventId}
+          onSelectEvent={(eventId) => void selectEvent(eventId)}
+          onCreateEvent={createEvent}
+          myUserId={session.user.id}
+          eventMembers={eventMembers}
+          eventTeamItems={eventTeamItems}
+          onAddEventMember={addEventMember}
+          onRemoveEventMember={removeEventMember}
+          sharedEvents={sharedEvents}
+          sharedItems={sharedItems}
+          onOpenSharedEvent={(eventId) => void openSharedEvent(eventId)}
+          hubSpotConnected={hubSpotConnected}
+          onHubSpotConnect={connectHubSpot}
+          onHubSpotRefresh={refreshHubSpot}
+          onHubSpotDisconnect={disconnectHubSpot}
           hasMore={historyCursor !== null}
           loadingMore={historyLoadingMore}
           onLoadMore={() => void loadMoreHistory()}
@@ -1344,6 +1528,13 @@ export function PersonalContextApp() {
       {view === "camera" && scanId ? (
         <CardCaptureScreen
           onAccepted={(result) => {
+            if (selectedEventId) {
+              void services.eventApi
+                .attach(session.access_token, selectedEventId, result.scan_id)
+                .catch(() =>
+                  setEventError("名刺をイベントに追加できませんでした。"),
+                );
+            }
             setScanResult(result);
             setScanStatus({
               card: null,
@@ -1383,6 +1574,7 @@ export function PersonalContextApp() {
           error={scanError}
           onCorrect={correctCard}
           onDone={() => {
+            if (selectedEventId) void selectEvent(selectedEventId);
             if (view === "card-details" && scanStatus?.flash_brief) {
               setView("flash-brief");
               return;
@@ -1537,6 +1729,19 @@ export function PersonalContextApp() {
         scanStatus.status === "deep_enrichment" ||
         scanStatus.status === "deep_ready") ? (
         <InteractionScreen
+          audioMemoUserId={session.user.id}
+          audioMemoScanId={scanStatus.scan_id}
+          hubSpotConnected={hubSpotConnected}
+          hubSpotInitial={{
+            email: scanStatus.card.email ?? "",
+            firstname: scanStatus.card.name ?? "",
+            company: scanStatus.card.company ?? "",
+            jobtitle: scanStatus.card.title ?? "",
+            phone: scanStatus.card.phone ?? "",
+          }}
+          onHubSpotExport={(input) =>
+            services.hubSpotApi.export(session.access_token, input)
+          }
           card={{
             company: scanStatus.card.company,
             name: scanStatus.card.name,

@@ -8,6 +8,7 @@
 - [ADR-0006: TypeSafe/Jev as the first decision evaluator, in shadow](./ADR-0006-jev-shadow-evaluation.md)
 - [ADR-0007: Defer Jev product integration](./ADR-0007-defer-jev-product-integration.md)
 - [ADR-0008: Recover guest accounts and local reminders](./ADR-0008-guest-account-recovery-and-local-reminders.md)
+- [ADR-0009: Event pilot data boundaries](./ADR-0009-event-pilot-data-boundaries.md)
 
 ADRs capture durable decisions, context, consequences, and rejected
 alternatives. Do not use them as ticket status logs.

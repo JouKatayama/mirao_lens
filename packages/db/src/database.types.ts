@@ -194,6 +194,102 @@ export type Database = {
           },
         ]
       }
+      event_scans: {
+        Row: {
+          created_at: string
+          event_id: string
+          owner_user_id: string
+          scan_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          owner_user_id: string
+          scan_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          owner_user_id?: string
+          scan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_scans_event_id_owner_user_id_fkey"
+            columns: ["event_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+          {
+            foreignKeyName: "event_scans_scan_id_owner_user_id_fkey"
+            columns: ["scan_id", "owner_user_id"]
+            isOneToOne: true
+            referencedRelation: "scans"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      event_members: {
+        Row: {
+          created_at: string
+          event_id: string
+          member_user_id: string
+          owner_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          member_user_id: string
+          owner_user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          member_user_id?: string
+          owner_user_id?: string
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string
+        }
+        Relationships: []
+      }
+      hubspot_oauth_states: {
+        Row: { state_hash: string; user_id: string; expires_at: string; created_at: string }
+        Insert: { state_hash: string; user_id: string; expires_at: string; created_at?: string }
+        Update: { state_hash?: string; user_id?: string; expires_at?: string; created_at?: string }
+        Relationships: []
+      }
+      hubspot_connections: {
+        Row: { user_id: string; hub_id: number; encrypted_tokens: string; access_expires_at: string; updated_at: string }
+        Insert: { user_id: string; hub_id: number; encrypted_tokens: string; access_expires_at: string; updated_at?: string }
+        Update: { user_id?: string; hub_id?: number; encrypted_tokens?: string; access_expires_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      hubspot_exports: {
+        Row: { user_id: string; scan_id: string; hub_id: number; contact_id: string; note_id: string | null; note_status: string; updated_at: string }
+        Insert: { user_id: string; scan_id: string; hub_id: number; contact_id: string; note_id?: string | null; note_status?: string; updated_at?: string }
+        Update: { user_id?: string; scan_id?: string; hub_id?: number; contact_id?: string; note_id?: string | null; note_status?: string; updated_at?: string }
+        Relationships: []
+      }
       interaction_notes: {
         Row: {
           created_at: string
@@ -499,6 +595,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_hubspot_oauth_state: { Args: { p_state_hash: string }; Returns: string | null }
+      list_shared_events: {
+        Args: never
+        Returns: { id: string; name: string; owner_user_id: string }[]
+      }
+      read_event_team_items: {
+        Args: { p_event_id: string }
+        Returns: {
+          scan_id: string
+          card_name: string | null
+          card_company: string | null
+          card_title: string | null
+          note_text: string | null
+          action_text: string | null
+          action_status: string | null
+        }[]
+      }
       claim_card_extraction: {
         Args: { p_model_alias: string; p_provider: string; p_scan_id: string }
         Returns: {

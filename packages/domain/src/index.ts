@@ -16,6 +16,8 @@ export * from "./company-context/company-context";
 export * from "./context/personal-context";
 export * from "./card-intelligence/card-extraction";
 export * from "./encounter/encounter-history";
+export * from "./event/event";
+export * from "./hubspot/hubspot";
 export * from "./evidence/evidence";
 export * from "./evidence/source-url";
 export * from "./flash-brief/flash-brief";

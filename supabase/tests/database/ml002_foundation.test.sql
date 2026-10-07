@@ -58,7 +58,7 @@ select ok(
 );
 select is(
   (select count(*) from pg_policies where schemaname = 'public'),
-  11::bigint,
+  15::bigint,
   'every public user-owned table has an RLS policy'
 );
 select is(

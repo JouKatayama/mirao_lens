@@ -2,6 +2,7 @@ import type {
   FlashBriefPublic,
   MutualValuePublic,
   NextActionResponse,
+  HubSpotExportRequest,
 } from "@miraio/domain";
 import { colors } from "@miraio/ui-tokens";
 import { Fragment, useState, type ReactNode } from "react";
@@ -26,6 +27,8 @@ import {
   type FlashBriefSectionId,
 } from "../lib/flash-brief-layout";
 import { remindersSupported } from "../lib/reminders";
+import { AudioMemo } from "./audio-memo";
+import { HubSpotExport } from "./hubspot-export";
 import { Icon } from "./icons";
 import { NextActionReminder } from "./next-action-reminder";
 import {
@@ -645,6 +648,13 @@ export type InteractionRecord = Readonly<{
 }>;
 
 type InteractionScreenProps = {
+  audioMemoScanId?: string;
+  audioMemoUserId?: string;
+  hubSpotConnected?: boolean;
+  hubSpotInitial?: HubSpotExportRequest["contact"];
+  onHubSpotExport?: (
+    input: HubSpotExportRequest,
+  ) => Promise<{ contact_id: string; note_status: string }>;
   card: Person;
   error: string | null;
   /** Set when the saved note or actions could not be read. */
@@ -708,6 +718,11 @@ export function InteractionScreen(props: InteractionScreenProps) {
 }
 
 function InteractionForm({
+  audioMemoScanId,
+  audioMemoUserId,
+  hubSpotConnected,
+  hubSpotInitial,
+  onHubSpotExport,
   card,
   error,
   mutualValue,
@@ -909,6 +924,27 @@ function InteractionForm({
           <Text style={s.caption}>保存済みのメモを編集しています。</Text>
         ) : null}
       </View>
+      {audioMemoUserId && audioMemoScanId ? (
+        <AudioMemo userId={audioMemoUserId} scanId={audioMemoScanId} />
+      ) : null}
+      {hubSpotConnected &&
+      hubSpotInitial &&
+      audioMemoScanId &&
+      onHubSpotExport ? (
+        <HubSpotExport
+          connected
+          scanId={audioMemoScanId}
+          initial={hubSpotInitial}
+          note={record.note}
+          action={
+            record.actions.find(
+              (item) =>
+                item.status === "accepted" || item.status === "completed",
+            )?.action_text ?? null
+          }
+          onExport={onHubSpotExport}
+        />
+      ) : null}
       {onSayThisUsed && sayThis.length > 0 ? (
         // Asked here, after the conversation, about the questions the user
         // actually saw first. It used to sit on the pre-conversation tab and

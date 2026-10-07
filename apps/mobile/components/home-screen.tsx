@@ -1,4 +1,8 @@
-import type { ScanHistoryItem } from "@miraio/domain";
+import type {
+  EventRecord,
+  EventTeamItem,
+  ScanHistoryItem,
+} from "@miraio/domain";
 import { colors } from "@miraio/ui-tokens";
 import { useState } from "react";
 import {
@@ -53,6 +57,24 @@ export function HomeScreen({
   onEnableReminders,
   reminderPermissionNeeded = false,
   analysisOnly = false,
+  events = [],
+  selectedEventId = null,
+  onSelectEvent,
+  onCreateEvent,
+  myUserId,
+  eventMembers = [],
+  onAddEventMember,
+  onRemoveEventMember,
+  sharedEvents = [],
+  sharedItems = [],
+  eventTeamItems = [],
+  onOpenSharedEvent,
+  hubSpotConnected = false,
+  onHubSpotConnect,
+  onHubSpotRefresh,
+  onHubSpotDisconnect,
+  allItems = [],
+  onAttachScan,
 }: {
   items: ScanHistoryItem[] | null;
   error: string | null;
@@ -67,6 +89,24 @@ export function HomeScreen({
   onEnableReminders?: () => void;
   reminderPermissionNeeded?: boolean;
   analysisOnly?: boolean;
+  events?: EventRecord[];
+  selectedEventId?: string | null;
+  onSelectEvent?: (id: string | null) => void;
+  onCreateEvent?: (name: string) => Promise<void>;
+  myUserId?: string;
+  eventMembers?: string[];
+  onAddEventMember?: (id: string) => Promise<void>;
+  onRemoveEventMember?: (id: string) => Promise<void>;
+  sharedEvents?: Array<{ id: string; name: string; owner_user_id: string }>;
+  sharedItems?: EventTeamItem[];
+  eventTeamItems?: EventTeamItem[];
+  onOpenSharedEvent?: (id: string) => void;
+  hubSpotConnected?: boolean;
+  onHubSpotConnect?: () => Promise<void>;
+  onHubSpotRefresh?: () => Promise<void>;
+  onHubSpotDisconnect?: () => Promise<void>;
+  allItems?: ScanHistoryItem[];
+  onAttachScan?: (scanId: string) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof tabs)[number]["value"]>(
@@ -75,6 +115,8 @@ export function HomeScreen({
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [eventName, setEventName] = useState("");
+  const [newMemberId, setNewMemberId] = useState("");
   const visible = items?.filter((item) => {
     const searchMatch = [item.card_name, item.card_company, item.card_title]
       .filter(Boolean)
@@ -97,6 +139,161 @@ export function HomeScreen({
         title="出会いの履歴"
         action={<TextButton label="撮影" onPress={onCapture} />}
       >
+        {onSelectEvent && onCreateEvent ? (
+          <Card>
+            <Text>イベント別に振り返る</Text>
+            <TextInput
+              accessibilityLabel="新しいイベント名"
+              placeholder="イベント名"
+              value={eventName}
+              onChangeText={setEventName}
+            />
+            <SecondaryButton
+              label="イベントを作成"
+              onPress={() => {
+                if (!eventName.trim()) return;
+                void onCreateEvent(eventName.trim())
+                  .then(() => setEventName(""))
+                  .catch(() =>
+                    setLocalError("イベントを作成できませんでした。"),
+                  );
+              }}
+            />
+            <TextButton label="すべて" onPress={() => onSelectEvent(null)} />
+            {events.map((event) => (
+              <TextButton
+                key={event.id}
+                label={`${event.name}${selectedEventId === event.id ? " ✓" : ""}`}
+                onPress={() => onSelectEvent(event.id)}
+              />
+            ))}
+            {selectedEventId && onAddEventMember && onRemoveEventMember ? (
+              <View>
+                {onAttachScan ? (
+                  <View>
+                    <Text>既存の名刺をこのイベントに追加</Text>
+                    {allItems
+                      .filter(
+                        (item) =>
+                          !items?.some(
+                            (included) => included.scan_id === item.scan_id,
+                          ),
+                      )
+                      .map((item) => (
+                        <SecondaryButton
+                          key={item.scan_id}
+                          label={`${item.card_name || "名前未登録"}を追加`}
+                          onPress={() =>
+                            void onAttachScan(item.scan_id).catch(() =>
+                              setLocalError("名刺を追加できませんでした。"),
+                            )
+                          }
+                        />
+                      ))}
+                  </View>
+                ) : null}
+                <Text>このイベントの次の行動</Text>
+                {eventTeamItems
+                  .filter((item) => item.action_text)
+                  .map((item) => (
+                    <Text key={item.scan_id}>
+                      {item.card_name || "名前未登録"}: {item.action_text} (
+                      {item.action_status})
+                    </Text>
+                  ))}
+                <Text>このイベントの共有メンバー</Text>
+                <TextInput
+                  accessibilityLabel="共有するユーザーID"
+                  placeholder="相手のユーザーID"
+                  value={newMemberId}
+                  onChangeText={setNewMemberId}
+                />
+                <SecondaryButton
+                  label="閲覧メンバーを追加"
+                  onPress={() =>
+                    void onAddEventMember(newMemberId.trim())
+                      .then(() => setNewMemberId(""))
+                      .catch(() =>
+                        setLocalError("メンバーを追加できませんでした。"),
+                      )
+                  }
+                />
+                {eventMembers.map((id) => (
+                  <View key={id}>
+                    <Text selectable>{id}</Text>
+                    <TextButton
+                      label="閲覧権限を解除"
+                      onPress={() =>
+                        void onRemoveEventMember(id).catch(() =>
+                          setLocalError("解除できませんでした。"),
+                        )
+                      }
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {myUserId ? (
+              <Text selectable>自分のユーザーID: {myUserId}</Text>
+            ) : null}
+            {sharedEvents.length ? <Text>共有されたイベント</Text> : null}
+            {sharedEvents.map((event) => (
+              <TextButton
+                key={event.id}
+                label={event.name}
+                onPress={() => onOpenSharedEvent?.(event.id)}
+              />
+            ))}
+            {sharedItems.map((item) => (
+              <View key={item.scan_id}>
+                <Text>
+                  {item.card_name || "名前未登録"} /{" "}
+                  {item.card_company || "会社未登録"}
+                </Text>
+                {item.note_text ? <Text>メモ: {item.note_text}</Text> : null}
+                {item.action_text ? (
+                  <Text>
+                    次の行動: {item.action_text} ({item.action_status})
+                  </Text>
+                ) : null}
+              </View>
+            ))}
+          </Card>
+        ) : null}
+        {onHubSpotConnect && onHubSpotRefresh && onHubSpotDisconnect ? (
+          <Card>
+            <Text>HubSpot連携: {hubSpotConnected ? "接続済み" : "未接続"}</Text>
+            {hubSpotConnected ? (
+              <SecondaryButton
+                label="接続を解除"
+                onPress={() =>
+                  void onHubSpotDisconnect().catch(() =>
+                    setLocalError("HubSpotを解除できませんでした。"),
+                  )
+                }
+              />
+            ) : (
+              <SecondaryButton
+                label="HubSpotを接続"
+                onPress={() =>
+                  void onHubSpotConnect().catch(() =>
+                    setLocalError(
+                      "HubSpot接続を開始できませんでした。設定を確認してください。",
+                    ),
+                  )
+                }
+              />
+            )}
+            <TextButton
+              label="接続状態を更新"
+              onPress={() =>
+                void onHubSpotRefresh().catch(() =>
+                  setLocalError("接続状態を確認できませんでした。"),
+                )
+              }
+            />
+          </Card>
+        ) : null}
         {reminderPermissionNeeded && onEnableReminders ? (
           <Card>
             <Text>保存済みのリマインダーをこの端末に復元できます。</Text>
