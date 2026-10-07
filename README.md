@@ -206,7 +206,11 @@ pnpm --filter @miraio/mobile web
    sign-in are available at `http://127.0.0.1:56324`. For a registration-free
    local pilot, set `EXPO_PUBLIC_ENABLE_GUEST_LOGIN=1`; the local Supabase
    configuration allows an isolated anonymous Auth session. Email OTP remains
-   available as the durable sign-in path.
+   available as the durable sign-in path. A guest can link a new email from
+   Profile before losing this device's session; an existing email account is
+   not merged automatically. Hosted projects need manual identity linking,
+   email confirmation enabled, and OTP templates for email change and new-user
+   confirmation. Both templates must expose the six-digit `{{ .Token }}` code.
 6. Use only a synthetic card or a card whose owner has agreed to the pilot.
    Check every extracted field before continuing because AI output can be
    wrong. Delete the scan or account from the app when the test is complete.
@@ -302,12 +306,19 @@ choice carries a concrete instant, stored as `next_actions.due_at`, and
 schedules a local notification on the device that set it.
 
 Local, not push: a follow-up reminder needs no server, no device token and no
-third party. The cost is that a reminder lives on one device — a reinstall
-loses it, and it does not follow the user to another phone. A reminder due
-tomorrow or later fires at 9am local rather than at the minute the note was
-written, and one due "今日中" is capped at the end of that day. Completing or
-dismissing the action cancels it, as does signing out or deleting the account:
-a notification naming a contact must not outlive the data it came from.
+third party. On sign-in, `GET /v1/reminders` returns future accepted actions
+for the owner and the app recreates this device's notifications if permission
+is already granted. A reinstall or a second device must grant notification
+permission before its schedule can be restored. The Home screen offers a
+restore action when future reminders exist but the device has not granted
+permission; sign-in never triggers a permission dialog. An overdue action
+remains visible as an action but is not notified retroactively.
+
+A reminder due tomorrow or later fires at 9am local rather than at the minute
+the note was written, and one due "今日中" is capped at the end of that day.
+Completing or dismissing the action cancels it, as does signing out or deleting
+the account: a notification naming a contact must not outlive the data it came
+from.
 
 The notification carries the scan it belongs to, so tapping it opens that
 person rather than the home screen — from a cold start as well as from the

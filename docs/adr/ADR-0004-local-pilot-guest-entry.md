@@ -3,6 +3,9 @@
 - Status: Accepted
 - Date: 2026-09-15
 
+Guest-to-email recovery was added later in ADR-0008. The device-bound access
+limitation below applies until the guest confirms an email address.
+
 ## Context
 
 ADR-0003 selected six-digit email OTP as the durable private-pilot sign-in

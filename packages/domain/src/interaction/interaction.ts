@@ -102,6 +102,12 @@ export const nextActionListResponseSchema = z
   })
   .strict();
 
+/** Future accepted actions that should have a notification on this device. */
+export const reminderListResponseSchema = z
+  .object({ items: z.array(nextActionResponseSchema) })
+  .strict();
+export type ReminderListResponse = z.infer<typeof reminderListResponseSchema>;
+
 export type NextActionOutcomeStatus = z.infer<
   typeof nextActionOutcomeStatusSchema
 >;

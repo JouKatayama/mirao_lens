@@ -7,6 +7,7 @@ import {
   nextActionRequestSchema,
   nextActionUpdateRequestSchema,
   noteRequestSchema,
+  reminderListResponseSchema,
   scanRecordSchema,
   type NextActionOutcomeStatus,
   type NextActionResponse,
@@ -35,6 +36,7 @@ type InteractionRepositoryPort = Readonly<{
   ): Promise<{ id: string } | null>;
   getNote(scanId: string): Promise<{ note_text: string | null } | null>;
   listNextActions(scanId: string): Promise<NextActionResponse[]>;
+  listFutureReminders(now: string): Promise<NextActionResponse[]>;
   setNextActionDueAt(
     actionId: string,
     dueAt: string | null,
@@ -340,6 +342,24 @@ export function createGetNextActionsHandler(
       const items = await session.repository.listNextActions(scanId);
 
       return jsonResponse({ items, scan_id: scanId });
+    } catch (error) {
+      return persistenceError(error);
+    }
+  };
+}
+
+export function createGetRemindersHandler(
+  dependencies: InteractionHandlerDependencies,
+): (request: Request) => Promise<Response> {
+  return async (request) => {
+    const session = await authenticateRequest(request, dependencies);
+    if (session instanceof Response) return session;
+
+    try {
+      const items = await session.repository.listFutureReminders(
+        new Date().toISOString(),
+      );
+      return jsonResponse(reminderListResponseSchema.parse({ items }));
     } catch (error) {
       return persistenceError(error);
     }

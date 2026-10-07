@@ -3,14 +3,15 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 import { readReminderScanId, toReminderTarget } from "./reminder-target";
+import type { NextActionResponse } from "@miraio/domain";
 
 /**
  * Local notifications for next actions.
  *
  * Local, not push: a reminder to send a follow-up needs no server, no device
  * token and no third party, and the pilot has no infrastructure for any of
- * them. The cost is that reminders live on the device that set them — a
- * reinstall loses them, and they do not follow the user to another phone.
+ * them. Reservations live on the device; the server's saved due times let a
+ * signed-in device restore future reminders after reinstall or sign-in.
  */
 const storageKeyPrefix = "miraio.reminder";
 
@@ -129,6 +130,47 @@ export async function cancelAllReminders(): Promise<void> {
   } catch {
     // Best effort: failing to clear reminders must not block a sign-out.
   }
+}
+
+/** Rebuild this device's schedule from the signed-in user's server records. */
+export async function restoreReminders(
+  actions: NextActionResponse[],
+  isCurrent: () => boolean,
+): Promise<boolean> {
+  if (!remindersSupported || !isCurrent()) return false;
+
+  // Restoring an account must not display a permission prompt on login.
+  const permission = await Notifications.getPermissionsAsync();
+  if (!permission.granted || !isCurrent()) return false;
+
+  const active = new Set(actions.map((action) => action.id));
+  const keys = await AsyncStorage.getAllKeys();
+  for (const key of keys) {
+    if (!isCurrent()) return false;
+    if (!key.startsWith(`${storageKeyPrefix}.`)) continue;
+    const actionId = key.slice(storageKeyPrefix.length + 1);
+    if (!active.has(actionId)) await cancelReminder(actionId);
+  }
+
+  for (const action of actions) {
+    if (!isCurrent()) return false;
+    if (action.status !== "accepted" || !action.due_at) continue;
+    const dueAt = new Date(action.due_at);
+    if (!Number.isFinite(dueAt.getTime()) || dueAt.getTime() <= Date.now())
+      continue;
+    await scheduleReminder(
+      action.id,
+      action.action_text,
+      dueAt,
+      null,
+      action.scan_id,
+    );
+    if (!isCurrent()) {
+      await cancelReminder(action.id);
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

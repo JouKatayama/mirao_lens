@@ -5,6 +5,19 @@ import { ScanApiClient, ScanApiError } from "./scan-api";
 const scanId = "00000000-0000-4000-8000-000000000404";
 
 describe("ScanApiClient", () => {
+  it("reads the signed-in user's reminders from the API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ items: [] }));
+    const client = new ScanApiClient("https://api.example.invalid", fetchMock);
+
+    await expect(client.listReminders("access-token")).resolves.toEqual({
+      items: [],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.invalid/v1/reminders",
+      { headers: { Authorization: "Bearer access-token" } },
+    );
+  });
+
   it("sends binary image data with stable scan metadata headers", async () => {
     const fetchMock = vi
       .fn()
