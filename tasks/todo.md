@@ -2,7 +2,7 @@
 
 ## Before 3 November 2026
 
-- [ ] **1. Pilot protocol and scorecard (S).** Define eligible encounter, consent wording, manual tally, and 24-hour/7-day/30-day check forms without card PII. Verify that each metric in `tasks/plan.md` has a denominator and owner. Depends on: none.
+- [ ] **1. Pilot protocol and scorecard (S).** Define eligible encounter, consent wording, manual tally, and 24-hour/7-day/30-day check forms without card PII. Verify that each metric in `tasks/plan.md` has a denominator and owner. Depends on: none. Draft: `docs/pilot-protocol-2026-11-03.md`, pending review at the 31 October meeting (open decisions in its section 13).
 - [ ] **2. Actual-phone smoke test (M).** Run sign-in, synthetic card scan, Brief, note, Next Action, reminder, and analytics on the intended device and event network. Record latency and recovery steps. Depends on: 1. Verification: complete one end-to-end run; `pnpm check` for any code changes.
 - [ ] **3. Repair only rehearsal blockers (S/M per defect).** Open a separate scoped implementation ticket for each confirmed blocker; preserve the MVP product spec. Depends on: 2. Verification: reproduce failure, fix, and rerun device smoke test and `pnpm check`.
 
