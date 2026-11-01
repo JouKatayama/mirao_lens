@@ -35,6 +35,14 @@ Cases are implemented in `@miraio/test-fixtures` (`packages/test-fixtures/src/`)
 ペルソナでも文字認識（OCR）の精度は測れません。名刺は解析済みのフィールドとして与えるため、
 測れるのは推論ステージだけです。
 
+## 製造業 A/B/C 比較ケース
+
+| File                                   | 対象                                      | Cases |
+| -------------------------------------- | ----------------------------------------- | ----- |
+| `manufacturing-comparison-fixtures.ts` | 汎用ChatGPT／現行Miraio／Playbook版の比較 | 24    |
+
+手順と評価方法は [`evals/manufacturing-comparison/README.md`](../manufacturing-comparison/README.md) を参照してください。
+
 ## 項目割り当ての実測ケース
 
 | File                    | 対象                        | Cases |
