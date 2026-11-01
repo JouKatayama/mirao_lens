@@ -182,3 +182,43 @@ describe("processFlashBrief", () => {
     expect(generate).toHaveBeenCalledWith(validBriefInput);
   });
 });
+
+describe("processFlashBrief opportunity playbook", () => {
+  const manufacturingInput: FlashBriefInput = {
+    ...validBriefInput,
+    card: { ...validBriefInput.card, department: "品質保証部" },
+    personal_context: {
+      current_company: "サンプルAI株式会社",
+      current_role: "営業責任者",
+      items: [{ tags: [], text: "外観検査AIを提供", type: "offer" }],
+    },
+  };
+
+  async function generatedInput(enabled: boolean | undefined) {
+    const generate = vi.fn().mockResolvedValue(validBrief);
+    const repository = makeRepository({
+      getFlashBriefInput: vi.fn().mockResolvedValue(manufacturingInput),
+    });
+
+    await processFlashBrief(
+      { accessToken, scanId },
+      makeDependencies(repository, {
+        createGenerator: vi.fn().mockReturnValue({ generate }),
+        opportunityPlaybookEnabled: enabled,
+      }),
+    );
+
+    return generate.mock.calls[0]?.[0] as FlashBriefInput;
+  }
+
+  it("leaves the input unchanged when the playbook is off", async () => {
+    expect(await generatedInput(undefined)).toEqual(manufacturingInput);
+  });
+
+  it("attaches matched playbook hints when on", async () => {
+    const input = await generatedInput(true);
+
+    expect(input.opportunity_playbook?.[0]?.theme).toBe("visual_inspection");
+    expect(input.opportunity_playbook?.length).toBeLessThanOrEqual(3);
+  });
+});

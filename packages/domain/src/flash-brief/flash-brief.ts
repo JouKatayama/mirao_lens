@@ -4,6 +4,10 @@ import { businessCardPublicSchema } from "../card-intelligence/card-extraction";
 import { companyContextSchema } from "../company-context/company-context";
 import { personalContextTypeSchema } from "../context/personal-context";
 import { mutualValuePublicSchema } from "../mutual-value/mutual-value";
+import {
+  maximumOpportunityPlaybookHints,
+  opportunityPlaybookHintSchema,
+} from "../opportunity-playbook/opportunity-playbook";
 import { meetingGoalSchema } from "../scan/card-scan";
 
 // ─── Identity Resolution ──────────────────────────────────────────────────────
@@ -101,6 +105,12 @@ export const flashBriefInputSchema = z
     company_context: companyContextSchema.nullable().optional(),
     locale: z.string().min(2).max(35).default("ja"),
     meeting_goal: meetingGoalSchema,
+    // Industry knowledge selected for this card (ML-029). Absent when the
+    // playbook is switched off or nothing matched.
+    opportunity_playbook: z
+      .array(opportunityPlaybookHintSchema)
+      .max(maximumOpportunityPlaybookHints)
+      .optional(),
     personal_context: z
       .object({
         current_company: z.string().nullable(),
