@@ -71,6 +71,30 @@ describe("selectOpportunityPlaybookHints", () => {
     expect(hints[1]?.matched_offering_signals).toEqual(["予知保全"]);
   });
 
+  it("ranks a person match above any number of offering-only matches", () => {
+    const planning = entry({
+      id: "test-planning-001",
+      offering_signals: ["スケジューリング"],
+      target_signals: ["生産管理"],
+      theme: "production_planning",
+    });
+    const inspectionHeavy = entry({
+      id: "test-inspection-heavy-001",
+      offering_signals: ["外観検査", "画像解析", "検査AI"],
+      target_signals: ["品質"],
+    });
+
+    const [first] = selectOpportunityPlaybookHints(
+      {
+        offeringTexts: ["外観検査AI 画像解析"],
+        targetTexts: ["機械メーカー", "生産管理部"],
+      },
+      [inspectionHeavy, planning],
+    );
+
+    expect(first?.id).toBe("test-planning-001");
+  });
+
   it("ignores an offering match when the person is not in manufacturing", () => {
     expect(
       selectOpportunityPlaybookHints(

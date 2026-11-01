@@ -125,7 +125,7 @@ const entries = [
     id: "manufacturing-equipment-maintenance-002",
     theme: "equipment_maintenance",
     target_departments: ["設備保全", "保全課"],
-    target_signals: ["保全", "設備管理", "maintenance"],
+    target_signals: ["保全", "設備管理", "maintenance", "工場長"],
     offering_signals: [
       "予知保全",
       "予兆検知",
