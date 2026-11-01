@@ -8,3 +8,5 @@ export * from "./judge-agreement";
 export * from "./jev-shadow-fixtures";
 export * from "./mutual-value-fixtures";
 export * from "./persona-fixtures";
+export * from "./manufacturing-comparison-fixtures";
+export * from "./manufacturing-comparison-scoring";

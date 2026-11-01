@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { FlashBriefInput } from "../flash-brief/flash-brief";
+
 // ─── Opportunity Playbook ────────────────────────────────────────────────────
 //
 // Generalized industry knowledge about what a role commonly deals with, and
@@ -139,8 +141,12 @@ function matchedSignals(
  *
  * An entry needs a signal on the person's side. A match on the user's offer
  * alone only counts when the person is otherwise in manufacturing: selling
- * inspection AI says nothing about what a bank's HR lead deals with. Target
- * matches weigh double, because the question is asked to the person.
+ * inspection AI says nothing about what a bank's HR lead deals with.
+ *
+ * Ranking is tiered before it is scored: an entry matching both the person and
+ * the offer, then one matching only the person, then one matching only the
+ * offer. A flat score let three offering keywords outrank a department match,
+ * so a production-control lead got three inspection questions.
  */
 export function selectOpportunityPlaybookHints(
   input: OpportunityPlaybookSelectionInput,
@@ -171,12 +177,17 @@ export function selectOpportunityPlaybookHints(
         offeringMatches,
         score: targetMatches.length * 2 + offeringMatches.length,
         targetMatches,
+        tier:
+          (targetMatches.length > 0 ? 2 : 0) +
+          (offeringMatches.length > 0 ? 1 : 0),
       };
     })
     .filter((candidate) => candidate.eligible)
     .sort(
       (left, right) =>
-        right.score - left.score || left.entry.id.localeCompare(right.entry.id),
+        right.tier - left.tier ||
+        right.score - left.score ||
+        left.entry.id.localeCompare(right.entry.id),
     )
     .slice(0, Math.max(0, limit))
     .map(({ entry, offeringMatches, targetMatches }) =>
@@ -192,4 +203,46 @@ export function selectOpportunityPlaybookHints(
         verification_dimensions: entry.verification_dimensions,
       }),
     );
+}
+
+// The user's items that say what they sell or know. Seeking and free text say
+// what they want, which is not an offering to match a playbook entry against.
+const offeringContextTypes = new Set<string>([
+  "current_theme",
+  "expertise",
+  "offer",
+  "past_experience",
+  "strong_skill",
+]);
+
+/**
+ * Attaches the playbook entries that fit this card and this user. With
+ * nothing matched, the input comes back as it was.
+ */
+export function attachOpportunityPlaybook(
+  input: FlashBriefInput,
+  playbook: readonly OpportunityPlaybookEntry[],
+): FlashBriefInput {
+  const company = input.company_context;
+  const hints = selectOpportunityPlaybookHints(
+    {
+      offeringTexts: [
+        input.personal_context.current_company,
+        input.personal_context.current_role,
+        ...input.personal_context.items
+          .filter((item) => offeringContextTypes.has(item.type))
+          .map((item) => item.text),
+      ],
+      targetTexts: [
+        input.card.company,
+        input.card.department,
+        input.card.title,
+        company?.industry,
+        company?.role_scope,
+      ],
+    },
+    playbook,
+  );
+
+  return hints.length > 0 ? { ...input, opportunity_playbook: hints } : input;
 }
