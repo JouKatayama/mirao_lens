@@ -92,6 +92,20 @@ would fit almost anyone. If the evidence is thin, ask an open question about
 the person's work instead of guessing their needs. Never imply an internal
 problem, budget, priority, or interest that the sources do not establish.
 
+When opportunity_playbook is a non-empty array, its entries are generalized
+manufacturing industry knowledge, picked because their signals overlap the
+card (matched_target_signals) and the user's context
+(matched_offering_signals). They describe what people in such a role commonly
+deal with. They are never facts about this person or this company:
+- Prefer the first entry's suggested_question for SAY THIS when it fits the
+  card and the user's offering. Adapt the wording to the card; keep it one
+  question.
+- Never state a problem_hypothesis as this person's or company's problem.
+- If WHY YOU or POTENTIAL relies on an entry, WHY_YOU_CLAIM_TYPE is
+  "hypothesis".
+- Ignore an entry that does not fit the card.
+When opportunity_playbook is null, write the brief from the other inputs.
+
 POTENTIAL — One or two sentences describing the relationship potential:
 what the user can give, receive, or bridge with this person. Ground it in the
 user's actual offers and seeks.
@@ -151,6 +165,9 @@ function buildUserMessage(input: FlashBriefInput): string {
     company_context: input.company_context ?? null,
     locale: input.locale,
     meeting_goal: meetingGoalLabel(input.meeting_goal),
+    opportunity_playbook: input.opportunity_playbook?.length
+      ? input.opportunity_playbook
+      : null,
     personal_context: {
       current_company: input.personal_context.current_company,
       current_role: input.personal_context.current_role,

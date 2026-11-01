@@ -5,6 +5,7 @@ import {
   readOpenAICardExtractionConfig,
   readOpenAICompanyContextConfig,
   readOpenAIPersonalContextConfig,
+  readOpportunityPlaybookEnabled,
   readReasoningEffort,
   readServerSupabaseConfig,
   ServerConfigurationError,
@@ -201,5 +202,23 @@ describe("reasoning effort configuration", () => {
       model: "gpt-5.6-terra",
       webSearch: false,
     });
+  });
+});
+
+describe("opportunity playbook configuration", () => {
+  it("is off unless the value is exactly on", () => {
+    expect(readOpportunityPlaybookEnabled({})).toBe(false);
+    expect(
+      readOpportunityPlaybookEnabled({ AI_OPPORTUNITY_PLAYBOOK: "off" }),
+    ).toBe(false);
+    expect(
+      readOpportunityPlaybookEnabled({ AI_OPPORTUNITY_PLAYBOOK: " On " }),
+    ).toBe(true);
+  });
+
+  it("treats an ambiguous value as a configuration defect", () => {
+    expect(() =>
+      readOpportunityPlaybookEnabled({ AI_OPPORTUNITY_PLAYBOOK: "true" }),
+    ).toThrow(ServerConfigurationError);
   });
 });

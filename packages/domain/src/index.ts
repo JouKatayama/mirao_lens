@@ -24,4 +24,5 @@ export * from "./flash-brief/flash-brief";
 export * from "./identity/identity-assessment";
 export * from "./interaction/interaction";
 export * from "./mutual-value/mutual-value";
+export * from "./opportunity-playbook/opportunity-playbook";
 export * from "./scan/card-scan";

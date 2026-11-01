@@ -13,10 +13,12 @@ import {
 } from "@miraio/db";
 import type { FlashBrief, FlashBriefInput } from "@miraio/domain";
 
+import { withOpportunityPlaybook } from "./opportunity-playbook";
 import { withRetrievedPersonalContext } from "./personal-context-retrieval";
 import {
   readOpenAIEmbeddingConfig,
   readOpenAIFlashBriefConfig,
+  readOpportunityPlaybookEnabled,
   readServerSupabaseConfig,
 } from "./server-config";
 
@@ -52,6 +54,8 @@ export type FlashBriefProcessorDependencies = Readonly<{
   createGenerator(): FlashBriefGenerator;
   modelAlias: string;
   nowMilliseconds(): number;
+  /** ML-029; absent means off. */
+  opportunityPlaybookEnabled?: boolean;
   provider: string;
 }>;
 
@@ -130,11 +134,14 @@ export async function processFlashBrief(
     );
 
     const briefInput = storedInput
-      ? await withRetrievedPersonalContext(storedInput, {
-          createGenerator: dependencies.createEmbeddingGenerator,
-          matchPersonalContext: (embedding, limit) =>
-            session.repository.matchPersonalContext(embedding, limit),
-        })
+      ? withOpportunityPlaybook(
+          await withRetrievedPersonalContext(storedInput, {
+            createGenerator: dependencies.createEmbeddingGenerator,
+            matchPersonalContext: (embedding, limit) =>
+              session.repository.matchPersonalContext(embedding, limit),
+          }),
+          dependencies.opportunityPlaybookEnabled ?? false,
+        )
       : null;
 
     if (!briefInput) {
@@ -164,6 +171,16 @@ export async function processFlashBrief(
     await safelyFail(session.repository, input.scanId, claim.runId, failure);
 
     return { status: "failed" };
+  }
+}
+
+// A malformed flag must not fail the brief; it falls back to the brief as it
+// was before the playbook existed.
+function readPlaybookFlag(): boolean {
+  try {
+    return readOpportunityPlaybookEnabled(process.env);
+  } catch {
+    return false;
   }
 }
 
@@ -207,6 +224,7 @@ export async function processProductionFlashBrief(input: {
     },
     modelAlias: configuration?.model ?? "unconfigured",
     nowMilliseconds: () => performance.now(),
+    opportunityPlaybookEnabled: readPlaybookFlag(),
     provider: "openai",
   });
 }

@@ -5,6 +5,7 @@ export * from "./decision-evaluator";
 export * from "./embedding";
 export * from "./company-context";
 export * from "./flash-brief";
+export * from "./knowledge/manufacturing-playbook";
 export * from "./mutual-value";
 export * from "./personal-context";
 export {

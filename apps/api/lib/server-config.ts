@@ -107,6 +107,27 @@ export function readCompanyWebSearchEnabled(
 }
 
 /**
+ * Opt-in Manufacturing Opportunity Playbook (ML-029). Off unless the value is
+ * exactly "on", so a pilot compares the brief with and without it by changing
+ * one variable. It sends nothing outside the configured provider.
+ */
+export function readOpportunityPlaybookEnabled(
+  environment: ServerEnvironment,
+): boolean {
+  const raw = environment["AI_OPPORTUNITY_PLAYBOOK"]?.trim().toLowerCase();
+
+  if (!raw || raw === "off") {
+    return false;
+  }
+
+  if (raw !== "on") {
+    throw new ServerConfigurationError("AI_OPPORTUNITY_PLAYBOOK");
+  }
+
+  return true;
+}
+
+/**
  * Per-stage reasoning depth. Absent leaves the parameter off the request, so a
  * non-reasoning model or a self-hosted server keeps working unchanged.
  *
