@@ -210,6 +210,100 @@ Each slice needs a scoped execution ticket and a data/security ADR where its
 ownership, retention, or authorization model changes. The modular monolith and
 staged AI pipeline remain the architecture baseline.
 
+## 2.4 Approved pilot extensions: follow-up and relationship graph
+
+> **Status: Approved (2026-11-07).** Proposed by the CEO and authorized for
+> implementation as pilot extensions 5 and 6. They narrow, not remove, the
+> §2.2 exclusions: the system still sends nothing and draws no graph. Data and
+> authorization boundaries are in
+> [ADR-0010](../adr/ADR-0010-follow-up-decision-and-relationship-graph.md).
+
+Business-card tools already let a user keep every contact they exchanged with.
+The proposal addresses the failure that comes after: exchanging cards and then
+never getting back in touch. Both items stay within the pilot's
+first-meeting-to-relationship thesis. Neither is a CRM, a digital business card,
+or an outreach tool.
+
+5. **Follow-up decision and approval.** After an encounter, the system judges
+   whether this person is worth following up. It prepares everything up to the
+   point of approval. The user always does the sending.
+   - For each encounter with a ready card, the system produces one Follow-up
+     Recommendation:
+     - a decision: `follow_up`, `hold`, or `no_follow_up`;
+     - two or three reasons, each labeled Fact or Hypothesis and pointing to
+       its inputs: meeting goal, reviewed note, Mutual Value, accepted Next
+       Action, earlier encounters, and approved relationship-graph
+       connections (item 6);
+     - a suggested timing;
+     - a confidence and the uncertainty behind it;
+     - for `follow_up` only, a short draft message.
+   - `hold` and `no_follow_up` are real answers, not errors. The
+     recommendation is advice. Low data leads to `hold` with the reason stated,
+     never to a confident guess.
+   - The recommendation is a draft. The user approves, edits, or dismisses
+     it. Approval records the decision and hands the draft off: the user
+     copies it, or opens the device's own compose screen with the draft
+     filled in. **The system never sends, schedules, or queues a message, and
+     never connects to a mailbox.** The user marks the follow-up done through
+     the existing Next Action completion.
+   - A draft may state only business-card facts, the user's reviewed note, and
+     the user's own approved Personal Context. A Hypothesis is never written
+     into a draft as a fact. Raw images, unreviewed transcripts, and other
+     people's data never enter a draft.
+   - After an event (item 1), the recommendations may sort that event's
+     encounters into a follow-up list. Sorting changes no stored result.
+   - Judging and drafting are separate pipeline stages (ADR-0005). The
+     recommendation is a typed judgement over declared options. The draft is
+     generated only after a `follow_up` decision. If the AI stage fails, the
+     encounter shows no recommendation. The Flash Brief Fast Path is
+     unaffected.
+   - Measured by: approval rate, edit rate, dismissal rate, follow-up
+     completion, and the time from encounter to follow-up, compared with the
+     pilot baseline (§1.6).
+
+6. **Relationship graph (data only, no visualization).** The user's encounters
+   and past connections are kept as a private graph, so that "how do I know
+   this person?" can be answered and used.
+   - Nodes are the user's existing people, organizations, and events.
+     Edges that existing data already shows are derived, not copied:
+     - *met* (the user met a person in a scan, with its date and meeting
+       goal),
+     - *works at* (a person and an organization, from the card or a user
+       correction),
+     - *met at* (a person and an event, through a scan the user added to that
+       event).
+   - Connections that no scan records can be added by the user between two
+     people they have met: *introduced by*, *knows*, or *worked with*. The AI
+     may suggest such a connection, but a suggestion is unapproved until the
+     user accepts it, as with Personal Context. Every connection records
+     where it came from: `user`, `card`, or `ai_suggestion`.
+   - Pilot uses (read-only):
+     - "how you know them": past encounters and paths up to two hops, shown
+       on the Flash Brief and the encounter detail;
+     - "others you have met at this organization";
+     - approved connections as inputs to item 5.
+   - The graph belongs to its owner. Event team sharing (item 4) does not
+     extend to connections. Deleting a scan or person removes the edges that
+     depend on it.
+   - Still out of scope: graph visualization UI, contacts or LinkedIn import,
+     merging graphs across users, automated introductions, and
+     attendee matching.
+   - Measured by: how often "how you know them" is opened, approved and
+     dismissed AI-suggested connections, and whether a graph-derived reason
+     appears in approved follow-ups.
+
+Decisions for the first slice:
+
+- `no_follow_up` is shown to the user, worded as "今回は見送り" with its
+  reasons. Hiding it would make the judgement less honest.
+- Connections can only join people who already exist in the user's data
+  (people met through a scan). Importing other past contacts stays out.
+- The device compose handoff (`mailto:`) and copy are the only ways to send.
+  Mailbox integration remains outside §2.2.
+- AI-suggested connections and the per-event follow-up list come in a later
+  slice. The first slice ships user-entered connections and per-encounter
+  recommendations.
+
 ---
 
 # 3. DEFINE — User Stories & Acceptance Criteria

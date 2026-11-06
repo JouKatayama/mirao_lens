@@ -43,6 +43,7 @@ import { isGuestLoginEnabled } from "../lib/pilot-auth";
 import { createScanApiClient, ScanApiError } from "../lib/scan-api";
 import { createEventApiClient } from "../lib/event-api";
 import { createHubSpotApiClient } from "../lib/hubspot-api";
+import { createRelationshipApiClient } from "../lib/relationship-api";
 import {
   deleteAudioMemo,
   deleteUserAudioMemos,
@@ -83,6 +84,8 @@ import {
   subscribeToReminderTaps,
 } from "../lib/reminders";
 import { EncounterHistoryScreen } from "./encounter-history-screen";
+import { FollowUpCard } from "./follow-up-card";
+import { RelationshipGraphSection } from "./relationship-graph-section";
 import { ReanalysisScreen } from "./reanalysis-screen";
 import { HomeScreen } from "./home-screen";
 import { WelcomeScreen } from "./welcome-screen";
@@ -115,6 +118,7 @@ type Services =
       scanApi: ReturnType<typeof createScanApiClient>;
       eventApi: ReturnType<typeof createEventApiClient>;
       hubSpotApi: ReturnType<typeof createHubSpotApiClient>;
+      relationshipApi: ReturnType<typeof createRelationshipApiClient>;
       supabase: ReturnType<typeof getSupabaseClient>;
     }>
   | Readonly<{ error: string; ok: false }>;
@@ -137,6 +141,7 @@ export function PersonalContextApp() {
         scanApi: createScanApiClient(),
         eventApi: createEventApiClient(),
         hubSpotApi: createHubSpotApiClient(),
+        relationshipApi: createRelationshipApiClient(),
         supabase: getSupabaseClient(),
       };
     } catch (error) {
@@ -1676,6 +1681,13 @@ export function PersonalContextApp() {
             name: scanStatus.card.name,
           }}
           error={encountersError}
+          graph={
+            <RelationshipGraphSection
+              accessToken={session.access_token}
+              client={services.relationshipApi}
+              scanId={scanStatus.scan_id}
+            />
+          }
           items={encounters}
           onBack={() => setView("flash-brief")}
           onOpenEncounter={(id) => {
@@ -1748,6 +1760,14 @@ export function PersonalContextApp() {
             title: scanStatus.card.title,
           }}
           error={scanError}
+          followUp={
+            <FollowUpCard
+              accessToken={session.access_token}
+              client={services.relationshipApi}
+              personName={scanStatus.card.name}
+              scanId={scanStatus.scan_id}
+            />
+          }
           loadError={interactionError}
           mutualValue={
             scanStatus.status === "deep_ready" ? scanStatus.mutual_value : null

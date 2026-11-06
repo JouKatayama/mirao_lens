@@ -1,5 +1,6 @@
 import type { EncounterHistoryItem } from "@miraio/domain";
 import { colors } from "@miraio/ui-tokens";
+import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { meetingGoalLabels } from "../lib/scan-capture";
@@ -20,12 +21,15 @@ function formatEncounterDate(value: string): string {
 export function EncounterHistoryScreen({
   card,
   error,
+  graph,
   items,
   onBack,
   onOpenEncounter,
 }: {
   card: { name: string | null; company: string | null };
   error: string | null;
+  /** The relationship graph around this person (spec §2.4, extension 6). */
+  graph?: ReactNode;
   items: EncounterHistoryItem[];
   onBack: () => void;
   onOpenEncounter: (scanId: string) => void;
@@ -33,9 +37,10 @@ export function EncounterHistoryScreen({
   return (
     <ScreenFrame
       title="これまでの接点"
-      subtitle={`${card.name || "この人"}さんと過去に交換した名刺の記録です。`}
+      subtitle={`${card.name || "この人"}さんと過去に交換した名刺と、記録したつながりです。`}
       onBack={onBack}
     >
+      {graph}
       {items.length === 0 ? (
         <Card>
           <Text style={s.body}>過去の接点は記録されていません。</Text>
