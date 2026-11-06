@@ -335,7 +335,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_recommendations_scan_id_user_id_fkey"
+            columns: ["scan_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
       }
       hubspot_connections: {
         Row: {
@@ -599,7 +607,22 @@ export type Database = {
           provenance?: string
           to_person_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "person_connections_from_person_id_owner_user_id_fkey"
+            columns: ["from_person_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+          {
+            foreignKeyName: "person_connections_to_person_id_owner_user_id_fkey"
+            columns: ["to_person_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
       }
       personal_context_items: {
         Row: {
