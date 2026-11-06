@@ -22,17 +22,19 @@ The MVP v0.1 baseline excludes real-time transcription, broad CRM and organizati
 
 ### Evidence and denominators
 
-| Measure | Numerator / denominator | Source |
-| --- | --- | --- |
-| Scan feasibility | Scanned encounters / eligible card exchanges | Manual event tally + scan logs |
-| Brief availability | Briefs viewed while still useful / scans | Event note + analytics |
+| Measure               | Numerator / denominator                                                                 | Source                                       |
+| --------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Scan feasibility      | Scanned encounters / eligible card exchanges                                            | Manual event tally + scan logs               |
+| Brief availability    | Briefs viewed while still useful / scans                                                | Event note + analytics                       |
 | Conversation adoption | Encounters where `SAY THIS` was actually used / eligible encounters with a viewed Brief | User confirmation, reconciled with analytics |
-| Action capture | Accepted Next Actions / meaningful encounters | Product record + event note |
-| Follow-through | Completed follow-ups / accepted follow-up actions | Product record + 7-day check |
-| Meeting progression | Agreed next meetings / eligible encounters | 7-day check; descriptive only |
-| Trust guardrail | Wrong-person or unsupported-claim incidents | User review and incident note |
+| Action capture        | Accepted Next Actions / meaningful encounters                                           | Product record + event note                  |
+| Follow-through        | Completed follow-ups / accepted follow-up actions                                       | Product record + 7-day check                 |
+| Meeting progression   | Agreed next meetings / eligible encounters                                              | 7-day check; descriptive only                |
+| Trust guardrail       | Wrong-person or unsupported-claim incidents                                             | User review and incident note                |
 
 Record counts alongside percentages. One person and one event can reveal feasibility and failure modes, but cannot establish a reliable uplift or willingness to pay. Compare with the user's own prior workflow only as qualitative context.
+
+`docs/pilot-protocol-2026-11-03.md` is the operational form of this table and the one used on the day: it adds an owner per measure, defines "meaningful encounters", gives the trust guardrail a denominator, and names the analytics event behind each source.
 
 ### Review decision after the event
 
@@ -48,14 +50,14 @@ At the event, measure the same encounter funnel. At 7 and 30 days, ask which spe
 
 ## Development decision ladder
 
-| Priority | Candidate work | Trigger | Smallest useful slice / acceptance |
-| --- | --- | --- | --- |
-| Before 3 Nov | Field readiness and measurement repair | Phone, network, camera, analytics, or note/action flow fails in rehearsal | Actual device completes a synthetic end-to-end scan and records the chosen outcome without real card data in tests. |
-| Before 3 Nov | Event review | The Product Owner approved the pilot extension | One event label and a review list; only selected scans join. |
-| After 3 Nov | Follow-up prioritization and second follow-up tracking | Accepted actions are not executed or become hard to triage | User can mark priority and completed follow-up; measure change in follow-through before adding more automation. |
-| Before 3 Nov | Audio memo | The Product Owner approved the pilot extension | Explicit consent, visible start/stop, local playback/delete, 30-day retention. No automatic transcription. |
-| Before 3 Nov | HubSpot handoff | The Product Owner chose HubSpot | Server-side OAuth and explicit reviewed export; fake-provider tests without live calls. |
-| Before 3 Nov | Event-limited team read | The Product Owner chose event-scoped sharing | Share selected card facts, reviewed note, and accepted/completed action only. |
+| Priority     | Candidate work                                         | Trigger                                                                   | Smallest useful slice / acceptance                                                                                  |
+| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Before 3 Nov | Field readiness and measurement repair                 | Phone, network, camera, analytics, or note/action flow fails in rehearsal | Actual device completes a synthetic end-to-end scan and records the chosen outcome without real card data in tests. |
+| Before 3 Nov | Event review                                           | The Product Owner approved the pilot extension                            | One event label and a review list; only selected scans join.                                                        |
+| After 3 Nov  | Follow-up prioritization and second follow-up tracking | Accepted actions are not executed or become hard to triage                | User can mark priority and completed follow-up; measure change in follow-through before adding more automation.     |
+| Before 3 Nov | Audio memo                                             | The Product Owner approved the pilot extension                            | Explicit consent, visible start/stop, local playback/delete, 30-day retention. No automatic transcription.          |
+| Before 3 Nov | HubSpot handoff                                        | The Product Owner chose HubSpot                                           | Server-side OAuth and explicit reviewed export; fake-provider tests without live calls.                             |
+| Before 3 Nov | Event-limited team read                                | The Product Owner chose event-scoped sharing                              | Share selected card facts, reviewed note, and accepted/completed action only.                                       |
 
 The first development priority is the **observed failure** in a real encounter, not the most ambitious feature in the image. Keep fact, hypothesis, and uncertainty labels intact in all slices.
 

@@ -587,4 +587,5 @@ db:reset`, `pnpm db:test`, and `pnpm db:types`.
 - Decision records: `docs/adr/`
 - Active execution plans: `docs/exec-plans/active/`
 - Physical-device acceptance runbook: `docs/device-acceptance.md`
+- Field pilot protocol and scorecard: `docs/pilot-protocol-2026-11-03.md`
 - Agent repository instructions: `AGENTS.md`
