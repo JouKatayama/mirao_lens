@@ -133,10 +133,12 @@ export function FlashBriefScreen({
     { label: "名刺情報", icon: "person", action: onViewCard },
     { label: "根拠", icon: "company", action: onViewEvidence },
     { label: "会話メモ", icon: "note", action: onViewInteraction },
-    ...(previousEncounters > 0
+    // Always offered: the screen also holds the relationship graph, which a
+    // first meeting can already have connections in.
+    ...(onViewEncounters
       ? [
           {
-            label: "これまでの接点",
+            label: previousEncounters > 0 ? "これまでの接点" : "接点・つながり",
             icon: "people" as const,
             action: onViewEncounters,
           },
@@ -657,6 +659,8 @@ type InteractionScreenProps = {
   ) => Promise<{ contact_id: string; note_status: string }>;
   card: Person;
   error: string | null;
+  /** The follow-up recommendation card (spec §2.4, extension 5). */
+  followUp?: ReactNode;
   /** Set when the saved note or actions could not be read. */
   loadError?: string | null;
   /** Null until Mutual Value is ready; the note never waits for it. */
@@ -725,6 +729,7 @@ function InteractionForm({
   onHubSpotExport,
   card,
   error,
+  followUp,
   mutualValue,
   onAcceptNextAction,
   onBack,
@@ -927,6 +932,7 @@ function InteractionForm({
       {audioMemoUserId && audioMemoScanId ? (
         <AudioMemo userId={audioMemoUserId} scanId={audioMemoScanId} />
       ) : null}
+      {followUp}
       {hubSpotConnected &&
       hubSpotInitial &&
       audioMemoScanId &&

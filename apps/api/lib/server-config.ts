@@ -282,6 +282,28 @@ export function readOpenAIMutualValueConfig(
   };
 }
 
+export type OpenAIFollowUpConfig = OpenAIMutualValueConfig;
+
+/**
+ * Follow-up judgement and drafting (spec §2.4). A blank model reuses the
+ * Mutual Value model, so a deployment that already runs analysis needs no new
+ * setting; the model stays configuration, never code.
+ */
+export function readOpenAIFollowUpConfig(
+  environment: ServerEnvironment,
+): OpenAIFollowUpConfig {
+  const model =
+    environment["AI_FOLLOW_UP_MODEL"]?.trim() ||
+    requireValue(environment, "AI_MUTUAL_VALUE_MODEL");
+
+  return {
+    apiKey: requireValue(environment, "OPENAI_API_KEY"),
+    baseUrl: readProviderBaseUrl(environment),
+    effort: readReasoningEffort(environment, "AI_FOLLOW_UP_EFFORT"),
+    model,
+  };
+}
+
 export type CleanupConfig = Readonly<{
   serviceRoleKey: string;
   supabaseUrl: string;

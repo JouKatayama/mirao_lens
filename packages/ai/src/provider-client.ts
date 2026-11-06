@@ -33,6 +33,11 @@ export const providerTimeoutMilliseconds = {
    */
   companyWebResearch: 25_000,
   flashBrief: 14_000,
+  /**
+   * Each follow-up stage runs on its own request, after the conversation and
+   * outside the card pipeline. Judge and draft run in sequence.
+   */
+  followUp: 14_000,
   mutualValue: 14_000,
   /** Runs alone on the onboarding route rather than in the card pipeline. */
   personalContext: 20_000,

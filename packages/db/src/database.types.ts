@@ -280,6 +280,63 @@ export type Database = {
           },
         ]
       }
+      follow_up_recommendations: {
+        Row: {
+          confidence: number
+          decided_at: string | null
+          decision: string
+          draft_body: string | null
+          draft_subject: string | null
+          edited: boolean
+          generated_at: string
+          id: string
+          model_metadata_json: Json
+          reasons_json: Json
+          scan_id: string
+          status: string
+          timing_text: string | null
+          uncertainty: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence: number
+          decided_at?: string | null
+          decision: string
+          draft_body?: string | null
+          draft_subject?: string | null
+          edited?: boolean
+          generated_at?: string
+          id?: string
+          model_metadata_json?: Json
+          reasons_json?: Json
+          scan_id: string
+          status?: string
+          timing_text?: string | null
+          uncertainty?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          decided_at?: string | null
+          decision?: string
+          draft_body?: string | null
+          draft_subject?: string | null
+          edited?: boolean
+          generated_at?: string
+          id?: string
+          model_metadata_json?: Json
+          reasons_json?: Json
+          scan_id?: string
+          status?: string
+          timing_text?: string | null
+          uncertainty?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       hubspot_connections: {
         Row: {
           access_expires_at: string
@@ -508,6 +565,39 @@ export type Database = {
           owner_user_id?: string
           title?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      person_connections: {
+        Row: {
+          approved: boolean
+          connection_type: string
+          created_at: string
+          from_person_id: string
+          id: string
+          owner_user_id: string
+          provenance: string
+          to_person_id: string
+        }
+        Insert: {
+          approved?: boolean
+          connection_type: string
+          created_at?: string
+          from_person_id: string
+          id?: string
+          owner_user_id: string
+          provenance?: string
+          to_person_id: string
+        }
+        Update: {
+          approved?: boolean
+          connection_type?: string
+          created_at?: string
+          from_person_id?: string
+          id?: string
+          owner_user_id?: string
+          provenance?: string
+          to_person_id?: string
         }
         Relationships: []
       }
