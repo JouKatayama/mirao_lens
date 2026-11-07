@@ -1,5 +1,4 @@
 import {
-  buildConnectionView,
   connectionProvenanceSchema,
   connectionTypeSchema,
   toStoredConnection,
@@ -15,6 +14,11 @@ import {
   createUserScopedSupabaseClient,
   type UserScopedSupabaseConfig,
 } from "./personal-context-repository";
+import {
+  assembleRelationshipGraph,
+  emptyRelationshipGraph,
+  type GraphSnapshot,
+} from "./graph/relationship-graph-snapshot";
 
 export class RelationshipGraphRepositoryError extends Error {
   constructor(readonly operation: string) {
@@ -51,7 +55,6 @@ export async function authenticateRelationshipGraphSession(
  * turning one read into an unbounded one; past them, the oldest rows drop out.
  */
 export const relationshipGraphReadLimit = 1000;
-export const connectionCandidateLimit = 100;
 
 export type ConnectionCreateResult =
   | Readonly<{ status: "created"; id: string }>
@@ -86,24 +89,26 @@ export class RelationshipGraphRepository {
   }
 
   async getGraphForScan(scanId: string): Promise<RelationshipGraphResponse> {
-    const empty: RelationshipGraphResponse = {
-      candidates: [],
-      colleagues: [],
-      connections: [],
-      events: [],
-      person: null,
-      scan_id: scanId,
-      second_hop: [],
-    };
-
     const personId = await this.getScanPersonId(scanId);
 
     // No resolved person means nothing to link. Guessing by name would draw
     // edges between strangers.
     if (!personId) {
-      return empty;
+      return emptyRelationshipGraph(scanId);
     }
 
+    return assembleRelationshipGraph(
+      await this.readSnapshot(),
+      personId,
+      scanId,
+    );
+  }
+
+  /**
+   * The owner's whole graph as Postgres records it: the input to both the
+   * Neo4j projection and the in-memory fallback (ADR-0011).
+   */
+  async readSnapshot(): Promise<GraphSnapshot> {
     const [peopleResult, cardResult, edgeResult] = await Promise.all([
       this.client
         .from("people")
@@ -121,6 +126,7 @@ export class RelationshipGraphRepository {
         .select(
           "id,from_person_id,to_person_id,connection_type,provenance,approved",
         )
+        .eq("approved", true)
         .order("created_at", { ascending: false })
         .limit(relationshipGraphReadLimit),
     ]);
@@ -130,76 +136,73 @@ export class RelationshipGraphRepository {
     }
 
     const cards: CardRow[] = cardResult.data ?? [];
-    const scanIds = cards
-      .map((card) => card.scan_id)
-      .filter((value): value is string => value !== null);
+    const scanPeople = new Map(
+      cards.flatMap((card) =>
+        card.scan_id && card.person_id ? [[card.scan_id, card.person_id]] : [],
+      ),
+    );
+    const scanIds = [...scanPeople.keys()];
 
-    const scanDates = await this.readScanDates(scanIds);
+    const [scanDates, eventLinks] = await Promise.all([
+      this.readScanDates(scanIds),
+      this.readEventLinks(scanIds),
+    ]);
     const people = toGraphPeople(peopleResult.data ?? [], cards, scanDates);
-    const person = people.get(personId) ?? null;
+    const personIds = new Set(people.keys());
 
-    if (!person) {
-      return empty;
-    }
-
-    const ownCards = cards.filter((card) => card.person_id === personId);
-    const organizationIds = new Set(
-      ownCards
-        .map((card) => card.organization_id)
-        .filter((value): value is string => value !== null),
-    );
-    const colleagueIds = new Set(
-      cards
-        .filter(
-          (card) =>
-            card.person_id !== null &&
-            card.person_id !== personId &&
-            card.organization_id !== null &&
-            organizationIds.has(card.organization_id),
-        )
-        .map((card) => card.person_id as string),
+    const worksAt = uniqueBy(
+      cards.flatMap((card) =>
+        card.person_id && card.organization_id && personIds.has(card.person_id)
+          ? [
+              {
+                organization_id: card.organization_id,
+                person_id: card.person_id,
+              },
+            ]
+          : [],
+      ),
+      (row) => `${row.person_id}:${row.organization_id}`,
     );
 
-    const edges = (edgeResult.data ?? []).flatMap((row): ConnectionEdge[] => {
-      const type = connectionTypeSchema.safeParse(row.connection_type);
-      const provenance = connectionProvenanceSchema.safeParse(row.provenance);
-      return type.success && provenance.success
-        ? [
-            {
-              approved: row.approved,
-              connection_type: type.data,
-              from_person_id: row.from_person_id,
-              id: row.id,
-              provenance: provenance.data,
-              to_person_id: row.to_person_id,
-            },
-          ]
-        : [];
-    });
-
-    const view = buildConnectionView(personId, edges, people);
-    const events = await this.readEvents(
-      ownCards
-        .map((card) => card.scan_id)
-        .filter((value): value is string => value !== null),
+    const metAt = uniqueBy(
+      eventLinks.links.flatMap((link) => {
+        const personId = scanPeople.get(link.scan_id);
+        return personId && personIds.has(personId)
+          ? [{ event_id: link.event_id, person_id: personId }]
+          : [];
+      }),
+      (row) => `${row.person_id}:${row.event_id}`,
     );
 
-    const candidates = [...people.values()]
-      .filter((candidate) => candidate.id !== personId)
-      .sort(byLastMetDescending)
-      .slice(0, connectionCandidateLimit);
+    const connections = (edgeResult.data ?? []).flatMap(
+      (row): ConnectionEdge[] => {
+        const type = connectionTypeSchema.safeParse(row.connection_type);
+        const provenance = connectionProvenanceSchema.safeParse(row.provenance);
+        return type.success &&
+          provenance.success &&
+          personIds.has(row.from_person_id) &&
+          personIds.has(row.to_person_id)
+          ? [
+              {
+                approved: row.approved,
+                connection_type: type.data,
+                from_person_id: row.from_person_id,
+                id: row.id,
+                provenance: provenance.data,
+                to_person_id: row.to_person_id,
+              },
+            ]
+          : [];
+      },
+    );
 
     return {
-      candidates,
-      colleagues: [...colleagueIds]
-        .map((id) => people.get(id))
-        .filter((value): value is GraphPerson => value !== undefined)
-        .sort(byLastMetDescending),
-      connections: view.connections,
-      events,
-      person,
-      scan_id: scanId,
-      second_hop: view.second_hop,
+      connections,
+      events: eventLinks.events,
+      metAt,
+      organizationIds: [...new Set(worksAt.map((row) => row.organization_id))],
+      people: [...people.values()],
+      worksAt,
     };
   }
 
@@ -319,16 +322,17 @@ export class RelationshipGraphRepository {
     return new Map((data ?? []).map((row) => [row.id, row.created_at]));
   }
 
-  private async readEvents(
-    scanIds: readonly string[],
-  ): Promise<{ id: string; name: string }[]> {
+  private async readEventLinks(scanIds: readonly string[]): Promise<{
+    events: { id: string; name: string }[];
+    links: { event_id: string; scan_id: string }[];
+  }> {
     if (scanIds.length === 0) {
-      return [];
+      return { events: [], links: [] };
     }
 
     const { data: links, error } = await this.client
       .from("event_scans")
-      .select("event_id")
+      .select("event_id,scan_id")
       .in("scan_id", [...scanIds]);
 
     if (error) {
@@ -338,7 +342,7 @@ export class RelationshipGraphRepository {
     const eventIds = [...new Set((links ?? []).map((row) => row.event_id))];
 
     if (eventIds.length === 0) {
-      return [];
+      return { events: [], links: [] };
     }
 
     const { data: events, error: eventError } = await this.client
@@ -350,7 +354,10 @@ export class RelationshipGraphRepository {
       throw new RelationshipGraphRepositoryError("get_events");
     }
 
-    return (events ?? []).map((row) => ({ id: row.id, name: row.name }));
+    return {
+      events: (events ?? []).map((row) => ({ id: row.id, name: row.name })),
+      links: links ?? [],
+    };
   }
 }
 
@@ -388,6 +395,10 @@ function toGraphPeople(
   );
 }
 
-function byLastMetDescending(left: GraphPerson, right: GraphPerson): number {
-  return (right.last_met_at ?? "").localeCompare(left.last_met_at ?? "");
+function uniqueBy<T>(rows: readonly T[], key: (row: T) => string): T[] {
+  const seen = new Map<string, T>();
+  for (const row of rows) {
+    if (!seen.has(key(row))) seen.set(key(row), row);
+  }
+  return [...seen.values()];
 }

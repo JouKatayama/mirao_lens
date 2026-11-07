@@ -304,6 +304,39 @@ export function readOpenAIFollowUpConfig(
   };
 }
 
+export type Neo4jServerConfig = Readonly<{
+  database?: string;
+  password: string;
+  uri: string;
+  username: string;
+}>;
+
+/**
+ * The relationship graph's Neo4j projection (ADR-0011). Server-only: these
+ * credentials never reach the mobile bundle. A blank URI leaves Neo4j off and
+ * the graph is answered from Postgres, which is also the fallback whenever
+ * Neo4j cannot be reached. A URI without credentials is a startup error rather
+ * than a silent fallback.
+ */
+export function readNeo4jConfig(
+  environment: ServerEnvironment,
+): Neo4jServerConfig | null {
+  const uri = environment["NEO4J_URI"]?.trim();
+
+  if (!uri) {
+    return null;
+  }
+
+  const database = environment["NEO4J_DATABASE"]?.trim();
+
+  return {
+    ...(database ? { database } : {}),
+    password: requireValue(environment, "NEO4J_PASSWORD"),
+    uri,
+    username: requireValue(environment, "NEO4J_USERNAME"),
+  };
+}
+
 export type CleanupConfig = Readonly<{
   serviceRoleKey: string;
   supabaseUrl: string;

@@ -10,6 +10,7 @@
 - [ADR-0008: Recover guest accounts and local reminders](./ADR-0008-guest-account-recovery-and-local-reminders.md)
 - [ADR-0009: Event pilot data boundaries](./ADR-0009-event-pilot-data-boundaries.md)
 - [ADR-0010: Follow-up decision and relationship graph boundaries](./ADR-0010-follow-up-decision-and-relationship-graph.md)
+- [ADR-0011: Neo4j projection for the relationship graph](./ADR-0011-neo4j-relationship-graph-projection.md)
 
 ADRs capture durable decisions, context, consequences, and rejected
 alternatives. Do not use them as ticket status logs.

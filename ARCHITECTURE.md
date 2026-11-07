@@ -86,6 +86,12 @@ separate atomic path that preserves the original extraction JSON and records
 `user_correction` provenance. Company enrichment, identity resolution, and
 relationship inference cannot enter this stage.
 
+ML-031 adds the follow-up recommendation and the relationship graph (spec
+§2.4, ADR-0010). The graph is queried through a per-user Neo4j projection
+(ADR-0011) that is rebuilt from Postgres, the source of truth, whenever its
+fingerprint changes. Postgres answers alone when Neo4j is not configured or
+not reachable.
+
 ## Model-agnostic principle
 
 Canonical domain contracts represent product meaning. Model IDs and provider
