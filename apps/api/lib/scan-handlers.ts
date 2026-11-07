@@ -26,6 +26,7 @@ import {
   readServerSupabaseConfig,
   ServerConfigurationError,
 } from "./server-config";
+import { purgeRelationshipGraph } from "./graph-store";
 
 // One OPTIONS handler serves every route in this module, so the method list
 // must cover DELETE /v1/scans/:scanId as well as the collection route.
@@ -563,6 +564,12 @@ type DeleteScanSession = Readonly<{
 
 export type DeleteScanHandlerDependencies = Readonly<{
   authenticate(accessToken: string): Promise<DeleteScanSession | null>;
+  /**
+   * Drops the owner's Neo4j projection so the deleted person does not linger
+   * there (ADR-0011). Best effort: the scan is already gone from the source of
+   * truth, and the next graph read rebuilds the projection without it.
+   */
+  purgeRelationshipGraph?(userId: string): Promise<void>;
 }>;
 
 export function createDeleteScanHandler(
@@ -602,6 +609,14 @@ export function createDeleteScanHandler(
         session.userId,
       );
 
+      if (deleted) {
+        try {
+          await dependencies.purgeRelationshipGraph?.(session.userId);
+        } catch {
+          // See purgeRelationshipGraph: the projection is rebuilt on next read.
+        }
+      }
+
       return deleted
         ? new Response(null, { headers: corsHeaders, status: 204 })
         : errorResponse(404, "not_found", "Scan not found.");
@@ -619,6 +634,7 @@ export const productionDeleteScanHandlerDependencies: DeleteScanHandlerDependenc
         accessToken,
       );
     },
+    purgeRelationshipGraph,
   };
 
 export const productionScanDependencies: ScanHandlerDependencies = {

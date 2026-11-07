@@ -1,6 +1,7 @@
 # ADR-0010: Follow-up decision and relationship graph boundaries
 
-- Status: Accepted
+- Status: Accepted; graph storage superseded by
+  [ADR-0011](./ADR-0011-neo4j-relationship-graph-projection.md)
 - Date: 2026-11-07
 
 ## Context

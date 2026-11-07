@@ -1,5 +1,6 @@
 import {
   authenticateRelationshipGraphSession,
+  ProjectedRelationshipGraph,
   RelationshipGraphRepositoryError,
   type ConnectionCreateResult,
 } from "@miraio/db";
@@ -18,6 +19,7 @@ import {
   readScanId,
   type ScanRouteContext,
 } from "./route-http";
+import { getRelationshipGraphStore } from "./graph-store";
 import { readServerSupabaseConfig } from "./server-config";
 
 /**
@@ -193,9 +195,23 @@ export function RELATIONSHIPS_OPTIONS(): Response {
 export const productionRelationshipHandlerDependencies: RelationshipHandlerDependencies =
   {
     async authenticate(accessToken) {
-      return authenticateRelationshipGraphSession(
+      const session = await authenticateRelationshipGraphSession(
         readServerSupabaseConfig(process.env),
         accessToken,
       );
+      const store = getRelationshipGraphStore();
+
+      // With Neo4j configured, reads go through the projection (ADR-0011);
+      // writes still land in Postgres either way.
+      return session && store
+        ? {
+            repository: new ProjectedRelationshipGraph(
+              session.repository,
+              store,
+              session.userId,
+            ),
+            userId: session.userId,
+          }
+        : session;
     },
   };

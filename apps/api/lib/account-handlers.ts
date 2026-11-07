@@ -14,6 +14,7 @@ import {
   HubSpotProvider,
   readHubSpotConfig,
 } from "./hubspot-provider";
+import { purgeRelationshipGraph } from "./graph-store";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "Authorization",
@@ -34,6 +35,12 @@ type AccountSession = Readonly<{
 export type AccountHandlerDependencies = Readonly<{
   authenticate(accessToken: string): Promise<AccountSession | null>;
   revokeHubSpot?(userId: string): Promise<void>;
+  /**
+   * Removes the user's Neo4j projection (ADR-0011). Runs before the account is
+   * deleted and fails the request if it fails, so a retry can finish it: once
+   * the account is gone there is no session left to purge with.
+   */
+  purgeRelationshipGraph?(userId: string): Promise<void>;
 }>;
 
 type ErrorBody = Readonly<{
@@ -104,6 +111,7 @@ export function createDeleteAccountHandler(
 
     try {
       await dependencies.revokeHubSpot?.(session.userId);
+      await dependencies.purgeRelationshipGraph?.(session.userId);
       await session.repository.deleteAccount(session.userId);
       return new Response(null, { headers: corsHeaders, status: 204 });
     } catch (error) {
@@ -126,6 +134,7 @@ export const productionAccountHandlerDependencies: AccountHandlerDependencies =
         accessToken,
       );
     },
+    purgeRelationshipGraph,
     async revokeHubSpot(userId) {
       const supabase = readCleanupConfig(process.env);
       const store = createHubSpotStore(

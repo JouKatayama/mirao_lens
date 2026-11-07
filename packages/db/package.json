@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@miraio/domain": "workspace:*",
-    "@supabase/supabase-js": "^2.112.3"
+    "@supabase/supabase-js": "^2.112.3",
+    "neo4j-driver": "^5.28.3"
   },
   "scripts": {
     "lint": "eslint src --max-warnings 0",
